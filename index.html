@@ -1,0 +1,2390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Max Intensity" />
+<meta name="theme-color" content="#0a0a0a" />
+<title>Max Intensity</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" type="image/png" href="apple-touch-icon.png" />
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>html,body{background:#0a0a0a;margin:0}</style>
+</head>
+<body>
+<div id="root">
+  <div style="color:#777;font-family:monospace;padding:2.5rem 1.5rem;font-size:14px">Loading Max Intensity&hellip;<br/><br/>If this stays more than 10 seconds, check your connection and pull down to refresh.</div>
+</div>
+<div id="errbox" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#7f1d1d;color:#fff;font-family:monospace;font-size:12px;padding:12px;z-index:9999;word-break:break-word"></div>
+<script>
+function showErr(msg){ var b=document.getElementById("errbox"); b.style.display="block"; b.textContent="Error: "+msg; }
+window.onerror = function(msg, s, line){ if (String(msg).indexOf("Script error") !== -1) return; showErr(msg + " (line " + line + ")"); };
+window.addEventListener("unhandledrejection", function(e){ showErr(e.reason && e.reason.message ? e.reason.message : String(e.reason)); });
+
+window.storage = {
+  get: function(k){ return new Promise(function(res, rej){ var v=localStorage.getItem("mi:"+k); if(v===null){ rej(new Error("not found")); } else { res({key:k, value:v}); } }); },
+  set: function(k,v){ return new Promise(function(res){ localStorage.setItem("mi:"+k, v); res({key:k, value:v}); }); },
+  "delete": function(k){ return new Promise(function(res){ localStorage.removeItem("mi:"+k); res({key:k, deleted:true}); }); },
+  list: function(){ return new Promise(function(res){ var keys=[]; for(var i=0;i<localStorage.length;i++){ var key=localStorage.key(i); if(key&&key.indexOf("mi:")===0) keys.push(key.slice(3)); } res({keys:keys}); }); }
+};
+
+var _fetch = window.fetch.bind(window);
+window.fetch = function(url, opts){
+  opts = opts || {};
+  if (typeof url === "string" && url.indexOf("api.anthropic.com") !== -1) {
+    var key = localStorage.getItem("mi-key") || "";
+    if (!key) {
+      key = (window.prompt("Paste your Anthropic API key to power the AI features (stored only on this device):") || "").trim();
+      if (key) localStorage.setItem("mi-key", key);
+    }
+    var h = opts.headers || {};
+    h["x-api-key"] = key;
+    h["anthropic-version"] = "2023-06-01";
+    h["anthropic-dangerous-direct-browser-access"] = "true";
+    opts.headers = h;
+  }
+  return _fetch(url, opts);
+};
+</script>
+<script type="text/babel" data-presets="env,react">
+try {
+const { useState, useEffect, useRef } = React;
+// Max Intensity brand assets (embedded)
+const BICEP = "data:image/jpeg;base64,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";
+const TEXTURE = "data:image/jpeg;base64,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";
+
+// =====================================================
+// MAX INTENSITY — black & red edition
+// Program: 10/6/6/6 · tempo 3-1-3-1 · work sets ~1 RIR · back-off −10%
+// =====================================================
+
+const SCHEME = [10, 6, 6, 6];
+const ex = (name, note = "", scheme = SCHEME) => ({ name, scheme, note, tempo: "3-1-3-1", rest: "2–3 min" });
+
+const LEG_DAY = [
+  ex("Calf Press"), ex("Leg Extension"), ex("Seated Leg Curl"), ex("Adductor"),
+  ex("Hip Thrust / 45° Glute Raise"), ex("Leg Press"),
+];
+
+const DEFAULT_PROGRAM = {
+  name: "Max Intensity Block",
+  weeks: 6,
+  days: [
+    {
+      name: "Upper 1",
+      exercises: [
+        ex("Incline Dumbbell Press"),
+        ex("Straight-Arm Cable Pulldown", "on the stand"),
+        ex("Chest Supported Smith Row", "chest on incline bench"),
+        ex("Cable Lateral Raise", "or DB laterals"),
+        ex("Preacher Curl", "machine, or DB over incline bench"),
+        ex("Assisted Dips (machine)", "use assistance — a strict 3-1-3-1 beats bodyweight bounce"),
+      ],
+    },
+    { name: "Legs 1", exercises: LEG_DAY.map((e) => ({ ...e })) },
+    {
+      name: "Upper 2",
+      exercises: [
+        ex("Smith Press Behind Neck"),
+        ex("Clavicular Cable Flye"),
+        ex("Hip Braced One-Arm Cable Lat Row", "cable stand"),
+        ex("Smith Wide-Grip Row"),
+        ex("Alternating DB Curls"),
+        ex("Tricep Cable Crossovers", "on the stand"),
+      ],
+    },
+    { name: "Legs 2", exercises: LEG_DAY.map((e) => ({ ...e })) },
+  ],
+};
+DEFAULT_PROGRAM.days[1].exercises.push(ex("Barbell RDL", "hinge, flat back — hamstrings & lower back"));
+DEFAULT_PROGRAM.days[1].exercises = DEFAULT_PROGRAM.days[1].exercises.filter((e) => !/seated leg curl/i.test(e.name));
+DEFAULT_PROGRAM.days[3].exercises.push(ex("Cable Crunch", "kneeling at the stand — core"));
+
+const WEEK_PLAN = [
+  { label: "W1", tag: "Establish", cue: "Find your working loads. Leave ~2 in reserve." },
+  { label: "W2", tag: "Groove", cue: "Same loads. All work sets at ~1 RIR, strict tempo." },
+  { label: "W3", tag: "Load", cue: "Add ~2.5% on anything you cleared last week." },
+  { label: "W4", tag: "Load", cue: "Add again where all work sets hit 6. Hold where they didn't." },
+  { label: "W5", tag: "Peak", cue: "Heaviest week. Work sets at 0–1 RIR." },
+  { label: "W6", tag: "Deload", cue: "~60% load, 2 sets per exercise. Tempo stays strict." },
+];
+
+const SET_LABELS = ["Warm-up 1 ×10", "Warm-up 2 ×6", "Work ×6 @1 RIR", "Back-off ×6 (−10%)"];
+
+// ---------- migrate old stored programs to current spec ----------
+function migrateProgram(p) {
+  try {
+    if (!p || !p.days) return p;
+    p.days.forEach((d) => {
+      d.exercises = (d.exercises || []).filter((e) => !/sissy/i.test(e.name || ""));
+      const hasCross = d.exercises.some((e) => /cable crossover/i.test(e.name || ""));
+      d.exercises = d.exercises.filter((e) => !(hasCross && /skull crusher/i.test(e.name || "")));
+      d.exercises.forEach((e) => {
+        e.tempo = "3-1-3-1";
+        const n = e.name || "";
+        if (/dumbbell rdl/i.test(n)) { e.name = "Barbell RDL"; }
+        if (/skull crusher/i.test(n)) { e.name = "Tricep Cable Crossovers"; e.note = "on the stand"; }
+        else if (/smith upper back row/i.test(n)) { e.name = "Smith Wide-Grip Row"; e.note = ""; }
+        else if (/chest supported smith upper/i.test(n)) { e.name = "Chest Supported Smith Row"; }
+        else if (/^dips/i.test(n)) { e.name = "Assisted Dips (machine)"; e.note = "use assistance — a strict 3-1-3-1 beats bodyweight bounce"; }
+      });
+    });
+    p.days.forEach((d) => {
+      if (d.exercises.some((e) => /rdl|romanian/i.test(e.name || ""))) {
+        d.exercises = d.exercises.filter((e) => !/seated leg curl/i.test(e.name || ""));
+      }
+    });
+    const allEx = p.days.flatMap((d) => d.exercises.map((e) => (e.name || "").toLowerCase()));
+    const legDays = p.days.filter((d) => /leg/i.test(d.name || ""));
+    if (legDays[0] && !allEx.some((n) => n.includes("rdl") || n.includes("romanian"))) {
+      legDays[0].exercises.push({ name: "Barbell RDL", scheme: [10, 6, 6, 6], note: "hinge, flat back — hamstrings & lower back", tempo: "3-1-3-1", rest: "2–3 min" });
+    }
+    if (legDays[1] && !allEx.some((n) => n.includes("crunch"))) {
+      legDays[1].exercises.push({ name: "Cable Crunch", scheme: [10, 6, 6, 6], note: "kneeling at the stand — core", tempo: "3-1-3-1", rest: "2–3 min" });
+    }
+  } catch {}
+  return p;
+}
+
+// ---------- conservative starting-weight estimate (beginners) ----------
+function suggestStart(name, bwKg, sex) {
+  const n = (name || "").toLowerCase();
+  const f = n.includes("leg press") ? 1.0
+    : n.includes("hip thrust") || n.includes("glute") ? 0.6
+    : n.includes("calf") ? 0.8
+    : n.includes("extension") || n.includes("leg curl") || n.includes("adductor") ? 0.3
+    : n.includes("row") || n.includes("pulldown") ? 0.3
+    : n.includes("press") ? 0.25
+    : n.includes("flye") || n.includes("lateral") ? 0.06
+    : n.includes("curl") ? 0.1
+    : n.includes("tricep") || n.includes("crossover") ? 0.1
+    : 0;
+  if (!f || !bwKg) return null;
+  let v = bwKg * f * (sex === "Female" ? 0.65 : 1);
+  v = Math.max(2.5, Math.round(v / 2.5) * 2.5);
+  return v;
+}
+
+const PERF_LESSONS = [
+  { t: "Sleep is a performance drug", b: "The block gets banked while you sleep. Cold room, strict wind-down, dim lights, warm shower an hour before, and a pinch of salt + something sweet + water pre-bed if you wake hungry. One rough night won't hurt you — a rough week will show up on the bar." },
+  { t: "Caffeine — use it, don't live on it", b: "45–60 minutes before the session is the sweet spot. Nothing within 9 hours of bed — it steals the deep sleep that pays for the training. If it stops hitting, that's tolerance: cycle off for a week and get the weapon back." },
+  { t: "Hydration & electrolytes", b: "2–3% dehydration is a measurable strength drop — you'll feel it as a bad day when it's really a dry one. Water through the day, not a litre at once, and salt your food; sodium is a performance mineral for people who train hard." },
+  { t: "Arrive ready, not wrecked", b: "Your two warm-up sets ARE the warm-up — that's built in. Arrive fed (carbs 1–2 hours out), get to the first exercise fast, and treat set one like it matters, because your priority lift only gets your best once per session." },
+];
+
+const MOTTO = "Streamlining health — everything simple, everything in one place. Progress made easy.";
+
+const BREATH = "Exhale on the press — like throwing a punch. Breathe in on the way down.";
+const WEEK_RHYTHM = ["Upper 1", "Legs 1", "REST", "Upper 2", "Legs 2", "REST", "REST"];
+const rhythmFor = (split) => (split === "legglute"
+  ? ["Legs 1", "Upper 1", "REST", "Legs 2", "Upper 2", "Glute Focus", "REST"]
+  : WEEK_RHYTHM);
+const TRIAL_DAYS = 7;
+
+// ---------- Education lessons (Max's voice, <60s reads) ----------
+const LESSONS = [
+  { t: "Why so little volume?", b: "Muscle is expensive — your body only builds it when forced. You recruit 100% of the fibres near failure, so one brutal work set beats five comfortable ones. Sprinters vs marathon runners: intensity wins. Do the work set properly, then leave and grow." },
+  { t: "Why the tempo matters", b: "3-1-3-1: three seconds up, hold one, three seconds down, hold one. Constant tension, zero momentum, total honesty — the holds kill the bounce where people hide. If the tempo breaks, the weight is too heavy. Simple." },
+  { t: "Stimulus vs fatigue", b: "Sports science 101: fitness and fatigue sit on top of each other. Some weeks you feel weaker — that's fatigue masking fitness, not lost progress. It's why W6 is a deload: drop the fatigue and the fitness shows. Trust the block, not one bad Tuesday." },
+  { t: "Why order matters", b: "Every set costs energy, so whatever you train first gets your best. That's why your priority muscle leads the session — and why some lifts fly while the last exercise of the day crawls. Want something to grow? Move it up the order." },
+  { t: "The work set is the session", b: "Two warm-ups get you there, the back-off tops it up — but the one work set at 1 RIR is where the growth signal happens. Hit 6 clean reps and the app tells you to add ~2.5%. That tiny consistent jump is the whole game." },
+  { t: "One big meal a day", b: "Trying to fix six meals at once fails by Friday. One solid ~1,000-calorie meal, five days a week, does most of the heavy lifting — it's one decision, it survives a bad week, and it kills the evening cravings by accident. 35 minutes of prep covers 3 days." },
+  { t: "Small steps beat nothing", b: "A short session still counts. One logged set still counts. Progress is built one completed session at a time — the app tracks streaks because showing up is the skill. Never let a missed day become a missed week." },
+  { t: "Why 4 days — and why the rest days", b: "After a hard session, muscle protein synthesis — the actual building — runs elevated for roughly 48 hours. Train a muscle, then let it finish the job. That's why the week runs Upper, Legs, REST, Upper, Legs, REST, REST: every muscle gets hit twice, and every rest day is a growth day, not a day off from progress." },
+  { t: "What to skip when life happens", b: "Short on time? Keep the work sets, drop the back-offs, cut the last exercise — in that order. The work set is 80% of the session. Missed a day? Don't double up tomorrow; just pick the plan back up. Ill or wrecked? Rest properly. The block survives a bad week — it doesn't survive quitting." },
+  { t: "Macros, micros, ingredients", b: "Three layers. Macros are the frame: protein, carbs and fat totals decide whether you build or lose — hit your portions daily. Micros are the finish: vitamins and minerals run recovery, sleep and hormones — that's what the colourful snacks are for. Ingredients are the quality: mostly food you could have cooked yourself. Frame first, then finish, then polish." },
+  { t: "Guilt is the enemy", b: "Guilt is the enemy — not a bad day. If you used to have seven bad days a week, one day on track is improvement, full stop. Count what went right, then stack another one on top. Momentum beats guilt every single time — that's the progress mindset." },
+];
+
+// ---------- Philosophy (Max Intensity training doc) ----------
+const PILLARS = [
+  {
+    title: "Intensity",
+    body: "The body only builds muscle when it's forced to — it's metabolically expensive, so it won't unless it has to. You only recruit 100% of muscle fibres close to failure, so every work set is trained hard. Intensity beats volume: sprinters vs marathon runners.",
+  },
+  {
+    title: "Form",
+    body: "Form decides which muscle you target. Feel the squeeze and contraction — flex the muscle through the movement, light it up red in your mind. Exhale as you lift, inhale as you lower.",
+  },
+  {
+    title: "Progressive overload",
+    body: "The main driver of continued growth. Track every weight and rep, and try to beat it. If the weights go up with strict form, you're gaining muscle — a stronger muscle is a bigger muscle.",
+  },
+  {
+    title: "Volume & rest",
+    body: "Most sets are a waste of time. Once you've stimulated growth, more training is just damage — stimulate, then leave and adapt. Train your priority muscles first in the session. Rest fully between sets — if you still feel gassed, wait longer.",
+  },
+];
+
+const NUTRITION_RULES = [
+  "90% of eating well is what you DON'T eat. Homemade beats shop-bought — the pizza isn't the problem, the additives are.",
+  "Staples: meats, dairy, fruit, veg. Pick the ones you genuinely enjoy so it's doable forever.",
+  "Eat early and often — food early in the day tells your body there's no need to store.",
+  "Don't fight snacking. Keep fruit, yoghurt pots, or jerky on hand.",
+  "No banned foods, only foods to eat less of. One day a week: eat ANYTHING you want.",
+  "Bulking: ~70% clean / 30% dirty (60/40 if you're really struggling for calories). High-calorie homemade milkshakes are the cheat code.",
+  "Red meat and dairy are priority when gaining. 20% mince gives the full amino and collagen profile, not just muscle meat.",
+  "Cutting: prioritise protein and wholefoods — protein is the most filling and costs the most calories to digest.",
+  "One solid meal a day, five days a week, does the heavy lifting — one decision, ~1,000 quality calories, survives a bad week. 35 min of prep = 3 days covered.",
+];
+
+const SUPPLEMENTS = [
+  "Creatine monohydrate — 5–10 g daily",
+  "Protein powder — to hit your protein target",
+  "Magnesium threonate — 100 mg before bed (sleep)",
+  "Zinc — up to 50 mg (testosterone, health)",
+  "Vitamin D3 — 2000–4000 IU daily (essential in UK winters)",
+  "Omega-3 fish oil — recovery, joints, heart",
+  "Pre-workout — optional, person to person",
+];
+
+const SLEEP_RULES = [
+  "Cold room, warm covers",
+  "Pinch of salt + a little sugar + water before bed",
+  "Strict wind-down time, limit bright lights and phone",
+  "Warm shower/bath an hour before bed",
+  "30 min reading or slow breathing — long exhale, hold the exhale",
+];
+
+// ---------- Meals from the nutrition doc ----------
+const GAIN_MEALS = [
+  { name: "Homemade Burgers", kcal: 1720, protein: 95, carbs: 120, fat: 95 },
+  { name: "Steak & Mash + Sausages", kcal: 1020, protein: 45, carbs: 70, fat: 60 },
+  { name: "Bulking Milkshake", kcal: 750, protein: 35, carbs: 70, fat: 35 },
+  { name: "Bacon Omelette", kcal: 710, protein: 45, carbs: 8, fat: 55 },
+];
+const CUT_MEALS = [
+  { name: "Orange Chicken & Rice", kcal: 630, protein: 75, carbs: 45, fat: 12 },
+  { name: "Greek Yoghurt & Berries", kcal: 180, protein: 30, carbs: 12, fat: 2 },
+  { name: "Eggs, Sourdough, Avocado", kcal: 620, protein: 30, carbs: 35, fat: 38 },
+  { name: "5% Mince & Sweet Potato", kcal: 677, protein: 65, carbs: 55, fat: 15 },
+  { name: "Tuna Avocado Bowl", kcal: 430, protein: 40, carbs: 20, fat: 20 },
+];
+
+// Micronutrient-dense snacks — plug the cofactor gaps that drive MPS, collagen & test
+const MICRO_SNACKS = [
+  { name: "Sardines on Sourdough (120g tin + 60g slice)", kcal: 320, protein: 25, carbs: 22, fat: 15, tag: "both", rich: "Omega-3 · Vit D · B12 · calcium" },
+  { name: "20% Mince + Liver Mix (200g mince + 50g liver)", kcal: 480, protein: 40, carbs: 2, fat: 34, tag: "bulk", rich: "Vit A · B12 · iron · copper · folate" },
+  { name: "Yoghurt · Berries · Seeds (200g + 80g + 20g)", kcal: 260, protein: 22, carbs: 20, fat: 10, tag: "both", rich: "Zinc · magnesium · Vit C · probiotics" },
+  { name: "Cheese Omelette (3 eggs + 30g cheese)", kcal: 400, protein: 28, carbs: 2, fat: 31, tag: "both", rich: "Choline · Vit D · K2 · selenium" },
+  { name: "Gelatin + Vit C Shot (15g gelatin)", kcal: 90, protein: 18, carbs: 4, fat: 0, tag: "both", rich: "Glycine + Vit C → collagen synthesis" },
+  { name: "Smoked Oysters + Crackers (85g tin + 4 crackers)", kcal: 220, protein: 14, carbs: 16, fat: 11, tag: "both", rich: "Zinc bomb · iron · B12 · selenium" },
+  { name: "Brazil-Nut Trail Mix (40g · 3 brazils)", kcal: 340, protein: 9, carbs: 20, fat: 26, tag: "bulk", rich: "Selenium · magnesium · zinc · iron" },
+  { name: "Cottage Cheese + Kiwi (150g + 1 kiwi)", kcal: 200, protein: 24, carbs: 14, fat: 5, tag: "cut", rich: "Casein · Vit C · calcium" },
+  { name: "Mackerel · Avocado · Spinach (125g tin + ½ avo + 50g)", kcal: 380, protein: 28, carbs: 6, fat: 27, tag: "cut", rich: "Omega-3 · iron · folate · potassium" },
+  { name: "Cocoa Milk + Honey Shake (400ml + 15g honey + 10g cocoa)", kcal: 300, protein: 16, carbs: 38, fat: 9, tag: "bulk", rich: "Magnesium · polyphenols · calcium" },
+];
+
+// ---------- Nutrition calculator (doc formulas) ----------
+const ACTIVITY = [
+  { label: "Sedentary", mult: 13.5 },
+  { label: "Lightly active", mult: 15.5 },
+  { label: "Fairly active", mult: 17.5 },
+  { label: "Very active", mult: 20.5 },
+];
+const GOALS = [
+  { label: "Lose weight", delta: -400 },
+  { label: "Maintain", delta: 0 },
+  { label: "Gain muscle", delta: 400 },
+];
+function calcTargets(kg, activityIdx, goalIdx) {
+  const lbs = kg * 2.2046;
+  const kcal = Math.round(lbs * ACTIVITY[activityIdx].mult + GOALS[goalIdx].delta);
+  const protein = Math.round(lbs * 0.82);
+  const fat = Math.round(lbs * 0.45);
+  const carbs = Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4));
+  return { kcal, protein, carbs, fat };
+}
+
+// ---------- Storage ----------
+async function loadKey(key, fallback) {
+  try { const r = await window.storage.get(key); return r ? JSON.parse(r.value) : fallback; }
+  catch { return fallback; }
+}
+async function saveKey(key, value) {
+  try { await window.storage.set(key, JSON.stringify(value)); } catch (e) { console.error(e); }
+}
+
+// ---------- AI: coach ----------
+const COACH_KNOWLEDGE = `You are the Max Intensity coach — the training philosophy of a professional heavyweight fighter (boxing/Muay Thai). Speak direct, plain, motivating, no fluff.
+TRAINING PHILOSOPHY: The four pillars are intensity, progressive overload, form, and adequate volume. Muscle is metabolically expensive — the body only builds it when forced, so work sets are trained hard. 100% of muscle fibres are only recruited near failure; intensity beats volume (sprinters vs marathon runners). Form decides the target muscle: feel the squeeze, flex through the movement, exhale on the lift. Low volume, full rest between sets; once growth is stimulated, stop — more is just damage. Train priority muscles first in the session. Track everything and beat it.
+PROGRAM RULES: scheme 10/6/6/6 — two warm-up sets (10 then 6), one heavy work set at ~1 RIR, one back-off set at −10%. Tempo 3-1-3-1 on every rep. Rest 2–3 min heavy work (up to 5 if needed). Add ~2.5% load only where the work set hit 6 the previous week. Dips are bodyweight until cleared, then loaded. Week 6 deload: ~60% load, 2 sets.
+NUTRITION: 90% of eating well is what you don't eat — homemade over shop-bought. Staples: meat, dairy, fruit, veg. Eat early and often; don't fight snacking. No banned foods, one free day a week. Bulking: ~70/30 clean/dirty, homemade milkshakes, red meat and dairy priority, 20% mince, rice and potatoes. Cutting: protein and wholefoods first. Calculator: calories = bodyweight(lbs) × activity (13–22); protein = lbs × 0.82 g; fat = lbs × 0.45 g; carbs fill the rest; ±300–500 kcal to gain/lose.
+SUPPLEMENTS: creatine 5–10 g, protein powder, magnesium threonate 100 mg pre-bed, zinc up to 50 mg, vitamin D3 2000–4000 IU, omega-3 fish oil, optional pre-workout.
+SLEEP: cold room, salt + sugar + water pre-bed, strict wind-down, limit bright light, warm shower an hour before, reading/slow breathing.
+BREATHING: inhale on the eccentric (the lowering), exhale on the concentric drive — like exhaling on a punch.
+FREQUENCY & RECOVERY: muscle protein synthesis stays elevated ~48h after training; each muscle is hit ~2×/week; rest days are where growth happens — the rhythm is U1, L1, REST, U2, L2, REST, REST. Never advise doubling up after a missed day — pick the plan back up.
+SHORT ON TIME: keep work sets, drop back-offs, cut the last exercise — in that order.
+DIPS: prescribe ASSISTED machine dips — assistance so the 3-1-3-1 tempo stays strict; most people can't slow-tempo bodyweight dips.
+BEGINNERS: suggest conservative starting weights (err low — you can always add 2.5% next session, you can't un-injure a shoulder). Rough starts as a fraction of bodyweight: leg press ~1.0×, hip thrust ~0.6×, rows/pulldowns ~0.3×, presses ~0.25×, curls/triceps ~0.1×, laterals/flyes ~0.06× (women ~35% less to start). Own the tempo before the load.
+NUTRITION LAYERS: macros are the frame (hit daily portions), micros are the finish (recovery/hormones — colourful snacks), ingredients are the quality. 
+TEMPO: 3-1-3-1 — three seconds up, hold one, three seconds down, hold one. Constant tension, no momentum, the holds kill the bounce.
+FULL LESSON SET the coach teaches from: why low volume, why tempo, stimulus vs fatigue, why order matters, the work set is the session (+2.5% rule), one big meal a day, small steps beat nothing, frequency & 48h protein synthesis, what to skip when life happens, macros/micros/ingredients, guilt is the enemy.
+LOWER BACK & CORE: Barbell RDLs build hamstrings and lower back; Cable Crunch covers core — same 10/6/6/6 scheme.
+PERFORMANCE: sleep is the recovery drug (cold room, wind-down, salt+sweet+water pre-bed); caffeine 45–60 min pre-session, none within 9h of bed, cycle off when tolerant; hydration — 2–3% dehydration measurably drops strength, salt food; arrive fed (carbs 1–2h out), warm-up sets are the warm-up.
+MINDSET: guilt is the enemy, not a bad day — one day on track after seven bad ones is improvement. Motto: streamlining health — everything simple, everything in one place; progress made easy.
+KEY PRINCIPLE: one solid ~1,000 kcal meal a day, five days a week, does most of the nutrition heavy lifting. Small steps beat nothing; progress is built one completed session at a time. Brand voice: serious training, zero intimidation — demanding but warm, direct, real. Never shame a missed day.`;
+
+async function askCoach(history, program, week) {
+  const system = `${COACH_KNOWLEDGE}
+Current week: ${week + 1} of 6 (${WEEK_PLAN[week].tag} — ${WEEK_PLAN[week].cue})
+Current program JSON: ${JSON.stringify(program)}
+Respond ONLY with raw JSON, no markdown fences: {"reply": "short coaching answer", "program": null}
+If asked to change the program, return the FULL updated program object (same schema) in "program" and summarise the change in "reply".`;
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1500, system, messages: history }),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "API error");
+  const text = (data.content || []).map((b) => (b.type === "text" ? b.text : "")).join("");
+  return safeJSON(text);
+}
+
+// ---------- AI: edit today's session (time / focus) ----------
+async function aiEditSession(request, dayObj, week) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 900,
+      system: `You adjust ONE training session for the Max Intensity method (10/6/6/6, tempo 3-1-3-1, ~1 RIR work set, back-off −10%). Keep the philosophy: intensity over volume, priority muscles first, cut volume not intensity when short on time. Current session (week ${week + 1}): ${JSON.stringify(dayObj)}. Respond ONLY with raw JSON, no fences: {"reply":"one short line on what you changed","exercises":[{"name":"","scheme":[10,6,6,6],"note":"","tempo":"3-1-3-1","rest":"2–3 min"}]}. Keep the same schema for every exercise.`,
+      messages: [{ role: "user", content: request }],
+    }),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "API error");
+  const text = (data.content || []).map((b) => (b.type === "text" ? b.text : "")).join("");
+  return safeJSON(text);
+}
+
+// ---------- Units ----------
+const KG_LB = 2.2046;
+const dispW = (kg, unit) => { const n = Number(kg); if (!n && n !== 0) return ""; return unit === "lb" ? String(Math.round(n * KG_LB * 10) / 10) : String(Math.round(n * 10) / 10); };
+const storeW = (val, unit) => { const n = Number(val); if (!n && n !== 0) return ""; return unit === "lb" ? String(Math.round((n / KG_LB) * 100) / 100) : String(n); };
+
+// ---------- Split bias: reorder + reinforce priority muscles ----------
+function applySplit(prog, split) {
+  const pr = structuredClone(prog);
+  // reset any previous bias: drop Glute Focus, restore canonical order (Upper first)
+  pr.days = pr.days.filter((d) => d.name !== "Glute Focus");
+  const canon = ["upper 1", "legs 1", "upper 2", "legs 2"];
+  pr.days.sort((a, b) => {
+    const ia = canon.indexOf((a.name || "").toLowerCase()), ib = canon.indexOf((b.name || "").toLowerCase());
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+  const has = (exs, keys) => exs.some((e) => keys.some((k) => e.name.toLowerCase().includes(k)));
+  const moveFirst = (exs, keys) => {
+    const hit = [], rest = [];
+    exs.forEach((e) => (keys.some((k) => e.name.toLowerCase().includes(k)) ? hit : rest).push(e));
+    return [...hit, ...rest];
+  };
+  const mk = (name, note) => ({ name, scheme: [10, 6, 6, 6], note: note || "", tempo: "3-1-3-1", rest: "2\u20133 min" });
+  const isUpper = (d) => d.name.toLowerCase().includes("upper");
+  const isLegs = (d) => d.name.toLowerCase().includes("leg");
+
+  if (split === "legglute") {
+    pr.days.forEach((d) => {
+      if (isLegs(d)) {
+        if (!has(d.exercises, ["hip thrust", "glute"])) d.exercises.unshift(mk("Hip Thrust", "priority \u2014 drive through heels"));
+        d.exercises = moveFirst(d.exercises, ["hip thrust", "glute", "leg press"]);
+      }
+    });
+    const legs = pr.days.filter(isLegs), ups = pr.days.filter((d) => !isLegs(d) && d.name !== "Glute Focus");
+    const glute = pr.days.find((d) => d.name === "Glute Focus");
+    const inter = [];
+    for (let i = 0; i < Math.max(legs.length, ups.length); i++) { if (legs[i]) inter.push(legs[i]); if (ups[i]) inter.push(ups[i]); }
+    pr.days = inter;
+    pr.days.push(glute || {
+      name: "Glute Focus",
+      exercises: [
+        mk("Hip Thrust", "heavy — drive through heels"),
+        mk("Leg Press", "feet high & wide — glute bias"),
+        mk("Barbell RDL", "hinge, flat back — hamstrings & glutes"),
+        mk("Adductor", ""),
+        mk("Calf Press", ""),
+      ],
+    });
+  } else if (split === "shoulder") {
+    pr.days.forEach((d) => {
+      if (isUpper(d)) {
+        if (!has(d.exercises, ["lateral", "press behind", "shoulder press"])) d.exercises.unshift(mk("Cable Lateral Raise", "priority \u2014 strict, no swing"));
+        d.exercises = moveFirst(d.exercises, ["lateral", "press behind", "shoulder press"]);
+      }
+    });
+  } else if (split === "chest") {
+    pr.days.forEach((d) => {
+      if (isUpper(d)) {
+        if (!has(d.exercises, ["incline dumbbell press", "clavicular", "flye", "dips"])) d.exercises.unshift(mk("Incline Dumbbell Press", "priority \u2014 full stretch"));
+        d.exercises = moveFirst(d.exercises, ["incline dumbbell press", "press", "dips"]);
+      }
+    });
+    const u1 = pr.days.find((d) => (d.name || "").toLowerCase() === "upper 1");
+    if (u1) {
+      const ci = u1.exercises.findIndex((e) => /clavicular/i.test(e.name || ""));
+      const fly = ci !== -1 ? u1.exercises.splice(ci, 1)[0] : mk("Clavicular Cable Flye", "upper chest");
+      u1.exercises.splice(Math.min(2, u1.exercises.length), 0, fly);
+    }
+  } else if (split === "arm") {
+    pr.days.forEach((d) => {
+      if (isUpper(d)) {
+        if (!has(d.exercises, ["curl", "tricep"])) d.exercises.unshift(mk("Alternating DB Curls", "priority \u2014 no swing"));
+        d.exercises = moveFirst(d.exercises, ["curl", "tricep", "dips"]);
+      }
+    });
+  }
+  pr.split = split;
+  return pr;
+}
+
+// ---------- AI: macro estimate ----------
+async function estimateFood(description) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 300,
+      system: 'You estimate nutrition from a plain-text food description. Respond ONLY with raw JSON, no markdown fences: {"name":"short label","kcal":0,"protein":0,"carbs":0,"fat":0}. Whole-number estimates for the full portion described.',
+      messages: [{ role: "user", content: description }],
+    }),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "API error");
+  const text = (data.content || []).map((b) => (b.type === "text" ? b.text : "")).join("");
+  return safeJSON(text);
+}
+
+// ---------- AI: swap machine ----------
+async function askSwaps(habit, goalLabel) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 700,
+      system: `You are the Max Intensity swap machine. Philosophy: no banned foods, only smarter swaps — 90% of eating well is what you don't eat; homemade over shop-bought; keep it enjoyable so it's doable forever. User goal: ${goalLabel}. Given a food habit, suggest 2-4 practical swaps. UK context (e.g. blue milk = full fat, green = semi-skimmed, red = skimmed). Examples: lots of fizzy drinks -> diet/zero versions or not-from-concentrate juice cut with sparkling water; loads of heavy cream and full-fat milk on a cut -> green or red top milk; crisps -> beef jerky or popcorn. Respond ONLY with raw JSON, no markdown fences: {"swaps":[{"from":"the habit food","to":"the swap","why":"one short line"}]}`,
+      messages: [{ role: "user", content: habit }],
+    }),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "API error");
+  const text = (data.content || []).map((b) => (b.type === "text" ? b.text : "")).join("");
+  return safeJSON(text);
+}
+
+// ---------- AI: meal builder from liked foods ----------
+async function buildMealAI(likedFoods, remaining, goalLabel) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 500,
+      system: `You build one specific, easy meal for the Max Intensity plan (goal: ${goalLabel}) using mostly foods the user likes: ${likedFoods.join(", ") || "anything"}. Roughly fit what's left of today's targets: ${JSON.stringify(remaining)} (kcal/protein/carbs/fat). Whole foods, homemade, simple. Respond ONLY with raw JSON, no markdown fences: {"name":"meal name","how":"one-line how to make it","kcal":0,"protein":0,"carbs":0,"fat":0}`,
+      messages: [{ role: "user", content: "Build me a meal." }],
+    }),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "API error");
+  const text = (data.content || []).map((b) => (b.type === "text" ? b.text : "")).join("");
+  return safeJSON(text);
+}
+
+function safeJSON(text) {
+  const clean = text.replace(/```json|```/g, "").trim();
+  try { return JSON.parse(clean); }
+  catch {
+    const m = clean.match(/\{[\s\S]*\}/);
+    if (m) return JSON.parse(m[0]);
+    throw new Error("no json");
+  }
+}
+
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
+
+// =====================================================
+// MAX INTENSITY V2 — guided session mode, bottom nav, sleeker UI
+// =====================================================
+function MaxIntensityApp() {
+  const [tab, setTab] = useState("program");
+  const [program, setProgram] = useState(DEFAULT_PROGRAM);
+  const [week, setWeek] = useState(0);
+  const [activeDay, setActiveDay] = useState(0);
+  const [logs, setLogs] = useState({});
+  const [open, setOpen] = useState(null);
+  const [chat, setChat] = useState([]);
+  const [input, setInput] = useState("");
+  const [thinking, setThinking] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const chatEnd = useRef(null);
+
+  // Nutrition
+  const [profile, setProfile] = useState(null);
+  const [targets, setTargets] = useState(null);
+  const [foodLog, setFoodLog] = useState({});
+  const [foodInput, setFoodInput] = useState("");
+  const [estimating, setEstimating] = useState(false);
+  const [calcKg, setCalcKg] = useState("97");
+  const [calcAct, setCalcAct] = useState(3);
+  const [calcGoal, setCalcGoal] = useState(2);
+  const [showCalc, setShowCalc] = useState(false);
+
+  // Calendar / history / bodyweight
+  const [history, setHistory] = useState({});
+  const [weights, setWeights] = useState({});
+  const [bwInput, setBwInput] = useState("");
+  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
+  const [selDate, setSelDate] = useState(todayKey());
+
+  // Rest timer + wake lock + focus flow
+  const [restLeft, setRestLeft] = useState(null);
+  const [restTotal, setRestTotal] = useState(150);
+  const wakeRef = useRef(null);
+  const [focusField, setFocusField] = useState(null);
+
+  // My foods + swap machine + meal builder
+  const [myFoods, setMyFoods] = useState([]);
+  const [foodLikeInput, setFoodLikeInput] = useState("");
+  const [swapInput, setSwapInput] = useState("");
+  const [swaps, setSwaps] = useState([]);
+  const [swapping, setSwapping] = useState(false);
+  const [mealIdea, setMealIdea] = useState(null);
+  const [buildingMeal, setBuildingMeal] = useState(false);
+
+  // Guided session
+  const [session, setSession] = useState(null); // {ex, set, resting} | {done:true} | null
+  const [sessFocus, setSessFocus] = useState(null); // 'w' | 'r' | null
+  const [editing, setEditing] = useState(false);
+  const [exSwapping, setExSwapping] = useState(null);
+
+  // V3
+  const [settings, setSettings] = useState(null);
+  const [ob, setOb] = useState({ name: "", sex: "", goal: "", split: "balanced", exp: "", daysPerWeek: 4, unit: "kg", bw: "", age: "", injuries: "" });
+  const [obStep, setObStep] = useState(0);
+  const [obBuilding, setObBuilding] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [game, setGame] = useState({ points: 0, streak: 0, lastOpen: "", best: 0 });
+  const [pro, setPro] = useState(false);
+  const [trialStart, setTrialStart] = useState(null);
+  const [codeIn, setCodeIn] = useState("");
+  const [override, setOverride] = useState(null);
+  const [editReq, setEditReq] = useState("");
+  const [showEditReq, setShowEditReq] = useState(false);
+  const [editingSession, setEditingSession] = useState(false);
+  const [graphSel, setGraphSel] = useState("0-0");
+  const [openLesson, setOpenLesson] = useState(null);
+  const [sessionPts, setSessionPts] = useState(0);
+  const [logView, setLogView] = useState("cal");
+  const [showManual, setShowManual] = useState(false);
+  const [mFood, setMFood] = useState({ name: "", kcal: "", p: "", c: "", f: "" });
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [myMeals, setMyMeals] = useState([]);
+  const [showMealForm, setShowMealForm] = useState(false);
+  const [mMeal, setMMeal] = useState({ name: "", kcal: "", p: "", c: "", f: "" });
+  const [backupText, setBackupText] = useState(null);
+  const [prHit, setPrHit] = useState(null);
+  const [flashN, setFlashN] = useState(0);
+
+
+  useEffect(() => {
+    (async () => {
+      const prog0 = migrateProgram(await loadKey("mi-program", DEFAULT_PROGRAM));
+      setLogs(await loadKey("mi-logs", {}));
+      const wk0 = await loadKey("mi-week", 0);
+      setProfile(await loadKey("mi-profile", null));
+      setTargets(await loadKey("mi-targets", null));
+      setFoodLog(await loadKey("mi-food", {}));
+      const hist0 = await loadKey("mi-history", {});
+      setHistory(hist0);
+      // auto-advance the block week from your first logged session
+      const histDates = Object.keys(hist0).sort();
+      if (histDates.length) {
+        const first = new Date(histDates[0] + "T12:00:00");
+        const autoWk = Math.min(5, Math.max(0, Math.floor((Date.now() - first.getTime()) / (7 * 86400000))));
+        setWeek(autoWk);
+      } else setWeek(wk0);
+      setWeights(await loadKey("mi-weights", {}));
+      setMyFoods(await loadKey("mi-myfoods", []));
+      const st0 = await loadKey("mi-settings", null);
+      const pr0 = await loadKey("mi-pro", false);
+      const tr0 = await loadKey("mi-trial", null);
+      setSettings(st0); setPro(pr0); setTrialStart(tr0);
+      // self-heal: program shape must match the saved split
+      const hasGlute = prog0.days.some((d) => d.name === "Glute Focus");
+      const wantGlute = st0?.split === "legglute";
+      setProgram(hasGlute !== wantGlute ? applySplit(prog0, st0?.split || "balanced") : prog0);
+      setMyMeals(await loadKey("mi-mymeals", []));
+      const pwseen = await loadKey("mi-pwseen", false);
+      if (st0?.done && !pr0 && !tr0 && !pwseen) { setShowPaywall(true); saveKey("mi-pwseen", true); }
+      setOverride(await loadKey("mi-override", null));
+      const g = await loadKey("mi-game", { points: 0, streak: 0, lastOpen: "", best: 0 });
+      const today = todayKey();
+      if (g.lastOpen !== today) {
+        const y = new Date(); y.setDate(y.getDate() - 1);
+        const yk = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, "0")}-${String(y.getDate()).padStart(2, "0")}`;
+        g.streak = g.lastOpen === yk ? (g.streak || 0) + 1 : 1;
+        g.best = Math.max(g.best || 0, g.streak);
+        g.points = (g.points || 0) + 5;
+        const MILES = { 7: 100, 14: 250, 30: 600, 60: 1500, 100: 3000 };
+        if (MILES[g.streak]) g.points += MILES[g.streak];
+        g.lastOpen = today;
+      }
+      setGame(g);
+      setLoaded(true);
+    })();
+  }, []);
+  useEffect(() => { if (loaded) saveKey("mi-program", program); }, [program, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-logs", logs); }, [logs, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-week", week); }, [week, loaded]);
+  useEffect(() => { if (loaded && profile) saveKey("mi-profile", profile); }, [profile, loaded]);
+  useEffect(() => { if (loaded && targets) saveKey("mi-targets", targets); }, [targets, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-food", foodLog); }, [foodLog, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-history", history); }, [history, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-weights", weights); }, [weights, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-myfoods", myFoods); }, [myFoods, loaded]);
+  useEffect(() => { if (loaded && settings) saveKey("mi-settings", settings); }, [settings, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-game", game); }, [game, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-pro", pro); }, [pro, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-trial", trialStart); }, [trialStart, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-override", override); }, [override, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-mymeals", myMeals); }, [myMeals, loaded]);
+  useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [chat, thinking]);
+
+  // Rest countdown
+  useEffect(() => {
+    if (restLeft === null) return;
+    if (restLeft <= 0) {
+      try {
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        // boxing bell: strike + metallic overtone, twice
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const ring = (at) => {
+          [[660, 0.22], [1560, 0.08], [2350, 0.045]].forEach(([f, g0]) => {
+            const o = ctx.createOscillator(), g = ctx.createGain();
+            o.connect(g); g.connect(ctx.destination);
+            o.frequency.value = f; o.type = "triangle";
+            g.gain.setValueAtTime(0.0001, ctx.currentTime + at);
+            g.gain.exponentialRampToValueAtTime(g0, ctx.currentTime + at + 0.012);
+            g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + 0.9);
+            o.start(ctx.currentTime + at); o.stop(ctx.currentTime + at + 0.95);
+          });
+        };
+        ring(0); ring(0.45);
+      } catch {}
+      const t = setTimeout(() => setRestLeft(null), 1200);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => setRestLeft((s) => (s === null ? null : s - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [restLeft]);
+
+  // Wake lock
+  useEffect(() => {
+    const acquire = async () => {
+      try { if ("wakeLock" in navigator) wakeRef.current = await navigator.wakeLock.request("screen"); } catch {}
+    };
+    acquire();
+    const onVis = () => { if (document.visibilityState === "visible") acquire(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { document.removeEventListener("visibilitychange", onVis); try { wakeRef.current?.release(); } catch {} };
+  }, []);
+
+  const startRest = (secs = 150) => { setRestTotal(secs); setRestLeft(secs); };
+
+  const key = (w, d) => `w${w}-d${d}`;
+  const getSet = (w, d, e, s) => logs[key(w, d)]?.[e]?.sets?.[s] || {};
+  const setSet = (d, e, s, field, value) => {
+    setLogs((prev) => {
+      const k = key(week, d);
+      const dd = structuredClone(prev[k] || {});
+      if (!dd[e]) dd[e] = { sets: [] };
+      if (!dd[e].sets[s]) dd[e].sets[s] = {};
+      dd[e].sets[s][field] = value;
+      return { ...prev, [k]: dd };
+    });
+  };
+  const markDone = (d, e, val) => {
+    setLogs((prev) => {
+      const k = key(week, d);
+      const dd = structuredClone(prev[k] || {});
+      if (!dd[e]) dd[e] = { sets: [] };
+      dd[e].done = val;
+      return { ...prev, [k]: dd };
+    });
+  };
+  const clearedLastWeek = (d, e) => {
+    if (week === 0) return false;
+    return Number(getSet(week - 1, d, e, 2).reps) >= 6;
+  };
+  const clearedNow = (d, e) => Number(getSet(week, d, e, 2).reps) >= 6;
+  const showAddLoad = (d, e) => clearedLastWeek(d, e) || clearedNow(d, e);
+  const lastWeight = (d, e, s) => getSet(week - 1, d, e, s).weight || "";
+
+  const unit = settings?.unit || "kg";
+  const wOut = (v) => (unit === "lb" ? dispW(v, "lb") : (v || ""));
+  const wIn = (v) => (unit === "lb" ? storeW(v, "lb") : v);
+
+  const trialLeft = trialStart ? Math.max(0, TRIAL_DAYS - Math.floor((Date.now() - trialStart) / 86400000)) : 0;
+  const hasAI = pro || (trialStart && trialLeft > 0);
+  const startTrial = () => { if (!trialStart) setTrialStart(Date.now()); };
+  const redeemCode = () => {
+    const c = codeIn.trim().toUpperCase();
+    if (!c) return;
+    if (["MAX2026", "MAXBETA", "INTENSITY"].includes(c)) { setPro(true); setCodeIn(""); }
+    else alert("Code not recognised — DM Max on Instagram for your access code.");
+  };
+  const addPoints = (n) => setGame((g) => ({ ...g, points: (g.points || 0) + n }));
+
+  const wk = WEEK_PLAN[week];
+  const isDeload = week === 5;
+  const baseDay = program.days[activeDay] || { name: "", exercises: [] };
+  const ovActive = override && override.date === todayKey() && override.dayIdx === activeDay;
+  const day = ovActive ? { ...baseDay, exercises: override.exercises } : baseDay;
+  const dayLogs = logs[key(week, activeDay)] || {};
+  const doneCount = day.exercises.filter((_, i) => dayLogs[i]?.done).length;
+  const setsFor = (exr) => (isDeload ? 2 : exr.scheme.length);
+
+  // ---- history save (no tab switch) ----
+  const saveSessionToHistory = (src) => {
+    const d = todayKey();
+    const L = src || logs;
+    const dl = L[key(week, activeDay)] || {};
+    const snapshot = {
+      week: week + 1,
+      day: day.name,
+      items: day.exercises.map((exr, i) => ({
+        name: exr.name,
+        sets: (((dl[i] || {}).sets) || []).filter(Boolean).map((s) => ({ w: s.weight || "", r: s.reps || "" })),
+      })),
+    };
+    setHistory((prev) => ({ ...prev, [d]: snapshot }));
+    setSelDate(d);
+  };
+
+  // ---- guided session flow ----
+  const startSession = () => { setSession({ ex: 0, set: 0, resting: false }); setRestLeft(null); setSessionPts(0); };
+  const resumeSession = () => {
+    const li = Math.max(0, day.exercises.length - 1);
+    setSession({ ex: li, set: Math.max(0, setsFor(day.exercises[li]) - 1), resting: false });
+  };
+  const endSession = () => { setSession(null); setRestLeft(null); };
+  const anyLogged = () => day.exercises.some((_, i) => ((((dayLogs[i] || {}).sets) || []).filter((s) => s && (s.weight || s.reps)).length > 0));
+  const endSessionEarly = () => { if (anyLogged()) saveSessionToHistory(); endSession(); };
+  const goBackSet = () => {
+    setSession((s) => {
+      if (!s || s.done) return s;
+      if (s.resting) return { ...s, resting: false };
+      if (s.set > 0) return { ex: s.ex, set: s.set - 1, resting: false };
+      if (s.ex > 0) { const pe = s.ex - 1; return { ex: pe, set: setsFor(day.exercises[pe]) - 1, resting: false }; }
+      return s;
+    });
+  };
+  const awardSession = (src) => {
+    const L = src || logs;
+    const dl = L[key(week, activeDay)] || {};
+    let setsLogged = 0, gainPts = 0;
+    day.exercises.forEach((_, i) => {
+      setsLogged += ((((dl[i] || {}).sets) || []).filter((s) => s && (s.weight || s.reps)).length);
+      if (week > 0) {
+        const cur = (dl[i]?.sets?.[2]) || {}, prv = getSet(week - 1, activeDay, i, 2);
+        const cw = Number(cur.weight) || 0, pw = Number(prv.weight) || 0;
+        if (pw > 0 && cw > pw) {
+          const pct = ((cw - pw) / pw) * 100;             // 10% up = 30pts, 20% = 60pts
+          gainPts += Math.min(150, Math.round(pct * 3));
+        } else if ((Number(cur.reps) || 0) > (Number(prv.reps) || 0)) gainPts += 10;
+      }
+    });
+    const pts = setsLogged * 10 + gainPts;
+    setSessionPts(pts);
+    addPoints(pts);
+  };
+  const advancePointer = (s) => {
+    const exr = day.exercises[s.ex];
+    if (!exr) return { done: true };
+    const n = setsFor(exr);
+    if (s.set + 1 < n) return { ex: s.ex, set: s.set + 1, resting: false };
+    if (s.ex + 1 < day.exercises.length) return { ex: s.ex + 1, set: 0, resting: false };
+    return { done: true };
+  };
+  const logSetAndContinue = () => {
+    if (!session || session.done) return;
+    const exr = day.exercises[session.ex];
+    const n = setsFor(exr);
+    // V4: pressing Log set commits the numbers on screen — placeholders included
+    const cur = getSet(week, activeDay, session.ex, session.set);
+    const prevW = lastWeight(activeDay, session.ex, session.set);
+    let nextLogs = logs;
+    if (!cur.weight || !cur.reps) {
+      nextLogs = structuredClone(logs);
+      const k = key(week, activeDay);
+      if (!nextLogs[k]) nextLogs[k] = {};
+      if (!nextLogs[k][session.ex]) nextLogs[k][session.ex] = { sets: [] };
+      if (!nextLogs[k][session.ex].sets[session.set]) nextLogs[k][session.ex].sets[session.set] = {};
+      const cell = nextLogs[k][session.ex].sets[session.set];
+      if (!cell.weight && prevW) cell.weight = prevW;
+      if (!cell.reps) cell.reps = isDeload ? "6" : String(exr.scheme[session.set]);
+      setLogs(nextLogs);
+    }
+    // NEW BEST check + flash on the work set
+    if (session.set === 2 && !isDeload) {
+      const wNow = Number((nextLogs[key(week, activeDay)]?.[session.ex]?.sets?.[2] || {}).weight) || 0;
+      let bestPrev = 0;
+      for (let w2 = 0; w2 < 6; w2++) {
+        if (w2 === week) continue;
+        const v = Number((logs[`w${w2}-d${activeDay}`]?.[session.ex]?.sets?.[2] || {}).weight) || 0;
+        if (v > bestPrev) bestPrev = v;
+      }
+      if (wNow > bestPrev && bestPrev > 0) setPrHit({ name: exr.name, w: wNow });
+      setFlashN((x) => x + 1);
+    }
+    if (session.set === n - 1) markDone(activeDay, session.ex, true);
+    const nxt = advancePointer(session);
+    if (nxt.done) {
+      saveSessionToHistory(nextLogs);
+      awardSession(nextLogs);
+      setSession({ done: true });
+      setRestLeft(null);
+    } else {
+      setSession({ ...session, resting: true });
+      startRest(150);
+    }
+  };
+  // When rest finishes during a session, move to the next set
+  useEffect(() => {
+    if (session && session.resting && restLeft === null) {
+      setSession((s) => (s && s.resting ? advancePointer(s) : s));
+    }
+  }, [restLeft]); // eslint-disable-line
+
+  const focusNext = () => {
+    if (!focusField) return;
+    const { d, i, s, kind } = focusField;
+    const id = kind === "w" ? `r-${d}-${i}-${s}` : `w-${d}-${i}-${s + 1}`;
+    const el = document.getElementById(id);
+    if (el) el.focus();
+    else { document.activeElement?.blur(); setFocusField(null); }
+  };
+
+  // ---- nutrition handlers ----
+  const logMeal = (item) => {
+    setFoodLog((prev) => {
+      const k = todayKey();
+      return { ...prev, [k]: [...(prev[k] || []), { ...item }] };
+    });
+  };
+  const addFood = async () => {
+    const q = foodInput.trim();
+    if (!q || estimating) return;
+    setEstimating(true);
+    try { const item = await estimateFood(q); logMeal(item); setFoodInput(""); } catch {}
+    setEstimating(false);
+  };
+  const removeFood = (idx) => {
+    setFoodLog((prev) => {
+      const k = todayKey();
+      const list = [...(prev[k] || [])];
+      list.splice(idx, 1);
+      return { ...prev, [k]: list };
+    });
+  };
+  const applyCalc = () => {
+    const kg = Number(calcKg) || 0;
+    if (!kg) return;
+    setProfile({ kg, activityIdx: calcAct, goalIdx: calcGoal });
+    setTargets(calcTargets(kg, calcAct, calcGoal));
+    setShowCalc(false);
+  };
+  const addMyFood = () => {
+    const f = foodLikeInput.trim();
+    if (!f) return;
+    setMyFoods((prev) => (prev.includes(f) ? prev : [...prev, f]));
+    setFoodLikeInput("");
+  };
+  const goalLabel = () => GOALS[profile?.goalIdx ?? 1].label;
+  const runSwaps = async () => {
+    const q = swapInput.trim();
+    if (!q || swapping) return;
+    setSwapping(true);
+    try { const out = await askSwaps(q, goalLabel()); setSwaps(out.swaps || []); }
+    catch (e) { setSwaps([{ from: "", to: "", why: "Error: " + (e.message || "unknown") + " — tap Swap again." }]); }
+    setSwapping(false);
+  };
+  const runMealBuilder = (remaining) => async () => {
+    if (buildingMeal) return;
+    setBuildingMeal(true);
+    try { setMealIdea(await buildMealAI(myFoods, remaining, goalLabel())); } catch {}
+    setBuildingMeal(false);
+  };
+  const BACKUP_KEYS = ["mi-program", "mi-logs", "mi-week", "mi-profile", "mi-targets", "mi-food", "mi-history", "mi-weights", "mi-myfoods", "mi-settings", "mi-pro", "mi-trial", "mi-mymeals", "mi-override", "mi-game", "mi-pwseen"];
+  const makeBackup = async () => {
+    const obj = {};
+    for (const k of BACKUP_KEYS) obj[k] = await loadKey(k, null);
+    setBackupText(JSON.stringify(obj));
+  };
+  const doImport = async () => {
+    try {
+      const obj = JSON.parse(backupText);
+      for (const k of BACKUP_KEYS) if (k in obj && obj[k] !== null) await saveKey(k, obj[k]);
+      alert("Restored. Reloading…");
+      window.location.reload();
+    } catch { alert("That doesn't look like a Max Intensity backup — paste the exact exported text."); }
+  };
+
+  const saveBodyweight = () => {
+    const v = Number(bwInput);
+    if (!v) return;
+    const kg = unit === "lb" ? Math.round((v / 2.2046) * 10) / 10 : v;
+    setWeights((prev) => ({ ...prev, [todayKey()]: kg }));
+    setBwInput("");
+  };
+
+  const updateEx = (i, field, value) => {
+    setProgram((prev) => {
+      const p = structuredClone(prev);
+      p.days[activeDay].exercises[i][field] = value;
+      return p;
+    });
+  };
+  const removeEx = (i) => {
+    setProgram((prev) => {
+      const p = structuredClone(prev);
+      p.days[activeDay].exercises.splice(i, 1);
+      return p;
+    });
+  };
+  const addEx = () => {
+    setProgram((prev) => {
+      const p = structuredClone(prev);
+      p.days[activeDay].exercises.push({ name: "New Exercise", scheme: [10, 6, 6, 6], note: "", tempo: "3-1-3-1", rest: "2\u20133 min" });
+      return p;
+    });
+  };
+  const aiSwapExercise = async (i) => {
+    if (exSwapping !== null) return;
+    if (!hasAI) { alert("AI swap is part of MAX AI — start your free trial from the Coach tab."); return; }
+    setExSwapping(i);
+    try {
+      const exr = day.exercises[i];
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 200,
+          system: 'Suggest ONE substitute exercise hitting the same muscles, doable with dumbbells, a cable stand, a dip stand, an incline bench and a Smith machine. Keep the Max Intensity style: strict tempo, chest-supported where possible. Respond ONLY with raw JSON, no fences: {"name":"exercise name","note":"short setup tip"}',
+          messages: [{ role: "user", content: `Replace: ${exr.name}${exr.note ? " (" + exr.note + ")" : ""}. Other exercises that day: ${day.exercises.map((e) => e.name).join(", ")}. Suggest something not already in that list.` }],
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message || "API error");
+      const text = (data.content || []).map((b) => (b.type === "text" ? b.text : "")).join("");
+      const out = safeJSON(text);
+      if (out && out.name) {
+        setProgram((prev) => {
+          const p = structuredClone(prev);
+          p.days[activeDay].exercises[i].name = out.name;
+          p.days[activeDay].exercises[i].note = out.note || "";
+          return p;
+        });
+      }
+    } catch {}
+    setExSwapping(null);
+  };
+  const runEditSession = async () => {
+    const q = editReq.trim();
+    if (!q || editingSession) return;
+    setEditingSession(true);
+    try {
+      const out = await aiEditSession(q, baseDay, week);
+      if (out && out.exercises && out.exercises.length) {
+        setOverride({ date: todayKey(), dayIdx: activeDay, exercises: out.exercises, reply: out.reply || "Session adjusted." });
+        setEditReq(""); setShowEditReq(false);
+      }
+    } catch {}
+    setEditingSession(false);
+  };
+
+  const moveEx = (i, dir) => {
+    setProgram((prev) => {
+      const p = structuredClone(prev);
+      const arr = p.days[activeDay].exercises;
+      const j = i + dir;
+      if (j < 0 || j >= arr.length) return prev;
+      const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+      return p;
+    });
+  };
+
+  // Max's own form videos — paste URLs here as they're filmed; anything missing falls back to search
+  const DEMOS = {
+    // "Incline Dumbbell Press": "https://youtube.com/shorts/XXXX",
+  };
+  const openDemo = (name) => {
+    const own = DEMOS[name] || DEMOS[Object.keys(DEMOS).find((k) => name.toLowerCase().includes(k.toLowerCase())) || ""];
+    window.open(own || "https://www.youtube.com/results?search_query=" + encodeURIComponent(name + " exercise proper form"), "_blank");
+  };
+
+  const send = async () => {
+    const q = input.trim();
+    if (!q || thinking) return;
+    const hist = [...chat, { role: "user", content: q }];
+    setChat(hist);
+    setInput("");
+    setThinking(true);
+    try {
+      const out = await askCoach(hist, program, week);
+      setChat((c) => [...c, { role: "assistant", content: out.reply }]);
+      if (out.program && out.program.days) setProgram(out.program);
+    } catch {
+      setChat((c) => [...c, { role: "assistant", content: "Couldn't reach the coach. Try again." }]);
+    }
+    setThinking(false);
+  };
+
+  // ---- icons (clean SVG — no emojis) ----
+  const Ic = ({ d, className, fill }) => (
+    <svg viewBox="0 0 24 24" className={className} fill={fill ? "currentColor" : "none"} stroke={fill ? "none" : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
+  );
+  const P_FLAME = "M12 2c1.5 4.5-3 5.5-3 9.5a3 3 0 006 0c0-2-1-3-1-5 3 2 5 4.5 5 7.5a7 7 0 11-14 0C5 8.5 10 7 12 2z";
+  const P_STAR = "M12 3l2.5 5.4 5.9.7-4.4 4 1.2 5.8L12 16l-5.2 2.9 1.2-5.8-4.4-4 5.9-.7L12 3z";
+  const P_GEAR = "M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7zM12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2.1 2.1M16.9 16.9L19 19M19 5l-2.1 2.1M7.1 16.9L5 19";
+  const P_LOCK = "M7 10.5V7a5 5 0 0110 0v3.5M5 10.5h14V21H5v-10.5z";
+  const P_CHART = "M4 20V10M10 20V4M16 20v-8M20 20H4";
+
+  // ---- design system ----
+  const card = "rounded-xl border border-neutral-800 bg-[#141414]";
+  const chip = "rounded-md px-3 py-1.5 text-xs font-semibold";
+  const cta = "dp rounded-lg bg-[#FF2B2B] text-white uppercase tracking-[0.12em] active:bg-red-700";
+  const eyebrow = "mono text-[10px] uppercase tracking-[0.25em] text-[#FF2B2B]";
+
+  // ---- onboarding: one question per screen, tap to advance ----
+  const OB_STEPS = [
+    { k: "name", q: "Who's training?", type: "input", ph: "Your name" },
+    { k: "sex", q: "About you", opts: ["Male", "Female"] },
+    { k: "age", q: "Your age", type: "input", ph: "e.g. 24", num: true },
+    { k: "goal", q: "The goal", opts: ["Build muscle", "Lose fat", "Both"] },
+    { k: "split", q: "Where's the focus?", sub: "Priority muscles go first in every session — they get your best energy.", opts: [["balanced", "Balanced"], ["legglute", "Legs & glutes"], ["shoulder", "Shoulders"], ["chest", "Chest"], ["arm", "Arms"]] },
+    { k: "exp", q: "Time in the gym", opts: ["Just starting", "1–3 years", "3+ years"] },
+    { k: "daysPerWeek", q: "Days per week", sub: "The block is built on 4. Pick what you'll actually hit.", opts: [3, 4, 5] },
+    { k: "unit", q: "kg or lb?", opts: ["kg", "lb"] },
+    { k: "bw", q: "Bodyweight", sub: "Sets your food targets and sensible starting weights — we always err on the light side.", type: "input", ph: "in your units", num: true },
+    { k: "injuries", q: "Anything to work around?", type: "input", ph: "e.g. left shoulder — or skip", skip: true },
+  ];
+  const obFinish = () => {
+    setObBuilding(true);
+    setTimeout(() => {
+      const s = { ...ob, name: ob.name.trim() || "Athlete", done: true };
+      setSettings(s);
+      setProgram((p) => applySplit(p, s.split));
+      const bwKg = Number(s.bw) ? (s.unit === "lb" ? Number(s.bw) / 2.2046 : Number(s.bw)) : 0;
+      if (bwKg) {
+        const kg = Math.round(bwKg * 10) / 10;
+        const gi = s.goal === "Lose fat" ? 0 : s.goal === "Build muscle" ? 2 : 1;
+        setCalcKg(String(kg));
+        setProfile({ kg, activityIdx: 2, goalIdx: gi });
+        setTargets(calcTargets(kg, 2, gi));
+      }
+      setObBuilding(false);
+      setObStep(0);
+      if (!pro && !trialStart) setShowPaywall(true);
+    }, 1600);
+  };
+  const obPick = (k, v) => {
+    setOb((o) => ({ ...o, [k]: v }));
+    setTimeout(() => (obStep === OB_STEPS.length - 1 ? obFinish() : setObStep((st) => st + 1)), 180);
+  };
+  const renderOnboarding = () => {
+    if (!loaded || (settings && settings.done)) return null;
+    if (obBuilding) {
+      return (
+        <div className="fixed inset-0 z-[90] flex flex-col items-center justify-center bg-[#050505] px-8 text-center">
+          <img src={BICEP} alt="" className="h-14 w-auto" />
+          <p className="dp mt-6 text-3xl uppercase text-[#F2EFE8]">Building your<br /><span className="text-[#FF2B2B]">program</span></p>
+          <div className="mono mt-6 space-y-2 text-xs text-neutral-500">
+            <p>✓ 6-week block · 10/6/6/6 · tempo 3-1-3-1</p>
+            <p>✓ {String(ob.split) === "balanced" ? "Balanced split" : "Priority muscles moved first"}</p>
+            <p>✓ {ob.daysPerWeek} sessions a week, planned for you</p>
+          </div>
+          <p className="mono mt-8 text-[10px] uppercase tracking-[0.3em] text-neutral-600">Progress made easy</p>
+        </div>
+      );
+    }
+    const st = OB_STEPS[obStep];
+    const val = ob[st.k];
+    return (
+      <div className="fixed inset-0 z-[90] flex flex-col bg-[#050505] px-6 pb-8 pt-5">
+        {/* progress rail */}
+        <div className="h-[3px] w-full rounded-full bg-neutral-900">
+          <div className="h-[3px] rounded-full bg-[#FF2B2B] transition-all duration-300" style={{ width: `${((obStep + 1) / OB_STEPS.length) * 100}%` }} />
+        </div>
+        <div className="mt-4 flex items-center justify-between">
+          {obStep > 0 ? (
+            <button onClick={() => setObStep((s) => s - 1)} className="mono text-sm text-neutral-500" aria-label="Back">‹ Back</button>
+          ) : <span />}
+          <span className="mono text-[10px] text-neutral-600">{obStep + 1} / {OB_STEPS.length}</span>
+        </div>
+        <p className="dp mt-8 text-[38px] uppercase leading-[0.95] text-[#F2EFE8]">{st.q}</p>
+        {st.sub && <p className="mt-3 text-sm leading-relaxed text-neutral-500">{st.sub}</p>}
+        <div className="mt-8 flex-1">
+          {st.type === "input" ? (
+            <>
+              <input
+                autoFocus
+                inputMode={st.num ? "decimal" : "text"}
+                value={val}
+                onChange={(e) => setOb((o) => ({ ...o, [st.k]: e.target.value }))}
+                onKeyDown={(e) => { if (e.key === "Enter") (obStep === OB_STEPS.length - 1 ? obFinish() : setObStep((s) => s + 1)); }}
+                placeholder={st.ph}
+                className="w-full border-b-2 border-neutral-800 bg-transparent pb-3 text-2xl text-[#F2EFE8] placeholder-neutral-700 focus:border-[#FF2B2B] focus:outline-none"
+              />
+            </>
+          ) : (
+            <div className="space-y-2.5">
+              {st.opts.map((o) => {
+                const v = Array.isArray(o) ? o[0] : o;
+                const l = Array.isArray(o) ? o[1] : String(o);
+                const on = val === v;
+                return (
+                  <button
+                    key={String(v)}
+                    onClick={() => obPick(st.k, v)}
+                    className={
+                      "dp block w-full rounded-lg border px-5 py-[18px] text-left text-lg uppercase tracking-wide transition-colors " +
+                      (on ? "border-[#FF2B2B] bg-[#FF2B2B] text-white" : "border-neutral-800 bg-[#111] text-neutral-300 active:border-[#FF2B2B]")
+                    }
+                  >
+                    {l}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        {st.type === "input" && (
+          <button onClick={() => (obStep === OB_STEPS.length - 1 ? obFinish() : setObStep((s) => s + 1))} className={cta + " w-full py-4 text-base"}>
+            {obStep === OB_STEPS.length - 1 ? (val ? "Build my program" : "Skip — build my program") : "Continue"}
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  // ---- post-onboarding paywall (Ladder-order: setup -> offer -> app) ----
+  const renderPaywall = () => {
+    if (!showPaywall) return null;
+    return (
+      <div className="fixed inset-0 z-[85] flex flex-col bg-[#050505] px-6 pb-8 pt-10">
+        <p className={eyebrow}>Setup complete</p>
+        <p className="dp mt-1 text-[40px] uppercase leading-[0.95] text-[#F2EFE8]">Your coach,<br /><span className="text-[#FF2B2B]">in your pocket</span></p>
+        <div className="mt-6 space-y-3">
+          {["Coach chat trained on the Max Intensity method", "Rebuild any session — short on time, different focus", "Meal builder & swaps from YOUR foods", "Every AI feature, unlocked"].map((l) => (
+            <div key={l} className="flex items-start gap-2.5">
+              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#FF2B2B] text-[10px] text-white">✓</span>
+              <p className="text-sm text-neutral-300">{l}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-auto">
+          <button onClick={() => { startTrial(); setShowPaywall(false); }} className={cta + " w-full py-4 text-base"}>Begin my {TRIAL_DAYS}-day free trial</button>
+          <p className="mono mt-2 text-center text-[10px] text-neutral-500">Then £30/mo or £240/yr (4 months free) — cancel any time. No card needed today.</p>
+          <p className="mono mt-1 text-center text-[10px] text-[#FF2B2B]">Founding members: DM Max for a locked-for-life rate — first 50 only.</p>
+          <button onClick={() => setShowPaywall(false)} className="mono mt-4 w-full py-2 text-xs text-neutral-600">Continue with the free tracker</button>
+        </div>
+      </div>
+    );
+  };
+
+  // ---- lock card ----
+  const LockCard = ({ title, lines }) => (
+    <div className={card + " overflow-hidden"}>
+      <div className="h-1 w-full bg-[#FF2B2B]" />
+      <div className="p-5">
+        <div className="flex items-center gap-2">
+          <Ic d={P_LOCK} className="h-4 w-4 text-[#FF2B2B]" />
+          <p className={eyebrow}>Max AI</p>
+        </div>
+        <p className="dp mt-1 text-2xl uppercase leading-none text-[#F2EFE8]">{title}</p>
+        {lines.map((l, i) => <p key={i} className="mt-2 text-sm leading-relaxed text-neutral-400">{l}</p>)}
+        {!trialStart ? (
+          <button onClick={startTrial} className={cta + " mt-4 w-full py-3.5 text-sm"}>Start {TRIAL_DAYS}-day free trial</button>
+        ) : trialLeft > 0 ? (
+          <p className="mono mt-4 text-xs text-[#FF2B2B]">Trial active — {trialLeft} day{trialLeft === 1 ? "" : "s"} left</p>
+        ) : (
+          <div className="mt-4">
+            <p className="mono text-xs text-neutral-500">Trial ended — MAX AI is £30/mo or £240/yr. DM Max for your code (founder rates for the first 50).</p>
+            <div className="mt-2 flex gap-2">
+              <input value={codeIn} onChange={(e) => setCodeIn(e.target.value)} placeholder="ACCESS CODE" className="mono flex-1 rounded-lg bg-neutral-900 px-3 py-2.5 text-sm uppercase placeholder-neutral-700" />
+              <button onClick={redeemCode} className={cta + " px-4 text-xs"}>Unlock</button>
+            </div>
+          </div>
+        )}
+        <p className="mono mt-3 text-[9px] uppercase tracking-[0.2em] text-neutral-600">Serious training · Zero intimidation</p>
+      </div>
+    </div>
+  );
+
+  // ---- settings ----
+  const renderSettings = () => {
+    if (!showSettings) return null;
+    const seg = (on) => chip + " " + (on ? "bg-[#FF2B2B] text-white" : "border border-neutral-800 text-neutral-400");
+    return (
+      <div className="fixed inset-0 z-[80] overflow-y-auto bg-[#050505] px-5 pb-10 pt-6">
+        <div className="flex items-center justify-between">
+          <p className="dp text-2xl uppercase text-[#F2EFE8]">Settings</p>
+          <button onClick={() => setShowSettings(false)} className={cta + " px-4 py-2 text-xs"}>Done</button>
+        </div>
+        <p className={eyebrow + " mt-7"}>Units</p>
+        <div className="mt-2 flex gap-1.5">
+          {["kg", "lb"].map((u) => (
+            <button key={u} onClick={() => setSettings((s) => ({ ...(s || { done: true }), unit: u, done: true }))} className={seg(unit === u)}>{u}</button>
+          ))}
+        </div>
+        <p className={eyebrow + " mt-6"}>Split focus</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {[["balanced", "Balanced"], ["legglute", "Legs & glutes"], ["shoulder", "Shoulders"], ["chest", "Chest"], ["arm", "Arms"]].map(([v, l]) => (
+            <button key={v} onClick={() => { setSettings((s) => ({ ...(s || { done: true }), split: v, done: true })); setProgram((p) => applySplit(p, v)); }} className={seg(settings?.split === v)}>{l}</button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-[11px] text-neutral-600">Changing focus moves your priority muscles to the front of each session.</p>
+        <p className={eyebrow + " mt-6"}>How to edit your workout</p>
+        <div className={card + " mt-2 p-4 text-sm leading-relaxed text-neutral-400"}>
+          1. Train tab → tap <span className="text-neutral-200">Edit</span> above the list.<br />
+          2. Rename, ↑↓ to reorder, Remove, or <span className="text-neutral-200">+ Add exercise</span>.<br />
+          3. Tap <span className="text-neutral-200">Done</span> — it saves itself.
+        </div>
+        <p className={eyebrow + " mt-6"}>Max AI</p>
+        <div className={card + " mt-2 p-4"}>
+          {pro ? <p className="mono text-xs text-[#FF2B2B]">Unlocked — full access ✓</p>
+            : trialStart && trialLeft > 0 ? <p className="mono text-xs text-[#FF2B2B]">Trial — {trialLeft} day{trialLeft === 1 ? "" : "s"} left</p>
+            : trialStart ? (
+              <div>
+                <p className="mono text-xs text-neutral-500">Trial ended. £30/mo or £240/yr — DM Max for your code.</p>
+                <div className="mt-2 flex gap-2">
+                  <input value={codeIn} onChange={(e) => setCodeIn(e.target.value)} placeholder="ACCESS CODE" className="mono flex-1 rounded-lg bg-neutral-900 px-3 py-2 text-sm uppercase placeholder-neutral-700" />
+                  <button onClick={redeemCode} className={cta + " px-4 text-xs"}>Unlock</button>
+                </div>
+              </div>
+            ) : <p className="mono text-xs text-neutral-500">Free trial not started — any locked screen starts it.</p>}
+        </div>
+        <p className={eyebrow + " mt-6"}>Backup</p>
+        <div className={card + " mt-2 p-3.5"}>
+          {backupText === null ? (
+            <div className="flex gap-2">
+              <button onClick={makeBackup} className={cta + " flex-1 py-2.5 text-xs"}>Export my data</button>
+              <button onClick={() => setBackupText("")} className="mono flex-1 rounded-lg border border-neutral-700 py-2.5 text-xs text-neutral-300">Import</button>
+            </div>
+          ) : (
+            <div>
+              <textarea value={backupText} onChange={(e) => setBackupText(e.target.value)} rows={4} placeholder="Paste your backup text here" className="mono w-full rounded-lg bg-neutral-900 px-3 py-2 text-[10px] text-neutral-300 placeholder-neutral-600" />
+              <div className="mt-2 flex gap-2">
+                <button onClick={() => { try { navigator.clipboard.writeText(backupText); alert("Copied — save it somewhere safe."); } catch {} }} className="mono flex-1 rounded-lg border border-neutral-700 py-2 text-xs text-neutral-300">Copy</button>
+                <button onClick={doImport} className={cta + " flex-1 py-2 text-xs"}>Restore this</button>
+                <button onClick={() => setBackupText(null)} className="mono rounded-lg border border-neutral-800 px-3 text-xs text-neutral-500">✕</button>
+              </div>
+              <p className="mono mt-1.5 text-[9px] text-neutral-600">Export → Copy → keep it in Notes. Paste it back here to restore everything.</p>
+            </div>
+          )}
+        </div>
+        <button onClick={() => { setSettings((s) => ({ ...(s || {}), done: false })); setObStep(0); setShowSettings(false); }} className="mono mt-7 w-full rounded-lg border border-neutral-800 py-3 text-xs text-neutral-400">Re-run the setup questions</button>
+        <p className="mono mt-5 text-center text-[9px] uppercase tracking-[0.25em] text-neutral-700">Max Intensity · V3</p>
+      </div>
+    );
+  };
+
+  // ---- guided session ----
+  const renderSession = () => {
+    if (!session) return null;
+    if (session.done) {
+      const totalSets = day.exercises.reduce((t, exr, i) => t + (((dayLogs[i] || {}).sets) || []).filter((s) => s && (s.weight || s.reps)).length, 0);
+      return (
+        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-[#050505] px-6 text-center">
+          <p className="dp text-[52px] uppercase leading-[0.9] text-[#F2EFE8]">Session<br /><span className="text-[#FF2B2B]">complete</span></p>
+          <p className="mono mt-4 text-sm text-neutral-400">{day.name} · Week {week + 1} · {totalSets} sets</p>
+          {sessionPts > 0 && <p className="dp mt-3 text-2xl uppercase text-[#FF2B2B]">+{sessionPts} pts</p>}
+          <p className="mono mt-1 text-xs uppercase tracking-widest text-neutral-500">{game.streak}-day streak · saved to your calendar</p>
+          <p className="mt-5 max-w-xs text-sm text-neutral-500">Progress built one completed session at a time. Now leave and grow.</p>
+          <button onClick={endSession} className={cta + " mt-8 w-full max-w-xs py-4 text-base"}>Done</button>
+          <button onClick={resumeSession} className="mono mt-3 py-1 text-xs text-neutral-600">‹ Not finished — go back</button>
+        </div>
+      );
+    }
+    const exr = day.exercises[session.ex];
+    const n = setsFor(exr);
+    const label = isDeload ? `Set ${session.set + 1} ×6 easy` : SET_LABELS[session.set];
+    const setLog = getSet(week, activeDay, session.ex, session.set);
+    const prev = lastWeight(activeDay, session.ex, session.set);
+    const isWork = !isDeload && session.set === 2;
+    return (
+      <div className="fixed inset-0 z-[60] flex flex-col bg-[#050505]">
+        {flashN > 0 && <div key={flashN} aria-hidden className="workflash pointer-events-none fixed inset-0 z-[64] bg-[#FF2B2B]" />}
+        {prHit && (
+          <button onClick={() => setPrHit(null)} className="fixed inset-0 z-[66] flex flex-col items-center justify-center bg-[#050505]/97 px-8 text-center">
+            <p className={eyebrow}>All-time record</p>
+            <p className="dp mt-2 text-[64px] uppercase leading-[0.9] text-[#FF2B2B]">New<br />best</p>
+            <p className="mono mt-4 text-3xl font-semibold text-[#F2EFE8]">{wOut(String(prHit.w))} {unit}</p>
+            <p className="mono mt-1 text-xs uppercase tracking-widest text-neutral-500">{prHit.name}</p>
+            <p className="mono mt-8 text-[10px] uppercase tracking-[0.25em] text-neutral-600">Tap to keep going</p>
+          </button>
+        )}
+        <div className="px-5 pt-5">
+          <div className="flex items-center justify-between">
+            <button onClick={goBackSet} className="mono text-xs text-neutral-500" aria-label="Back one set">‹ Back</button>
+            <span className="mono text-[10px] uppercase tracking-widest text-neutral-500">Ex {session.ex + 1}/{day.exercises.length} · Set {session.set + 1}/{n}</span>
+            <button onClick={endSessionEarly} className="mono rounded-md border border-neutral-800 px-2.5 py-1 text-xs text-neutral-400" aria-label="Exit and save">✕ Exit</button>
+          </div>
+          {/* segmented progress: one segment per set */}
+          <div className="mt-3 flex gap-1">
+            {day.exercises.map((e2, ei) =>
+              Array.from({ length: setsFor(e2) }).map((_, si) => {
+                const past = ei < session.ex || (ei === session.ex && si < session.set);
+                const cur = ei === session.ex && si === session.set;
+                return <div key={ei + "-" + si} className={"h-1 flex-1 rounded-full " + (cur ? "bg-[#FF2B2B]" : past ? "bg-neutral-500" : "bg-neutral-800")} />;
+              })
+            )}
+          </div>
+        </div>
+
+        {session.resting ? (
+          <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+            <p className="dp text-3xl uppercase tracking-widest text-[#FF2B2B]">Rest</p>
+            <p className="mono mt-2 text-[84px] font-semibold leading-none text-[#F2EFE8]">
+              {Math.floor(Math.max(0, restLeft ?? 0) / 60)}:{String(Math.max(0, restLeft ?? 0) % 60).padStart(2, "0")}
+            </p>
+            <p className="mt-4 text-sm text-neutral-500">Full recovery, full intensity. That's the trade.</p>
+            <div className="mt-8 flex gap-3">
+              <button onClick={() => setRestLeft((s) => (s === null ? null : s + 30))} className="mono rounded-lg border border-neutral-700 px-5 py-3 text-sm text-neutral-300">+30s</button>
+              <button onClick={() => setRestLeft(null)} className={cta + " px-8 py-3 text-sm"}>Skip →</button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-1 flex-col px-6 pt-7">
+            <p className={eyebrow}>{label}</p>
+            <p className="dp mt-1 text-[34px] uppercase leading-[0.95] text-[#F2EFE8]">{exr.name}</p>
+            {exr.note ? <p className="mt-1.5 text-sm text-neutral-500">{exr.note}</p> : null}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className={chip + " border border-neutral-800 bg-[#141414] text-neutral-400"}>tempo {exr.tempo}</span>
+              <span className={chip + " border border-neutral-800 bg-[#141414] text-neutral-400"}>rest {exr.rest}</span>
+              <button onClick={() => openDemo(exr.name)} className={chip + " border border-neutral-800 bg-[#141414] text-neutral-300"}>▶ form</button>
+            </div>
+            <p className="mt-2.5 text-[11px] text-neutral-600">{BREATH}</p>
+
+            <div className="mt-7 grid grid-cols-2 gap-3">
+              <div className={(isWork ? "rounded-xl bg-[#FF2B2B] " : card + " ") + "p-4"}>
+                <p className={"mono text-[10px] uppercase " + (isWork ? "text-red-100" : "text-neutral-500")}>Weight ({unit})</p>
+                <input
+                  id="sess-w"
+                  inputMode="decimal"
+                  enterKeyHint="next"
+                  value={wOut(setLog.weight)}
+                  onChange={(e) => setSet(activeDay, session.ex, session.set, "weight", wIn(e.target.value))}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); document.getElementById("sess-r")?.focus(); } }}
+                  onFocus={() => setSessFocus("w")}
+                  onBlur={() => setTimeout(() => setSessFocus((f) => (f === "w" ? null : f)), 200)}
+                  placeholder={prev ? wOut(prev) : "—"}
+                  className={"mono mt-1 w-full bg-transparent text-4xl font-semibold focus:outline-none " + (isWork ? "text-white placeholder-red-200/60" : "text-[#F2EFE8] placeholder-neutral-700")}
+                  aria-label="Weight"
+                />
+                {prev && <p className={"mono mt-1 text-[10px] " + (isWork ? "text-red-100/80" : "text-neutral-600")}>last wk: {wOut(prev)} {unit}</p>}
+                {!prev && !setLog.weight && week === 0 && settings?.exp === "Just starting" && (() => {
+                  const bwKg = Number(settings?.bw) ? (unit === "lb" ? Number(settings.bw) / 2.2046 : Number(settings.bw)) : 0;
+                  const sug = suggestStart(exr.name, bwKg, settings?.sex);
+                  return sug ? <p className={"mono mt-1 text-[10px] " + (isWork ? "text-red-100/80" : "text-neutral-600")}>new? try ~{wOut(String(sug))} {unit} — own the tempo</p> : null;
+                })()}
+              </div>
+              <div className={(isWork ? "rounded-xl bg-[#FF2B2B] " : card + " ") + "p-4"}>
+                <p className={"mono text-[10px] uppercase " + (isWork ? "text-red-100" : "text-neutral-500")}>Reps</p>
+                <input
+                  id="sess-r"
+                  inputMode="numeric"
+                  enterKeyHint="go"
+                  value={setLog.reps || ""}
+                  onChange={(e) => setSet(activeDay, session.ex, session.set, "reps", e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.target.blur(); logSetAndContinue(); } }}
+                  onFocus={() => setSessFocus("r")}
+                  onBlur={() => setTimeout(() => setSessFocus((f) => (f === "r" ? null : f)), 200)}
+                  placeholder={isDeload ? "6" : String(exr.scheme[session.set])}
+                  className={"mono mt-1 w-full bg-transparent text-4xl font-semibold focus:outline-none " + (isWork ? "text-white placeholder-red-200/60" : "text-[#F2EFE8] placeholder-neutral-700")}
+                  aria-label="Reps"
+                />
+                {showAddLoad(activeDay, session.ex) && !isDeload && (
+                  <p className={"mono mt-1 text-[10px] font-semibold " + (isWork ? "text-white" : "text-[#FF2B2B]")}>▲ add ~2.5% next time</p>
+                )}
+              </div>
+            </div>
+            {isWork && <p className="mono mt-2 text-[10px] uppercase tracking-widest text-[#FF2B2B]">This set is the session. 1 in reserve.</p>}
+
+            <div className="mt-auto pb-8">
+              <button onClick={logSetAndContinue} className={cta + " w-full py-4 text-lg"}>Log set →</button>
+              <button
+                onClick={() => { const nx = advancePointer(session); if (nx.done) { saveSessionToHistory(); awardSession(); setSession({ done: true }); } else setSession(nx); }}
+                className="mono mt-3 w-full py-2 text-xs text-neutral-600"
+              >
+                skip this set
+              </button>
+              <button onClick={endSessionEarly} className="mono w-full py-1 text-[10px] uppercase tracking-widest text-neutral-700">End session — progress saves</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ---- nav ----
+  const NAV = [
+    ["program", "Train", "M4 10h2m12 0h2M8 6v8M16 6v8M8 10h8"],
+    ["nutrition", "Eat", "M12 3c-4 3-6 6-6 9a6 6 0 0012 0c0-3-2-6-6-9zM12 8v4"],
+    ["calendar", "Log", "M5 5h14v14H5zM5 9h14M9 3v4M15 3v4"],
+    ["rules", "Learn", "M6 4h9a3 3 0 013 3v13H9a3 3 0 00-3 3V4zM6 17h12"],
+    ["coach", "Coach", "M4 6h16v9H9l-5 4V6z"],
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#050505] text-[#F2EFE8]" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
+        .dp { font-family: 'Anton', 'Archivo Black', sans-serif; letter-spacing: 0.02em; }
+        .mono { font-family: 'IBM Plex Mono', monospace; }
+        input:focus, button:focus-visible, select:focus-visible { outline: 2px solid #FF2B2B; outline-offset: 2px; }
+        ::-webkit-scrollbar { display: none; }
+        select { -webkit-appearance: none; appearance: none; }
+        .stamp { animation: stampin .38s cubic-bezier(.2,1.6,.4,1) both; display: inline-block; }
+        @keyframes stampin { 0% { transform: scale(2) rotate(-12deg); opacity: 0; } 60% { transform: scale(.92) rotate(2deg); opacity: 1; } 100% { transform: scale(1) rotate(0); } }
+        .workflash { animation: wflash .45s ease-out both; }
+        @keyframes wflash { 0% { opacity: .35; } 100% { opacity: 0; } }
+        @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+      `}</style>
+      <div aria-hidden className="pointer-events-none fixed inset-0 z-[5] opacity-[0.05]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E\")" }} />
+
+      {/* Header */}
+      <header className="px-4 pt-4 pb-2">
+        <div className="flex h-11 items-center gap-3 border-b border-neutral-900 pb-3">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#EDE7DA]">
+            <img src={BICEP} alt="" className="h-7 w-auto" />
+          </span>
+          <p className="dp text-base uppercase tracking-wide text-[#F2EFE8]">Max <span className="text-[#FF2B2B]">Intensity</span></p>
+          <div className="ml-auto flex items-center gap-3">
+            <span className="flex items-center gap-1">
+              <Ic d={P_FLAME} fill className={(game.streak >= 30 ? "h-5 w-5" : game.streak >= 7 ? "h-[17px] w-[17px]" : "h-3.5 w-3.5") + " text-[#FF2B2B]"} />
+              <span className="mono text-[11px] font-semibold text-neutral-300">{game.streak}</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <Ic d={P_STAR} fill className="h-3.5 w-3.5 text-neutral-400" />
+              <span className="mono text-[11px] font-semibold text-neutral-300">{game.points}</span>
+            </span>
+            <button onClick={() => setShowSettings(true)} aria-label="Settings" className="text-neutral-500">
+              <Ic d={P_GEAR} className="h-4.5 w-4.5 h-[18px] w-[18px]" />
+            </button>
+          </div>
+        </div>
+        {/* Week strip */}
+        <div className="mt-2.5 flex gap-1">
+          {WEEK_PLAN.map((w, i) => (
+            <button
+              key={w.label}
+              onClick={() => setWeek(i)}
+              className={
+                "flex-1 rounded-md px-1 py-1.5 text-center transition-colors " +
+                (i === week ? "bg-[#FF2B2B] text-white" : i < week ? "bg-neutral-800/80 text-neutral-500" : "bg-[#141414] text-neutral-600")
+              }
+            >
+              <div className="mono text-[11px] font-semibold">{w.label}</div>
+              <div className="dp text-[8px] uppercase tracking-wider">{w.tag}</div>
+              {(() => {
+                let done2 = 0;
+                for (let d2 = 0; d2 < program.days.length; d2++) {
+                  const dl2 = logs[`w${i}-d${d2}`];
+                  if (dl2 && Object.values(dl2).some((e2) => (e2.sets || []).some((s2) => s2 && (s2.weight || s2.reps)))) done2++;
+                }
+                const pct2 = Math.min(100, Math.round((done2 / Math.max(1, Math.min(4, program.days.length))) * 100));
+                return (
+                  <div className="mx-auto mt-1 h-[2px] w-3/4 overflow-hidden rounded-full bg-black/25">
+                    <div className={"h-full " + (i === week ? "bg-white/80" : "bg-[#FF2B2B]/70")} style={{ width: pct2 + "%" }} />
+                  </div>
+                );
+              })()}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {/* ---------- TRAIN ---------- */}
+      {tab === "program" && (
+        <main className="px-4 pb-32">
+          <div className="pt-3">
+            <p className={eyebrow}>Week {week + 1} · {wk.tag}{settings?.split && settings.split !== "balanced" ? " · " + ({legglute:"Legs & glutes",shoulder:"Shoulders",chest:"Chest",arm:"Arms"}[settings.split] || "") + " focus" : ""}</p>
+            <div className="mt-1 flex items-end justify-between">
+              <h2 className="dp text-[46px] uppercase leading-[0.9]">{day.name}</h2>
+              <span className="mono pb-1 text-xs text-neutral-500">{doneCount}/{day.exercises.length} done</span>
+            </div>
+            <p className="mt-2 text-sm text-neutral-500">{wk.cue}</p>
+            {(() => {
+              const plan = rhythmFor(settings?.split)[(new Date().getDay() + 6) % 7];
+              return <p className="mono mt-1.5 text-[10px] uppercase tracking-widest text-neutral-500">Today on the plan: <span className={plan === "REST" ? "text-neutral-400" : "text-[#FF2B2B]"}>{plan === "REST" ? "Rest — part of the plan" : plan}</span></p>;
+            })()}
+            <button onClick={startSession} className={cta + " mt-4 w-full py-4 text-lg"}>Start session</button>
+            <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
+              {rhythmFor(settings?.split).map((r, i) => (
+                <span key={i} className={"mono text-[9px] uppercase " + (r === "REST" ? "text-neutral-700" : "text-neutral-500")}>{r}{i < rhythmFor(settings?.split).length - 1 ? " ·" : ""}</span>
+              ))}
+            </div>
+            {(() => {
+              const nw = new Date(); const dow = (nw.getDay() + 6) % 7;
+              const mon = new Date(nw); mon.setDate(nw.getDate() - dow);
+              let cnt = 0;
+              for (let i = 0; i <= dow; i++) { const d = new Date(mon); d.setDate(mon.getDate() + i); const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; if (history[k]) cnt++; }
+              const plan = settings?.daysPerWeek || 4;
+              return <p className="mono mt-1.5 text-[10px] text-neutral-500">This week: <span className={cnt >= plan ? "text-[#FF2B2B]" : "text-neutral-300"}>{cnt}/{plan}</span> sessions</p>;
+            })()}
+            {/* Day selector */}
+            <div className="mt-3 flex gap-1.5 overflow-x-auto">
+              {program.days.map((d, i) => (
+                <button
+                  key={i}
+                  onClick={() => { setActiveDay(i); setOpen(null); }}
+                  className={
+                    "dp shrink-0 rounded-md px-4 py-2 text-xs uppercase tracking-wide " +
+                    (i === activeDay ? "bg-[#F2EFE8] text-neutral-950" : "bg-[#141414] text-neutral-500 border border-neutral-800")
+                  }
+                >
+                  {d.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {ovActive && (
+            <div className={card + " mt-4 flex items-center gap-3 border-[#7f1d1d] p-3"}>
+              <p className="min-w-0 flex-1 text-xs text-neutral-300"><span className="mono text-[#FF2B2B]">Adjusted · </span>{override.reply}</p>
+              <button onClick={() => setOverride(null)} className="mono shrink-0 rounded-md border border-neutral-700 px-2.5 py-1 text-[10px] text-neutral-400">Revert</button>
+            </div>
+          )}
+          {!ovActive && (
+            <div className="mt-4">
+              {!showEditReq ? (
+                <div className="flex gap-2">
+                  <button onClick={() => { setShowEditReq(true); setEditReq("I've only got 45 minutes today"); }} className="mono flex-1 rounded-lg border border-neutral-800 bg-[#141414] py-2.5 text-[10px] uppercase tracking-widest text-neutral-400">Short on time</button>
+                  <button onClick={() => { setShowEditReq(true); setEditReq("Focus "); }} className="mono flex-1 rounded-lg border border-neutral-800 bg-[#141414] py-2.5 text-[10px] uppercase tracking-widest text-neutral-400">Focus a muscle</button>
+                </div>
+              ) : hasAI ? (
+                <div className="flex gap-2">
+                  <input value={editReq} onChange={(e) => setEditReq(e.target.value)} onKeyDown={(e) => e.key === "Enter" && runEditSession()} placeholder="e.g. only 45 min · focus shoulders" className="flex-1 rounded-lg border border-neutral-800 bg-[#141414] px-3.5 py-2.5 text-sm placeholder-neutral-600" />
+                  <button onClick={runEditSession} disabled={editingSession} className={cta + " px-4 text-xs disabled:opacity-50"}>{editingSession ? "…" : "Go"}</button>
+                  <button onClick={() => setShowEditReq(false)} className="mono rounded-lg border border-neutral-800 px-3 text-xs text-neutral-500" aria-label="Close">✕</button>
+                </div>
+              ) : (
+                <LockCard title="Adjust today" lines={["Short on time? Different focus? MAX AI rebuilds today's session around you — philosophy intact."]} />
+              )}
+            </div>
+          )}
+
+          {/* Exercise list — numbered: order IS the program */}
+          <div className="mt-6 mb-2 flex items-center justify-between">
+            <p className={eyebrow}>The work — in order</p>
+            <button onClick={() => setEditing(!editing)} className="mono rounded-md border border-neutral-800 px-2.5 py-1 text-[10px] text-neutral-400">
+              {editing ? "Done" : "Edit"}
+            </button>
+          </div>
+          <ul className="space-y-2">
+            {day.exercises.map((exr, i) => {
+              const log = dayLogs[i] || {};
+              const cleared = showAddLoad(activeDay, i);
+              const expanded = open === i;
+              const n = setsFor(exr);
+              return (
+                <li key={i} className={card + (log.done ? " opacity-50" : "")}>
+                  {editing ? (
+                    <div className="space-y-2 p-3.5">
+                      <input
+                        value={exr.name}
+                        onChange={(e) => updateEx(i, "name", e.target.value)}
+                        className="dp w-full rounded-lg bg-neutral-900 px-3 py-2 text-sm uppercase text-neutral-100"
+                        aria-label="Exercise name"
+                      />
+                      <input
+                        value={exr.note || ""}
+                        onChange={(e) => updateEx(i, "note", e.target.value)}
+                        placeholder="note / setup tip"
+                        className="w-full rounded-lg bg-neutral-900 px-3 py-2 text-xs text-neutral-300 placeholder-neutral-600"
+                        aria-label="Exercise note"
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={() => moveEx(i, -1)} className="rounded-lg border border-neutral-700 px-3 py-2 text-xs font-bold text-neutral-300" aria-label="Move up">↑</button>
+                        <button onClick={() => moveEx(i, 1)} className="rounded-lg border border-neutral-700 px-3 py-2 text-xs font-bold text-neutral-300" aria-label="Move down">↓</button>
+                        <button onClick={() => aiSwapExercise(i)} disabled={exSwapping !== null} className="dp flex-1 rounded-lg bg-[#FF2B2B] py-2 text-[11px] uppercase text-white disabled:opacity-50">
+                          {exSwapping === i ? "Swapping…" : hasAI ? "AI swap" : "AI swap (locked)"}
+                        </button>
+                        <button onClick={() => openDemo(exr.name)} className="rounded-lg border border-neutral-700 px-3 text-[10px] font-bold uppercase text-neutral-300">▶</button>
+                        <button onClick={() => removeEx(i)} className="rounded-lg border border-[#7f1d1d] px-3 text-[10px] font-bold uppercase text-[#FF2B2B]">✕</button>
+                      </div>
+                    </div>
+                  ) : (
+                  <div className="flex items-stretch gap-0">
+                    <button
+                      onClick={() => markDone(activeDay, i, !log.done)}
+                      aria-label={log.done ? "Mark not done" : "Mark done"}
+                      className={"flex w-12 shrink-0 items-center justify-center rounded-l-xl border-r " + (log.done ? "border-[#7f1d1d] bg-[#FF2B2B] text-white" : "border-neutral-800 text-neutral-700")}
+                    >
+                      {log.done ? "✓" : <span className="dp text-lg">{String(i + 1).padStart(2, "0")}</span>}
+                    </button>
+                    <button onClick={() => setOpen(expanded ? null : i)} className="min-w-0 flex-1 p-3.5 text-left">
+                      <div className="flex items-center gap-2">
+                        <p className="dp text-[15px] uppercase tracking-wide text-neutral-100">{exr.name}</p>
+                        {cleared && !isDeload && (
+                          <span className="stamp mono rounded bg-[#2a0a0a] px-1.5 py-0.5 text-[9px] font-bold text-[#FF2B2B]">▲ ADD LOAD</span>
+                        )}
+                      </div>
+                      <p className="mono mt-0.5 text-[11px] text-neutral-500">
+                        {isDeload ? "2 sets · ~60%" : exr.scheme.join(" / ")} · {exr.tempo} · {exr.rest}
+                      </p>
+                      {exr.note ? <p className="mt-0.5 text-[11px] text-neutral-600">{exr.note}</p> : null}
+                    </button>
+                    <span className="mono flex items-center pr-3.5 text-xs text-neutral-600">{expanded ? "−" : "+"}</span>
+                  </div>
+                  )}
+                  {expanded && !editing && (
+                    <div className="border-t border-neutral-800 px-3.5 py-2">
+                      {Array.from({ length: n }).map((_, s) => {
+                        const setLog = getSet(week, activeDay, i, s);
+                        const prev = lastWeight(activeDay, i, s);
+                        const isW = !isDeload && s === 2;
+                        return (
+                          <div key={s} className={"flex items-center gap-2 py-1.5 " + (isW ? "-mx-2 rounded-lg bg-[#1c0808] px-2" : "")}>
+                            <span className={"mono w-28 shrink-0 text-[10px] " + (isW ? "text-[#FF2B2B]" : "text-neutral-500")}>
+                              {isDeload ? `Set ${s + 1} ×6 easy` : SET_LABELS[s]}
+                            </span>
+                            <input
+                              id={`w-${activeDay}-${i}-${s}`}
+                              inputMode="decimal"
+                              enterKeyHint="next"
+                              value={wOut(setLog.weight)}
+                              onChange={(e) => setSet(activeDay, i, s, "weight", wIn(e.target.value))}
+                              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); document.getElementById(`r-${activeDay}-${i}-${s}`)?.focus(); } }}
+                              onFocus={() => setFocusField({ d: activeDay, i, s, kind: "w" })}
+                              onBlur={() => setTimeout(() => setFocusField((f) => (f && f.d === activeDay && f.i === i && f.s === s && f.kind === "w" ? null : f)), 200)}
+                              placeholder={prev ? `${wOut(prev)} ${unit}` : unit}
+                              className="mono w-20 rounded-lg bg-neutral-900 px-2 py-1.5 text-right text-sm placeholder-neutral-600"
+                              aria-label={`Set ${s + 1} weight`}
+                            />
+                            <input
+                              id={`r-${activeDay}-${i}-${s}`}
+                              inputMode="numeric"
+                              enterKeyHint={s + 1 < n ? "next" : "done"}
+                              value={setLog.reps || ""}
+                              onChange={(e) => setSet(activeDay, i, s, "reps", e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  const nx = document.getElementById(`w-${activeDay}-${i}-${s + 1}`);
+                                  if (nx) nx.focus(); else e.target.blur();
+                                }
+                              }}
+                              onFocus={() => setFocusField({ d: activeDay, i, s, kind: "r" })}
+                              onBlur={() => setTimeout(() => setFocusField((f) => (f && f.d === activeDay && f.i === i && f.s === s && f.kind === "r" ? null : f)), 200)}
+                              placeholder="reps"
+                              className="mono w-16 rounded-lg bg-neutral-900 px-2 py-1.5 text-right text-sm placeholder-neutral-600"
+                              aria-label={`Set ${s + 1} reps`}
+                            />
+                            <button onClick={() => startRest(150)} className="mono rounded-lg border border-neutral-700 px-2 py-1.5 text-xs text-neutral-400" aria-label="Start rest timer">⏱</button>
+                            {prev && <span className="mono text-[9px] text-neutral-600">lw {wOut(prev)}</span>}
+                          </div>
+                        );
+                      })}
+                      <p className="mono pb-0.5 pt-1.5 text-[9px] text-neutral-600">Hit 6 on the work set → add ~2.5% next time</p>
+                      <p className="pb-1.5 text-[10px] text-neutral-600">{BREATH}</p>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {editing && (
+            <button onClick={addEx} className="mt-3 w-full rounded-xl border border-dashed border-neutral-700 py-3 text-sm text-neutral-400">
+              + Add exercise
+            </button>
+          )}
+          {editing && (
+            <div className="fixed inset-x-3 bottom-20 z-50">
+              <button onClick={() => setEditing(false)} className={cta + " w-full py-3.5 text-sm shadow-2xl"}>✓ Done editing — saved</button>
+            </div>
+          )}
+        </main>
+      )}
+
+      {/* ---------- EAT ---------- */}
+      {tab === "nutrition" && (() => {
+        const entries = foodLog[todayKey()] || [];
+        const totals = entries.reduce(
+          (t, e) => ({
+            kcal: t.kcal + (Number(e.kcal) || 0),
+            protein: t.protein + (Number(e.protein) || 0),
+            carbs: t.carbs + (Number(e.carbs) || 0),
+            fat: t.fat + (Number(e.fat) || 0),
+          }),
+          { kcal: 0, protein: 0, carbs: 0, fat: 0 }
+        );
+        const needSetup = !targets || showCalc;
+        const bars = [["kcal", "Calories", ""], ["protein", "Protein", "g"], ["carbs", "Carbs", "g"], ["fat", "Fat", "g"]];
+        const gaining = profile?.goalIdx === 2;
+        const meals = gaining ? GAIN_MEALS : profile?.goalIdx === 0 ? CUT_MEALS : [...GAIN_MEALS, ...CUT_MEALS];
+        return (
+          <main className="px-4 pb-32 pt-3">
+            {needSetup ? (
+              <div className={card + " p-5"}>
+                <p className={eyebrow}>Targets</p>
+                <h2 className="dp mt-1 text-3xl uppercase leading-none">Set your numbers</h2>
+                <p className="mt-2 text-sm text-neutral-500">Bodyweight × activity, protein at 0.82g/lb. One free day a week — planned, not stolen.</p>
+                <label className="mt-4 block text-xs text-neutral-400">Bodyweight (kg)</label>
+                <input inputMode="decimal" value={calcKg} onChange={(e) => setCalcKg(e.target.value)} className="mono mt-1 w-28 rounded-lg bg-neutral-900 px-3 py-2 text-sm" />
+                <label className="mt-4 block text-xs text-neutral-400">Activity</label>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {ACTIVITY.map((a, i) => (
+                    <button key={a.label} onClick={() => setCalcAct(i)} className={chip + " " + (calcAct === i ? "bg-[#FF2B2B] text-white" : "border border-neutral-800 text-neutral-400")}>{a.label}</button>
+                  ))}
+                </div>
+                <label className="mt-4 block text-xs text-neutral-400">Goal</label>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {GOALS.map((g, i) => (
+                    <button key={g.label} onClick={() => setCalcGoal(i)} className={chip + " " + (calcGoal === i ? "bg-[#FF2B2B] text-white" : "border border-neutral-800 text-neutral-400")}>{g.label}</button>
+                  ))}
+                </div>
+                <button onClick={applyCalc} className={cta + " mt-5 w-full py-3.5 text-sm"}>Set my targets</button>
+              </div>
+            ) : (
+              <>
+                <div className={card + " p-4"}>
+                  <div className="flex items-center justify-between">
+                    <h2 className="dp text-2xl uppercase leading-none">Today</h2>
+                    <button onClick={() => setShowCalc(true)} className="mono rounded-md border border-neutral-800 px-2.5 py-1 text-[10px] text-neutral-400">Recalc</button>
+                  </div>
+                  <div className="mt-3 space-y-2.5">
+                    {bars.map(([k, label, u2]) => {
+                      const pct = Math.min(100, (totals[k] / (targets[k] || 1)) * 100);
+                      return (
+                        <div key={k}>
+                          <div className="flex items-baseline justify-between">
+                            <span className="text-xs text-neutral-400">{label}</span>
+                            <span className="mono text-xs text-neutral-300">{Math.round(totals[k])} / {targets[k]}{u2}</span>
+                          </div>
+                          <div className="mt-1 h-1.5 rounded-full bg-neutral-800">
+                            <div className={"h-1.5 rounded-full " + (k === "protein" ? "bg-[#FF2B2B]" : "bg-neutral-400")} style={{ width: pct + "%" }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className={card + " mt-3 overflow-hidden"}>
+                  <div className="h-1 w-full bg-[#FF2B2B]" />
+                  <div className="p-4">
+                    <p className="dp text-sm uppercase text-[#F2EFE8]">The one-big-meal rule</p>
+                    <p className="mt-1 text-xs leading-relaxed text-neutral-400">One solid ~1,000 kcal meal a day, five days a week, does the heavy lifting. One decision. Survives a bad week. 35 min of prep = 3 days covered.</p>
+                  </div>
+                </div>
+
+                <div className="mt-6 mb-2 flex items-center justify-between">
+                  <p className={eyebrow}>My daily meals — tap to log</p>
+                  <button onClick={() => setShowMealForm(!showMealForm)} className="mono rounded-md border border-neutral-800 px-2.5 py-1 text-[10px] text-neutral-400">{showMealForm ? "Close" : "+ New"}</button>
+                </div>
+                {showMealForm && (
+                  <div className={card + " mb-2 p-3"}>
+                    <input value={mMeal.name} onChange={(e) => setMMeal({ ...mMeal, name: e.target.value })} placeholder="Meal name (e.g. My mince & mash)" className="w-full rounded-lg bg-neutral-900 px-3 py-2 text-sm placeholder-neutral-600" />
+                    <div className="mt-2 grid grid-cols-4 gap-2">
+                      {[["kcal", "kcal"], ["p", "P g"], ["c", "C g"], ["f", "F g"]].map(([k2, ph]) => (
+                        <input key={k2} inputMode="decimal" value={mMeal[k2]} onChange={(e) => setMMeal({ ...mMeal, [k2]: e.target.value })} placeholder={ph} className="mono rounded-lg bg-neutral-900 px-2 py-2 text-right text-xs placeholder-neutral-600" />
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!mMeal.name.trim()) return;
+                        setMyMeals((prev) => [...prev, { name: mMeal.name.trim(), kcal: Number(mMeal.kcal) || 0, protein: Number(mMeal.p) || 0, carbs: Number(mMeal.c) || 0, fat: Number(mMeal.f) || 0 }]);
+                        setMMeal({ name: "", kcal: "", p: "", c: "", f: "" });
+                        setShowMealForm(false);
+                      }}
+                      className={cta + " mt-2 w-full py-2.5 text-xs"}
+                    >Save meal</button>
+                  </div>
+                )}
+                {myMeals.length > 0 && (
+                  <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+                    {myMeals.map((m, mi) => (
+                      <div key={mi} className={card + " relative shrink-0 px-3.5 py-2.5"}>
+                        <button onClick={() => logMeal(m)} className="text-left">
+                          <p className="text-xs font-semibold text-neutral-200">{m.name}</p>
+                          <p className="mono mt-0.5 text-[10px] text-neutral-500">{m.kcal} kcal · P{m.protein}</p>
+                        </button>
+                        <button onClick={() => setMyMeals((prev) => prev.filter((_, x) => x !== mi))} className="mono absolute right-1 top-0.5 text-[10px] text-neutral-600" aria-label={`Delete ${m.name}`}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className={eyebrow + " mt-4 mb-2"}>{gaining ? "Gain meals" : profile?.goalIdx === 0 ? "Cut meals" : "Meals"} — tap to log</p>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {meals.map((m) => (
+                    <button key={m.name} onClick={() => logMeal(m)} className={card + " shrink-0 px-3.5 py-2.5 text-left"}>
+                      <p className="text-xs font-semibold text-neutral-200">{m.name}</p>
+                      <p className="mono mt-0.5 text-[10px] text-neutral-500">{m.kcal} kcal · P{m.protein}</p>
+                    </button>
+                  ))}
+                </div>
+
+                <p className={eyebrow + " mt-6 mb-1"}>Micronutrient snacks</p>
+                <p className="mb-2 text-[11px] text-neutral-600">Fill the cofactor gaps for recovery, collagen & test.</p>
+                <div className="space-y-2">
+                  {MICRO_SNACKS
+                    .filter((m) => m.tag === "both" || (profile?.goalIdx === 0 ? m.tag === "cut" : profile?.goalIdx === 2 ? m.tag === "bulk" : true))
+                    .map((m) => (
+                      <button key={m.name} onClick={() => logMeal({ name: m.name, kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat })} className={card + " flex w-full items-center gap-3 px-3.5 py-2.5 text-left"}>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-neutral-200">{m.name}</p>
+                          <p className="mt-0.5 text-[10px] text-[#FF2B2B]">{m.rich}</p>
+                        </div>
+                        <span className="mono shrink-0 text-[10px] text-neutral-500">{m.kcal} · P{m.protein}</span>
+                      </button>
+                    ))}
+                </div>
+
+                {!hasAI && <div className="mt-6"><LockCard title="Never wonder what to eat" lines={["Meal builder from YOUR foods, the swap machine, and voice macro logging."]} /></div>}
+
+                <p className={eyebrow + " mt-6 mb-1"}>My foods</p>
+                <div className="flex gap-2">
+                  <input value={foodLikeInput} onChange={(e) => setFoodLikeInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addMyFood()} placeholder="e.g. mince, rice, mango" className="flex-1 rounded-lg border border-neutral-800 bg-[#141414] px-3.5 py-2.5 text-sm placeholder-neutral-600" />
+                  <button onClick={addMyFood} className="dp rounded-lg border border-neutral-700 px-4 text-xs uppercase text-neutral-300">Add</button>
+                </div>
+                {myFoods.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {myFoods.map((f) => (
+                      <span key={f} className="mono flex items-center gap-1.5 rounded-md border border-neutral-800 px-3 py-1 text-xs text-neutral-300">
+                        {f}
+                        <button onClick={() => setMyFoods((prev) => prev.filter((x) => x !== f))} className="text-neutral-500" aria-label={`Remove ${f}`}>✕</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <button
+                  onClick={runMealBuilder({
+                    kcal: Math.max(0, targets.kcal - Math.round(totals.kcal)),
+                    protein: Math.max(0, targets.protein - Math.round(totals.protein)),
+                    carbs: Math.max(0, targets.carbs - Math.round(totals.carbs)),
+                    fat: Math.max(0, targets.fat - Math.round(totals.fat)),
+                  })}
+                  disabled={buildingMeal || !hasAI}
+                  className={cta + " mt-2.5 w-full py-3 text-sm disabled:opacity-50"}
+                >
+                  {buildingMeal ? "Building…" : hasAI ? "Build me a meal from my foods" : "Build me a meal — Max AI (locked)"}
+                </button>
+                {mealIdea && (
+                  <div className={card + " mt-2 p-3.5"}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-neutral-100">{mealIdea.name}</p>
+                        <p className="mt-0.5 text-xs text-neutral-400">{mealIdea.how}</p>
+                        <p className="mono mt-1 text-xs text-neutral-500">{mealIdea.kcal} kcal · P{mealIdea.protein} C{mealIdea.carbs} F{mealIdea.fat}</p>
+                      </div>
+                      <button onClick={() => { logMeal({ name: mealIdea.name, kcal: mealIdea.kcal, protein: mealIdea.protein, carbs: mealIdea.carbs, fat: mealIdea.fat }); setMealIdea(null); }} className={cta + " shrink-0 px-3.5 py-2 text-[10px]"}>Log it</button>
+                    </div>
+                  </div>
+                )}
+
+                <p className={eyebrow + " mt-6 mb-1"}>Swap machine</p>
+                <p className="mb-2 text-[11px] text-neutral-600">Tell it a habit — smarter swaps, never bans.</p>
+                <div className="flex gap-2">
+                  <input value={swapInput} onChange={(e) => setSwapInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && runSwaps()} placeholder="e.g. I drink loads of fizzy drinks" className="flex-1 rounded-lg border border-neutral-800 bg-[#141414] px-3.5 py-2.5 text-sm placeholder-neutral-600" />
+                  <button onClick={runSwaps} disabled={swapping || !hasAI} className={cta + " px-4 text-xs disabled:opacity-50"}>{swapping ? "…" : hasAI ? "Swap" : <Ic d={P_LOCK} className="h-3.5 w-3.5" />}</button>
+                </div>
+                {swaps.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {swaps.map((s, i) => (
+                      <div key={i} className={card + " p-3.5"}>
+                        {s.from && <p className="text-sm text-neutral-200"><span className="text-neutral-500 line-through">{s.from}</span> → <span className="font-semibold">{s.to}</span></p>}
+                        <p className="mt-0.5 text-xs text-neutral-400">{s.why}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className={eyebrow + " mt-6 mb-2"}>Quick log</p>
+                <div className="flex gap-2">
+                  <input value={foodInput} onChange={(e) => setFoodInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addFood()} placeholder="e.g. 300g mince, potatoes, milk" className="flex-1 rounded-lg border border-neutral-800 bg-[#141414] px-3.5 py-2.5 text-sm placeholder-neutral-600" />
+                  <button onClick={addFood} disabled={estimating || !hasAI} className={cta + " px-4 text-xs disabled:opacity-50"}>{estimating ? "…" : hasAI ? "Log" : <Ic d={P_LOCK} className="h-3.5 w-3.5" />}</button>
+                </div>
+                <p className="mono mt-1.5 text-[9px] text-neutral-600">AI estimates the macros — weigh the big stuff.</p>
+                <button onClick={() => setShowManual(!showManual)} className="mono mt-2 text-[10px] uppercase tracking-widest text-neutral-500 underline underline-offset-2">{showManual ? "Hide manual entry" : "Add manually (free)"}</button>
+                {showManual && (
+                  <div className={card + " mt-2 p-3"}>
+                    <input value={mFood.name} onChange={(e) => setMFood({ ...mFood, name: e.target.value })} placeholder="Food name" className="w-full rounded-lg bg-neutral-900 px-3 py-2 text-sm placeholder-neutral-600" />
+                    <div className="mt-2 grid grid-cols-4 gap-2">
+                      {[["kcal", "kcal"], ["p", "P g"], ["c", "C g"], ["f", "F g"]].map(([k2, ph]) => (
+                        <input key={k2} inputMode="decimal" value={mFood[k2]} onChange={(e) => setMFood({ ...mFood, [k2]: e.target.value })} placeholder={ph} className="mono rounded-lg bg-neutral-900 px-2 py-2 text-right text-xs placeholder-neutral-600" />
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!mFood.name.trim()) return;
+                        logMeal({ name: mFood.name.trim(), kcal: Number(mFood.kcal) || 0, protein: Number(mFood.p) || 0, carbs: Number(mFood.c) || 0, fat: Number(mFood.f) || 0 });
+                        setMFood({ name: "", kcal: "", p: "", c: "", f: "" });
+                      }}
+                      className={cta + " mt-2 w-full py-2.5 text-xs"}
+                    >Add to today</button>
+                  </div>
+                )}
+
+                <ul className="mt-3 space-y-2">
+                  {entries.length === 0 && (
+                    <li className="rounded-xl border border-dashed border-neutral-800 p-4 text-center text-sm text-neutral-600">
+                      Nothing logged today. Eat early — no need to store.
+                    </li>
+                  )}
+                  {entries.map((e, i) => (
+                    <li key={i} className={card + " flex items-center gap-3 p-3.5"}>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm text-neutral-100">{e.name}</p>
+                        <p className="mono mt-0.5 text-xs text-neutral-500">{e.kcal} kcal · P{e.protein} C{e.carbs} F{e.fat}</p>
+                      </div>
+                      <button onClick={() => removeFood(i)} className="mono text-xs text-neutral-600" aria-label={`Remove ${e.name}`}>✕</button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </main>
+        );
+      })()}
+
+      {/* ---------- LOG ---------- */}
+      {tab === "calendar" && (() => {
+        const y = calMonth.getFullYear();
+        const m = calMonth.getMonth();
+        const firstOffset = (new Date(y, m, 1).getDay() + 6) % 7;
+        const daysInMonth = new Date(y, m + 1, 0).getDate();
+        const ds = (d) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        const monthName = calMonth.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+        const sel = history[selDate];
+        const selBw = weights[selDate];
+        const selFoods = foodLog[selDate] || [];
+        const selPlan = WEEK_RHYTHM[(new Date(selDate + "T12:00:00").getDay() + 6) % 7];
+        const bwEntries = Object.entries(weights).sort((a, b) => a[0].localeCompare(b[0])).slice(-30);
+        const bwVals = bwEntries.map(([, v]) => v);
+        const bwMin = Math.min(...bwVals), bwMax = Math.max(...bwVals);
+        const spark = bwVals.length > 1
+          ? bwVals.map((v, i) => `${(i / (bwVals.length - 1)) * 100},${bwMax === bwMin ? 20 : 38 - ((v - bwMin) / (bwMax - bwMin)) * 34}`).join(" ")
+          : null;
+        const totalSessions = Object.keys(history).length;
+        const monthSessions = Object.keys(history).filter((k) => k.startsWith(`${y}-${String(m + 1).padStart(2, "0")}`)).length;
+        return (
+          <main className="px-4 pb-32 pt-3">
+            {/* view toggle */}
+            <div className="flex rounded-lg border border-neutral-800 p-0.5">
+              {[["cal", "Calendar"], ["progress", "Progress"]].map(([v, l]) => (
+                <button key={v} onClick={() => setLogView(v)} className={"dp flex-1 rounded-md py-2 text-xs uppercase tracking-wide " + (logView === v ? "bg-[#FF2B2B] text-white" : "text-neutral-500")}>{l}</button>
+              ))}
+            </div>
+
+            {logView === "cal" && (
+              <>
+                <div className={card + " mt-3 p-4"}>
+                  <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="dp text-sm uppercase text-neutral-200">Daily bodyweight</p>
+                      <p className="mt-0.5 text-[10px] text-neutral-500">Same time each day — morning, after the toilet, before food.</p>
+                    </div>
+                    <input inputMode="decimal" value={bwInput} onChange={(e) => setBwInput(e.target.value)} placeholder={weights[todayKey()] ? wOut(String(weights[todayKey()])) : unit} className="mono w-20 rounded-lg bg-neutral-900 px-2 py-2 text-right text-sm placeholder-neutral-600" aria-label={"Bodyweight in " + unit} />
+                    <button onClick={saveBodyweight} className={cta + " px-3.5 py-2 text-[10px]"}>Save</button>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between">
+                  <button onClick={() => setCalMonth(new Date(y, m - 1, 1))} className="rounded-lg border border-neutral-800 px-3 py-1 text-sm text-neutral-400" aria-label="Previous month">‹</button>
+                  <h2 className="dp text-base uppercase tracking-wide text-neutral-200">{monthName}</h2>
+                  <button onClick={() => setCalMonth(new Date(y, m + 1, 1))} className="rounded-lg border border-neutral-800 px-3 py-1 text-sm text-neutral-400" aria-label="Next month">›</button>
+                </div>
+                <div className="mono mt-2 grid grid-cols-7 gap-1 text-center text-[9px] text-neutral-600">
+                  {["M", "T", "W", "T2", "F", "S", "S2"].map((d) => <div key={d}>{d.charAt(0)}</div>)}
+                </div>
+                <div className="mt-1 grid grid-cols-7 gap-1">
+                  {Array.from({ length: firstOffset }).map((_, i) => <div key={"e" + i} />)}
+                  {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const dnum = i + 1;
+                    const dstr = ds(dnum);
+                    const trained = !!history[dstr];
+                    const weighed = weights[dstr] != null;
+                    const isSel = selDate === dstr;
+                    const isToday = dstr === todayKey();
+                    return (
+                      <button
+                        key={dstr}
+                        onClick={() => setSelDate(dstr)}
+                        className={
+                          "flex aspect-square flex-col items-center justify-center rounded-lg text-xs transition-colors " +
+                          (trained
+                            ? "bg-[#FF2B2B] text-white " + (isSel ? "ring-2 ring-white/80" : "")
+                            : (isSel ? "bg-neutral-200 text-neutral-950 " : isToday ? "border border-[#FF2B2B] text-neutral-200 " : "bg-[#141414] text-neutral-400 "))
+                        }
+                      >
+                        <span className="mono">{dnum}</span>
+                        {weighed && !trained && <span className={"h-1 w-1 rounded-full " + (isSel ? "bg-neutral-950/50" : "bg-neutral-500")} />}
+                        {weighed && trained && <span className="h-1 w-1 rounded-full bg-white/70" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mono mt-1.5 text-[9px] text-neutral-600"><span className="text-[#FF2B2B]">■</span> trained · <span className="text-neutral-500">●</span> weighed in · blank = rest, part of the plan</p>
+
+                <div className={card + " mt-4 p-4"}>
+                  <p className="dp text-sm uppercase text-neutral-200">
+                    {new Date(selDate + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}
+                  </p>
+                  {selBw != null && <p className="mono mt-1 text-xs text-neutral-400">Bodyweight: {wOut(String(selBw))} {unit}</p>}
+                  {sel ? (
+                    <div className="mt-2">
+                      <p className="mono text-xs text-[#FF2B2B]">{sel.day} · Week {sel.week}</p>
+                      <ul className="mt-1.5 space-y-1">
+                        {sel.items.map((it, i) => (
+                          <li key={i} className="flex items-baseline justify-between gap-2 text-sm">
+                            <span className="min-w-0 truncate text-neutral-300">{it.name}</span>
+                            <span className="mono shrink-0 text-xs text-neutral-500">
+                              {it.sets.filter((s) => s.w || s.r).map((s) => `${s.w || "?"}×${s.r || "?"}`).join("  ") || "—"}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    !selBw && <p className="mt-1.5 text-sm text-neutral-600">
+                      {selDate < todayKey()
+                        ? (selPlan === "REST" ? "Rest day — part of the plan." : "Rest day taken here.")
+                        : (selPlan === "REST" ? "Planned: rest — part of the plan." : `Planned: ${selPlan}.`)}
+                    </p>
+                  )}
+                  {selFoods.length > 0 && (
+                    <div className="mt-3 border-t border-neutral-800 pt-2">
+                      <p className="mono text-[10px] uppercase tracking-widest text-neutral-500">Food logged</p>
+                      <ul className="mt-1 space-y-0.5">
+                        {selFoods.map((f, i) => (
+                          <li key={i} className="flex items-baseline justify-between gap-2 text-xs">
+                            <span className="min-w-0 truncate text-neutral-400">{f.name}</span>
+                            <span className="mono shrink-0 text-neutral-600">{f.kcal} kcal · P{f.protein}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {logView === "progress" && (
+              <>
+                {/* overall strength: total work-set load per week */}
+                {(() => {
+                  const weekly = [];
+                  for (let w2 = 0; w2 < 5; w2++) {   // deload week excluded — lighter by design
+                    let tot = 0;
+                    program.days.forEach((d, di) => d.exercises.forEach((_, ei) => {
+                      tot += Number((logs[`w${w2}-d${di}`]?.[ei]?.sets?.[2] || {}).weight) || 0;
+                    }));
+                    if (tot > 0) weekly.push([w2, tot]);
+                  }
+                  const vals = weekly.map((x) => x[1]);
+                  const mn = Math.min(...vals), mx = Math.max(...vals);
+                  const poly = weekly.length > 1 ? weekly.map(([w2, v]) => `${(w2 / 5) * 100},${mx === mn ? 20 : 38 - ((v - mn) / (mx - mn)) * 34}`).join(" ") : null;
+                  const first = weekly[0], lastW = weekly[weekly.length - 1];
+                  const pct = first && lastW && first[1] > 0 ? Math.round(((lastW[1] - first[1]) / first[1]) * 100) : null;
+                  return (
+                    <div className={card + " mt-3 overflow-hidden"}>
+                      <div className="h-1 w-full bg-[#FF2B2B]" />
+                      <div className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Ic d={P_CHART} className="h-4 w-4 text-[#FF2B2B]" />
+                          <p className="dp text-sm uppercase text-neutral-200">Overall strength</p>
+                        </div>
+                        <p className="mt-1 text-[11px] text-neutral-500">Total weight on your work sets, week by week — the whole block in one line.</p>
+                        {poly ? (
+                          <>
+                            <svg viewBox="0 0 100 40" className="mt-3 h-20 w-full" preserveAspectRatio="none" aria-hidden="true">
+                              <polyline points={poly} fill="none" stroke="#FF2B2B" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
+                            </svg>
+                            <div className="mono mt-1 flex justify-between text-[9px] text-neutral-600"><span>W1</span><span>W6</span></div>
+                            {pct !== null && pct !== 0 && <p className="mono mt-1 text-xs text-neutral-300">{pct > 0 ? "+" : ""}{pct}% across the block so far</p>}
+                          </>
+                        ) : (
+                          <p className="mt-3 text-xs text-neutral-600">Log work sets across two or more weeks and your strength line appears here.</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* per-exercise + projection */}
+                {(() => {
+                  const opts = [];
+                  program.days.forEach((d, di) => d.exercises.forEach((e2, ei) => opts.push([di + "-" + ei, d.name + " — " + e2.name])));
+                  const [gd, ge] = graphSel.split("-").map(Number);
+                  const pts = [];
+                  for (let w2 = 0; w2 < 6; w2++) {
+                    const v = Number((logs[`w${w2}-d${gd}`]?.[ge]?.sets?.[2] || {}).weight);
+                    if (v) pts.push([w2, v]);
+                  }
+                  const vals = pts.map((p2) => p2[1]);
+                  const mn = Math.min(...vals), mx = Math.max(...vals);
+                  const poly = pts.length > 1 ? pts.map(([w2, v]) => `${(w2 / 5) * 100},${mx === mn ? 20 : 38 - ((v - mn) / (mx - mn)) * 34}`).join(" ") : null;
+                  const last = pts.length ? pts[pts.length - 1] : null;
+                  const proj = last ? Math.round(last[1] * Math.pow(1.025, Math.max(0, 4 - last[0])) * 10) / 10 : null;
+                  return (
+                    <div className={card + " mt-3 p-4"}>
+                      <p className="dp text-sm uppercase text-neutral-200">By exercise</p>
+                      <select value={graphSel} onChange={(e) => setGraphSel(e.target.value)} className="mono mt-2 w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-xs text-neutral-200" aria-label="Choose exercise">
+                        {opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                      {poly ? (
+                        <div className="mt-3">
+                          <svg viewBox="0 0 100 40" className="h-16 w-full" preserveAspectRatio="none" aria-hidden="true">
+                            <polyline points={poly} fill="none" stroke="#FF2B2B" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                          </svg>
+                          <div className="mono mt-1 flex justify-between text-[9px] text-neutral-600"><span>W1</span><span>W6</span></div>
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-xs text-neutral-600">Log this exercise's work set across weeks and its line appears here.</p>
+                      )}
+                      {last && (
+                        <p className="mono mt-2 text-xs text-neutral-400">
+                          Work set: <span className="text-neutral-100">{wOut(String(last[1]))} {unit}</span> (W{last[0] + 1})
+                          {proj && last[0] < 4 ? <span> · on track for <span className="text-[#FF2B2B]">~{wOut(String(proj))} {unit} ×6 by W5</span></span> : null}
+                        </p>
+                      )}
+                      <p className="mono mt-1 text-[9px] text-neutral-600">Clear 6 on the work set → +2.5% next time. The projection assumes you keep clearing.</p>
+                    </div>
+                  );
+                })()}
+
+                {/* bodyweight */}
+                <div className={card + " mt-3 p-4"}>
+                  <p className="dp text-sm uppercase text-neutral-200">Bodyweight</p>
+                  {spark ? (
+                    <div className="mt-2">
+                      <svg viewBox="0 0 100 40" className="h-16 w-full" preserveAspectRatio="none" aria-hidden="true">
+                        <polyline points={spark} fill="none" stroke="#F2EFE8" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                      </svg>
+                      <p className="mono mt-1 text-[9px] text-neutral-600">last {bwVals.length} weigh-ins · {wOut(String(bwVals[bwVals.length - 1]))} {unit} latest</p>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-neutral-600">Weigh in daily on the Calendar view — the trend shows here.</p>
+                  )}
+                </div>
+
+                {/* days in gym + numbers + streak rewards */}
+                <div className={card + " mt-3 p-4"}>
+                  <p className="dp text-sm uppercase text-neutral-200">Your numbers</p>
+                  <div className="mono mt-2 grid grid-cols-4 gap-2 text-center">
+                    <div className="rounded-lg bg-neutral-900 py-2.5"><p className="text-lg font-semibold text-neutral-100">{totalSessions}</p><p className="text-[8px] uppercase text-neutral-500">gym days</p></div>
+                    <div className="rounded-lg bg-neutral-900 py-2.5"><p className="text-lg font-semibold text-neutral-100">{monthSessions}</p><p className="text-[8px] uppercase text-neutral-500">this month</p></div>
+                    <div className="rounded-lg bg-neutral-900 py-2.5"><p className="text-lg font-semibold text-neutral-100">{game.streak}</p><p className="text-[8px] uppercase text-neutral-500">streak</p></div>
+                    <div className="rounded-lg bg-neutral-900 py-2.5"><p className="text-lg font-semibold text-neutral-100">{game.points}</p><p className="text-[8px] uppercase text-neutral-500">points</p></div>
+                  </div>
+                  {(() => {
+                    const MILES = [[7, 100], [14, 250], [30, 600], [60, 1500], [100, 3000]];
+                    const nxt = MILES.find(([d2]) => d2 > game.streak);
+                    return nxt ? <p className="mono mt-2 text-[10px] text-neutral-500">Next streak reward: <span className="text-[#FF2B2B]">+{nxt[1]} pts</span> at {nxt[0]} days</p> : null;
+                  })()}
+                  <p className="mt-1.5 text-[10px] text-neutral-600">+10 per set · beat last week's weight = +3 pts per 1% gained · +5 daily. Showing up is the skill.</p>
+                  <p className="mono mt-1 text-[10px] text-neutral-500">Points will convert to subscription discounts when the community launches.</p>
+                </div>
+                <div className={card + " mt-3 p-4 text-center opacity-80"}>
+                  <p className="dp text-sm uppercase text-neutral-200">Community — coming soon</p>
+                  <p className="mt-1 text-xs text-neutral-500">Leaderboard on points and streaks. Post your transformation. Points convert to discounts.</p>
+                </div>
+              </>
+            )}
+          </main>
+        );
+      })()}
+
+      {/* ---------- LEARN ---------- */}
+      {tab === "rules" && (
+        <main className="space-y-6 px-4 pb-32 pt-3">
+          <div className={card + " overflow-hidden"}>
+            <div className="h-1 w-full bg-[#FF2B2B]" />
+            <div className="p-4">
+              <p className="dp text-lg uppercase leading-tight text-[#F2EFE8]">Streamlining health</p>
+              <p className="mt-1 text-sm text-neutral-400">{MOTTO}</p>
+            </div>
+          </div>
+          <section>
+            <h2 className={eyebrow}>Lessons — 60 seconds each</h2>
+            <div className="mt-2 space-y-2">
+              {LESSONS.map((l, i) => (
+                <div key={i} className={card}>
+                  <button onClick={() => setOpenLesson(openLesson === i ? null : i)} className="flex w-full items-center justify-between p-4 text-left">
+                    <p className="dp text-sm uppercase tracking-wide text-neutral-100">{l.t}</p>
+                    <span className="mono text-xs text-neutral-600">{openLesson === i ? "−" : "+"}</span>
+                  </button>
+                  {openLesson === i && <p className="px-4 pb-4 text-sm leading-relaxed text-neutral-400">{l.b}</p>}
+                </div>
+              ))}
+            </div>
+          </section>
+          <section>
+            <h2 className={eyebrow}>Performance</h2>
+            <div className="mt-2 space-y-2">
+              {PERF_LESSONS.map((l, i) => (
+                <div key={"pf" + i} className={card}>
+                  <button onClick={() => setOpenLesson(openLesson === 100 + i ? null : 100 + i)} className="flex w-full items-center justify-between p-4 text-left">
+                    <p className="dp text-sm uppercase tracking-wide text-neutral-100">{l.t}</p>
+                    <span className="mono text-xs text-neutral-600">{openLesson === 100 + i ? "−" : "+"}</span>
+                  </button>
+                  {openLesson === 100 + i && <p className="px-4 pb-4 text-sm leading-relaxed text-neutral-400">{l.b}</p>}
+                </div>
+              ))}
+            </div>
+          </section>
+          <section>
+            <h2 className={eyebrow}>The four pillars</h2>
+            <div className="mt-2 space-y-2">
+              {PILLARS.map((p) => (
+                <div key={p.title} className={card + " p-4"}>
+                  <p className="dp text-sm uppercase tracking-wide text-neutral-100">{p.title}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-neutral-400">{p.body}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+          {[["Eating rules", NUTRITION_RULES], ["Supplements", SUPPLEMENTS], ["Sleep", SLEEP_RULES]].map(([title, list]) => (
+            <section key={title}>
+              <h2 className={eyebrow}>{title}</h2>
+              <ul className="mt-2 space-y-1.5">
+                {list.map((r, i) => (
+                  <li key={i} className="flex gap-2 text-sm leading-relaxed text-neutral-400">
+                    <span className="mono text-[#7f1d1d]">—</span>{r}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </main>
+      )}
+
+      {/* ---------- COACH ---------- */}
+      {tab === "coach" && !hasAI && (
+        <main className="px-4 pb-32 pt-4">
+          <LockCard title="Max in your pocket" lines={["A coach trained on the Max Intensity philosophy — ask anything, stall on a lift, rebuild a day, plan your food.", "A plan for the days motivation disappears."]} />
+          <div className="mt-4 space-y-2 opacity-50">
+            {["I stalled on incline press — what now?", "Build me a bulking day of meals", "Why only this much volume?"].map((s) => (
+              <div key={s} className={card + " px-3.5 py-2.5 text-sm text-neutral-400"}>{s}</div>
+            ))}
+          </div>
+        </main>
+      )}
+      {tab === "coach" && hasAI && (
+        <main className="flex h-[calc(100vh-215px)] flex-col">
+          <div className="flex-1 space-y-3 overflow-y-auto px-4 pt-1">
+            {chat.length === 0 && (
+              <div className="mt-8 text-center">
+                <p className="dp text-2xl uppercase text-neutral-100">Your corner, on call</p>
+                <p className="mx-auto mt-2 max-w-xs text-sm text-neutral-500">
+                  Trained on the Max Intensity philosophy. Ask anything, or tell it to change the program.
+                </p>
+                <div className="mx-auto mt-4 flex max-w-xs flex-col gap-2">
+                  {["I stalled on incline press — what now?", "Build me a bulking day of meals", "Why only this much volume?"].map((s) => (
+                    <button key={s} onClick={() => setInput(s)} className={card + " px-3.5 py-2.5 text-left text-sm text-neutral-300"}>{s}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {chat.map((msg, i) => (
+              <div key={i} className={"max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm " + (msg.role === "user" ? "ml-auto bg-[#FF2B2B] text-white" : card + " text-neutral-200")}>
+                {msg.content}
+              </div>
+            ))}
+            {thinking && <div className={card + " mono w-fit px-3.5 py-2.5 text-xs text-neutral-500"}>coach is thinking…</div>}
+            <div ref={chatEnd} />
+          </div>
+          <div className="flex gap-2 p-3">
+            <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Ask your coach…" className="flex-1 rounded-lg border border-neutral-800 bg-[#141414] px-3.5 py-2.5 text-sm placeholder-neutral-600" />
+            <button onClick={send} disabled={thinking} className={cta + " px-4 text-xs disabled:opacity-50"}>Send</button>
+          </div>
+        </main>
+      )}
+
+      {/* ---------- NEXT FIELD BAR ---------- */}
+      {focusField && tab === "program" && !session && (
+        <div className="fixed inset-x-3 bottom-20 z-50 flex gap-2">
+          <button onPointerDown={(e) => { e.preventDefault(); focusNext(); }} className={cta + " flex-1 py-3 text-sm shadow-xl"}>✓ Next</button>
+          <button onPointerDown={(e) => { e.preventDefault(); document.activeElement?.blur(); setFocusField(null); }} className="dp rounded-lg border border-neutral-700 bg-[#141414] px-4 text-xs uppercase text-neutral-300 shadow-xl">Done</button>
+        </div>
+      )}
+
+      {/* ---------- REST TIMER BAR ---------- */}
+      {restLeft !== null && !session && (
+        <div className={"fixed inset-x-3 z-40 rounded-xl border border-[#7f1d1d] bg-[#141414]/95 p-3 shadow-xl " + (focusField && tab === "program" ? "bottom-36" : "bottom-20")}>
+          <div className="flex items-center gap-3">
+            <span className="dp text-[10px] uppercase tracking-widest text-[#FF2B2B]">Rest</span>
+            <span className="mono text-2xl font-semibold text-neutral-100">
+              {Math.floor(Math.max(0, restLeft) / 60)}:{String(Math.max(0, restLeft) % 60).padStart(2, "0")}
+            </span>
+            <div className="mx-1 h-1.5 flex-1 rounded-full bg-neutral-800">
+              <div className="h-1.5 rounded-full bg-[#FF2B2B] transition-all" style={{ width: `${(Math.max(0, restLeft) / restTotal) * 100}%` }} />
+            </div>
+            <button onClick={() => setRestLeft((s) => (s === null ? null : s + 30))} className="mono rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-300">+30</button>
+            <button onClick={() => setRestLeft(null)} className="mono rounded-md border border-neutral-700 px-2 py-1 text-xs text-neutral-400">End</button>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- BOTTOM NAV ---------- */}
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-800 bg-[#050505]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+        <div className="flex">
+          {NAV.map(([id, label, path]) => (
+            <button key={id} onClick={() => setTab(id)} className="relative flex flex-1 flex-col items-center gap-0.5 py-2.5" aria-label={label}>
+              {tab === id && <span className="absolute top-0 h-[2px] w-8 bg-[#FF2B2B]" />}
+              <svg viewBox="0 0 24 24" className={"h-5 w-5 " + (tab === id ? "stroke-[#FF2B2B]" : "stroke-neutral-600")} fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d={path} />
+              </svg>
+              <span className={"dp text-[9px] uppercase tracking-wider " + (tab === id ? "text-[#FF2B2B]" : "text-neutral-600")}>{label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {/* Session keyboard tick bar */}
+      {session && !session.done && !session.resting && sessFocus && (
+        <div className="fixed inset-x-4 bottom-4 z-[70]">
+          <button
+            onPointerDown={(e) => {
+              e.preventDefault();
+              if (sessFocus === "w") document.getElementById("sess-r")?.focus();
+              else { document.activeElement?.blur(); logSetAndContinue(); }
+            }}
+            className={cta + " w-full py-4 text-base shadow-2xl"}
+          >
+            {sessFocus === "w" ? "✓ Next — reps" : "✓ Log set →"}
+          </button>
+        </div>
+      )}
+
+      {renderSession()}
+      {renderSettings()}
+      {renderPaywall()}
+      {renderOnboarding()}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<MaxIntensityApp />);
+} catch (e) { showErr(e.message); }
+</script>
+<script>
+setTimeout(function(){ if (typeof Babel === "undefined") showErr("Babel failed to load - check connection"); }, 8000);
+</script>
+</body>
+</html>
