@@ -1,0 +1,18 @@
+{
+  "name": "maxintensity-tests",
+  "private": true,
+  "description": "Offline browser tests for the Max Intensity web app: serves the repo, swaps the CDN scripts for local copies, mocks the worker.",
+  "scripts": {
+    "syntax": "node syntax.js",
+    "funnel": "node funnel.js",
+    "app": "node app.js",
+    "test": "node syntax.js && node funnel.js && node app.js"
+  },
+  "devDependencies": {
+    "@babel/standalone": "7.23.5",
+    "@tailwindcss/browser": "^4",
+    "playwright": "^1.56.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  }
+}

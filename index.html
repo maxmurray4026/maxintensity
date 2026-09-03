@@ -15,6 +15,8 @@
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="rank-standards.js"></script>
+<script src="mi-projection.js"></script>
+<script src="mi-ai.js"></script>
 <style>html,body{background:#0a0a0a;margin:0}</style>
 </head>
 <body>
@@ -52,9 +54,17 @@ window.fetch = function(url, opts){
   return _fetch(url, opts);
 };
 </script>
+<!-- App modules (JSX, compiled in the browser like the app itself). Order matters: ui → anatomy → the rest. -->
+<script type="text/babel" data-presets="env,react" src="app/ui.jsx"></script>
+<script type="text/babel" data-presets="env,react" src="app/anatomy.jsx"></script>
+<script type="text/babel" data-presets="env,react" src="app/funnel.jsx"></script>
+<script type="text/babel" data-presets="env,react" src="app/recap.jsx"></script>
+<script type="text/babel" data-presets="env,react" src="app/community.jsx"></script>
+<script type="text/babel" data-presets="env,react" src="app/progress.jsx"></script>
 <script type="text/babel" data-presets="env,react">
 try {
 const { useState, useEffect, useRef } = React;
+const MI = window.MI;
 // Max Intensity brand assets (embedded)
 const BICEP = "data:image/jpeg;base64,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";
 const TEXTURE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5Ojf/2wBDAQoKCg0MDRoPDxo3JR8lNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzf/wAARCADgAoADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD02RRs460+MYwcU6RBtIFLGPlwayRYrSAjjtT93AJFNjiAyfWpNvGKYD9gOG70mOad2xTQPmoAJASBimKreY2fukVKQSKAMHJoAbEu2ps57U1elOOcUBYYDg0/OBkVH1PNSqOMUCGMTimqNw5qV1wOKjibPamAx4AegpY0CDFThhnBqM434pAGCDnPFHPanGk6UDGyb/LO0802AOF+frUvJBpqdOaAHA9jUbqc0yebyip9Til8394FoAaiFXPoacxZWGDTzxzTQVbr2oAkzkUmeMUpximuPkoAgdAzfSkBJDAdqeXApwKk0AQLIV/hpRNmTG01OcAdKiDqW6c0CJBKAaV5V25pOGFK0KsuCOtAxI5wRgmn5BOc1Xa1YONjYAp7RSBgc8CgCcSKBjPNIZRnGaqgEPypqRwBhu9AhQzBiS3FOYkrwahKEsDninsCEOKAIzIVqYHclVVDH7wqXJxwDQBIrY608YJyOtVjJkelPjlHrQOw+UEkY61KF+Tkdqj3jr1pyyg8GmIRWCpTo2DDNQvKgOKiEgEhUHFIdi4cbuaedp71WViW57U5pQDyKYrEuVbPtSPGpGCajDKCcd6duGKAFVcDAORTW4YYoBII9DSuOCRQA/OMYodiuDUaE7c058lASKAJU5FMk4ojbIzSt0oAimjV48kZxSIMoCpxUw5WoosglfegBwLhvUUu85xipCQKaxoAZ1NRqdxPsalPPSq8TZmkXsKQE2PlNQMxVh9asdqiON2KBjFmzMyHtUshATNN8oeZvxyaJgdnFAMF5WpF4FQxgnGDUoBbigOg9OTUpqNQF4pxqhBmnKciol5bBqVRigBc80Ag0ZFJ60ABxQe1NIxzRQAppp6UZ9aYX+YjFADm6U6D/Wr9abnilhP75frS6iKOQQRmlQ4qONGI/CpI1yvzdalFDomJcg1I521CzCNge1BcMc9qALC8ilJx060yMg9KcSB96mA8GmvQTx160EUAPX7tHakFPxgUAVo33OR1Iqdd2054NRRRFJmbsanOT0piDkpyaihUgmpH46GowxzyKAHtGGYE0EfNUi9KCATmgCI5LYp5XinEe1HagBBimDvikUneaUHrQAxo0mXDDoahkUrIuBxVscA8UxsMc96BoXPHSmP8oyF4qUcgGnYBGKBFYNkjIxUjglSMU/aO4pAz+cVK/LjrQFzPbdHJggkGpy2MEKamnQbSajSQ4AIpDuJ5md3ymqsEwLv8p4NXGkA4xVOzLGZ9oGM80CJ0nDMAEP5VYVweoNOCKDmnbelMQwyDvmnKykU7aO+KQqAeKAABT0prBTwafjFNxzmgCMxqeOlI64GAamYZFRkYFIZX2Ordc1Iu88EChhyMmn9KBkJ4bBWkRBnbt+U96eeTkU+IjcQaAGSeWi+1KkakZBonKqh4yM0qAbRjv2piIJ12sB61EsL+duHIq8yDAJqNeDlelIYzy3V93JpDvYcCrCsWFJJnjaKYiBkfHFKEY/xEGpMHBzwaYvmFeDyDSGOAkB65FKxcDkcUwSSbsMtTFsgUCIkfjGCDUqtgYNNYqrAnvUmM80xkImAYq3FT7lK9arXCEOrdu9TAcc9MUCGrMoO3PFOBBIZTwarfZwrHnvmpY1wwIPA7UAWSM01sBaXJIpkozG2aAAMPWoFwLh8d6VIgQpOaRoszkj86QExOCKawAy2OacBgetIaBiBsqO1ObG00wDNPPSgCOPNToMDJHNNiTOTUtNCG45pe3SkI+bNOFMBjZPK09SdvNKRxSLQAA5NB60GkYdKAHEcUgFJyBQSRQApFRMMOCelSZqOTnFAC7vUU6Ejz046mmt0p0P8ArU+tICirYNPVwc1EQM09V44qRhIgfrSrGMAUrDpSLkZ5oQEi8cU2XOPalB+bmnSZK4AzTAemCBUhAxUUQOwZ61L/AA0wEXGaVmwetNGc1IUDDnqKBCL83OaDwacqgcUmMdaAIz1pwANNkGBxTlOFpADkqvy0BuBmkYnFMIJAIpgTM3yk1Gsgdcil52YqEKI0YgUh2JFPzUEnJqCFy7g4OKfcCTb+660ATI+TikYfPTYkYYZuuOaex5oBMQMNxUHmnJmkwOuOTQh5xTEPY45oPUUMexpoPagAkJqBh3qc8ionzg4FIditNu3KV+7iksF/1je9TMD5Z7HFRacSY3J67qBFzkn2qUHiogCcYOKkXmmA0Y3nn8KdSEfNSj60ALSMKXvQ3SgBpPFQKxZ2Ujp3qVSelAXHNAETDBFKfYUjvhgKdux0pDIzhWB9abyLg+44FPdhjLUuAZA3egCOVWkhIPBp0St5YyeRUjjqSaWAZTmgBm5setMjbBII61Z2CmOoAzTFcYrAZxRC7NnNOdRsyBUUSkZ2nrQBMx9ahI2t14NSYbnd0qOR0XHmHFIaJFGcYqUqDVbfg8dKk8wcHtQATxbk46ikiB8sc81IJFbgGmAFTgEUxBIpaPnmmxSgnae1Tk8cVBsAkyKAFkAyR6ikj5T3p+BnJpsY2k+lAEq0vB61F5hBIxxTt4BweppDsDDHSoWJEw9Klbr1qOVvmUZ5oAezBRQp3GkIz1pyjmgAPBpxGRTWU7+OlTAYWmhCIMDAp1NHHWlNMBM84pw4qM8HNOByKAHnpUaDBPNOPFIDzQA4DrSc0o60gHJoAKOtOxScZoAbTG6dKlNNccUARsRxUkH+tX61GRkCpYR+8X60uoGafSpUPy1GyZ6VJGp2jNSMfwcetJjmpFAJPtTaYBtGQalHFM7U7NADgMLQHBHHNCnIqNU2FiO9AEg+9mpBUSnmpVOaYmJzmlPSjFNGS2COKAGkHOSePSnDGKZIreYCD8vpTugoAVxxTIx8nSpO1QQtksD2NAXJwPlqvLJGEOeasr0qtcWyuS2cUguJbkEDAxU5TLD0qGIoAoU5FWsHHFAxMYqORT1FSYOMHmkPTmmIagyKQpg5zxTgQKC2R0oARhmmSMRyBmnDk04ikMYrbh0p23io95TIxxUiPuFAiCcYjNQacuIG9zVm7OIW+lV7DP2dc+tA0WhwMcmnjHakp+BimJjCcHmgKC3eiRcjinR9KABl96RhlcZNPY4GTTSw25oAYseRjcacem2mxuGFI3BoAQxD1pvlndweKVmOc9qUSUhleQOjc8ipQSw461G86MxXnIoDgKT3FAEpYMCpB4p8LDBAGMVWMuSCKfDIfNIPQigGWWPI9KRhlSBSPgjpSRsGpiHIPlwaEAGRUTsVmAH3akUgvQA4ZzgioLm0ExXJxtOaJpJhIAB8uamfkrzQBDsGcEdKCny8dPSpJMnpQuaQyFF2v8uMdxSyIc7lPNKyFWOOpp8SMV+c80xDE3hKaCS+DVjaAc010GQaABSDQR3oTaScGlbkYoAaoyckYpjYaTkdKcjhhgdRSIGywb8KQxGwpqCcLuU55HSp2O1SW7VTncP5bD1oAlTPmje3UdKtqc9Kj2DcGxUqIM5oAVlIwR1p/albpSdqoQlAoFIxxQANjFA4xTWxjNNRiVPtQBKeaTIFMjY8innFADwRRkdqaMEcUoUYoAUnimPkEHPelKjGKRh0zQA+kbkUU0g7s54oAYp4I96mh/1i/Wou54qSD/Wr9aXUDOzx1qSNgV69KhcMqnGKbEpTL461BRcj+8aRjg1DDID1JFP8xQ2GYUxEycinEVHuAPWnbsjimA5SAcUp71Gq5OT1p5oAQsF61KhqNkyop6jFAArZY1J2qtGGWVi33T0qw3IpiIZGIdfQ05zxxQ6Ake1IT6UhjgeOaQIFJPrQDkUp6UxD1IxTD8xIpsTBs4OakNAEEcHlKBnvmrINMfO3ilHSgBc80yUkLmpOoqJz2NADYnDpmnjpUaAbTinIKQx2MHNOPSkajIIxTERycqahtXbkNUkrHIA9aYw2PlehpDG38oWBgeKLNR5CAmqmpM3lEvgjPFSW6l4YyrEYoEaB6UKwwBnmmZJFQyNtkHHNAyw8ipyTSxuCuR3qBsMuWWlWTbHkDpQJlknIwaY3HbihW3KDSE8YxTBAnI4p+KjjJxzUoFADCM8GmMmBTzy1KeaAIBEvOAM96RosqcVKByfSndqQyrFFgbT1p6Rsrc9KkA+bOaaPMLn0oBkuc8YpqxhHyW60oVgc9u9MmDll2fjTEOl7EUij94KHRuKhUTbyN3HagC0w5pG45pg3AAP17mlK5GQaAEHzGmBiH20iOUbBGaUMpf3pDJHbHOKUPmmyLvTaDj3pMFVUdcd6AZJuHQ0xjuHy0hTccg0oBAIpiKVmxLyrnnNWrcMqEMc1WtGxNICveroK4460hkcS7XY+tPOQc0KevFBYGgCORSysPUVVkiMUAHUg1bGS3tSvFvHPSgTCHLIpbip8HOB0qNcZA9KlXjmmgAg4pKdkU0j0pgGKGoFFIBoFAA5p1HFMBi9TxTuoNB9qQdKQBEMDFSHimIME808ihAJ2oYcUHgilJpgIBxR2psbZHNKx2rmgBhOGPNSQf61frULcsDUsGfNXPrS6iKMg4pSAI6VxkYpowFwTUFiBN2D6UNbK0gf0qTgYPapOo4p2EJ5a4BpQmDxQ7BFyaepyAaYXG4Oc0oBp2aAcUAAJ704GkHNKRxQAyU8cNin5yo5qCccHmlQkwAjrimIn6iomG4Mvt1p0edgz1pDkUgQkClFCk5p5JweKQZpW5FAypYAiaUH1q93qvEMMSKSaRt6qvU96BWLEhwKYjGmyljx6io0DB1GeKBk7zKrAE4JpsmSajkj8x1z2OanJFArEUZOMGnH5MEnvSEHPFKw3DB7UDJGpvTmlPSmnpzTERzdqbJggVIxGBmopSQRjpSGMngWaPa1Pt1EcOBxjtTzyMg1RmmaO4QHoTQI0B1BzVa6H71G561P6EVXvGAVS3rQMsDlKj3ZG2ljYMuM0InU0CJFyqgUrZwaVTxSgZoGNjHykMam6LUHlHzCSeD2qccLzTEMAwSSaXjIo4ccc0uBxQA0nB4pobNPI5oIANADAOaceCKXGDinYFAB2oxxSgYoNAELEkUxSVcZ5zU5wDz3pjjJ4FADjgjmggbaVenNIBycdKAIUG4kjtSbTnLDmplwMjFBOaQyMMNuacDkc0yQgY4zQyZXg0ASpQwHeo0Dg5zxTjk9qYitCQtzIo9M1awMZqlH/AMf0gPdauBT68Uhht44NNCYBBpcYzShSSPSgBiLlqlI4xTuAOKQgYzTENQ84qQDmo14+anhqaAcaRunFLkGkPNACdqBS0i0gEzzSPwQaDjNMctu9qAHg5OaCwFNAxzTHzt4oAmHrTs1Eh4GaeGoQD+KKbS5pgIi4J5oYZGKUUHpQBE/GKfAcyr9aZIMkVJAP3qEetLqBmNIThh0NSMRgVDGGZCp7UsUuT5cg5FQiizjKjmnRnjHpSLjHFOf5QCB1qhDzgjkU0HjFOU/LTQcNQIMmnKeeaTIBo4z1oGAcByM0/eMZzUBRWk3UjoGG0MaBIlO1s55pyABcDpUIhGAoY8U9VIGAaBkoxil4NRqpx83WlU46mgCQrikYcUySQggAE5p7KccGmIhj4Y5p7Y3DioeRJxT2zwSKlDJHAOKiUNvOB8vrTncjAxxSq2TTAcBg8mlYHPFIwyQaRyyj1oAaNyk7jSiQZxUQ3SNyCAKlEYHOOaAGTTARkrk4qul07ws/lkY9auYHQgUigHK4GKAKyyM8atT5iSFp/lgNwOBUb88DigCRemO1VL+Lc0TejVYR/wB5sp0i7sZGaBMcfuiobpN8fPOKsAjHNNmwFJ7UAV94wAo5HWhJsvgU5CrLx3qtIPLmRjnlqARfBY9aljbim5FOXgUDY1nUTAHOSKkBByDTHHzCnAcc0xCKR0UUZPNIODxTs5oATdwOKGNI1OP3aAG7u1KMg00Cl70gsSK2aXNRqPmp2fmpgR3Adh8lNjDDljU55qInBxQA5uBxSqSBSdcUobmgAzio89ae3Sm8UhoikYAZpyNkUhRSDT0TC+1ABu4zTixxkCmgZ6U/HHNAGfvxqAXHUVoCqMpVb+P5Tn1q8gzzQA0KST6VKBxS44OKYGwcU7CAjApp4HPenk0x+RQwFAwMGnA5qEEvGRnmpI12rimgH7eKTBHelNBHFACMcCmK3anEcUwdaTAd35psmdpx1o5I60vagBgJAGaa7ZXFPam4HegBy8pSqMU08YxThmgCQEUoIpmaVTTAdkUZph59uadQAwnHWn25zIv1ppXGTToR+9Sl1AqrGq5IHWs+VHS+DfwmtJXBGKjngSUjJwRUFDlx1FS7Qy1VjHlNtL5B6VZBOOOaaYhB6U4daQ8c07jrTAaVBNIRxSmlI6elADdpwKRkwMjrUh6UzmgENwQeKlSoHQ7wQTUiE4waAFDkEg/hSJuZunFM8vknJIqcMMcUAOxxSZOOetKGFIjhs0AQkkSDipcio5XUSgGpMgjigQkg+XNRRSBicHpUkjDbgnrVW0XbvyO9Ay4WGM04cjNNABHSnrTEyNM7yCOKmxxTTwwp2cCgBjjmkUDNKxyM0iGkAjcA8VERyCRUzHA4qvITnigBCPmzing5qN3IQU2NzuPFK4FoAUjqGUg1Gr8gGlV8k8dKYxkMYA5HIphjLTfN0HSrS4xUUj4fHegByLlqkHAxTFPOaA2SaAEeTayj1NSFqr3L7ApHrUxwQM0ACnJqTpUagA8U4nii4iOVyrL71LxsqFxkjIpfmzz0oGOiYc4OcUu4ZqCPClqf5q5GDQBMDzSO4B5pUOecUrAHqKYhFOR7UyTA+an8AU3IIIoAFbK8U4DjmoY3G4gdqn4xSGRFuaMjdjvStgtijAzmgBPapUxiomIPSnKcLQA7AGcUA+tMRsg1IBnk0xDPKDOGI6VN2pobninHpTsAUwj5qk6UxqAEYUxulSHkVGeQRSAjj4BxUyngVEgBBXvUqD5aAH9qQnil7UmMimAZ4puKecYpDSYEZpAGzkmnUE0AIajbrUhNRt0oAVTmpAeKg34NSIwYUAx2cUq9aTHIpR1oACMClDUhIJIpBQA9jgGi2OZF+tNI5xTrcYkX60AVEPPtUh5NQdGFOjPzHBqBiSwK+3qCOlSRgqMZpx559KYx2uD2NMCVidtNRieDTxjHWmjg0wGvmgPxSsc0BRtoAXfke9ITxTF9+tI7bVPNJgSdxSAgNTUIZBzQ4JU5oQEoIOcUKNp5PWoYFIyc06Uts45NMCdcA1Db7Q7gdc02IktyeRRCrCZyehoAdcRmQjBx71MibRUF27Rx7lGTRBMzgblIJoAlkXLAY6ULwTxSSORg00SYIyOTQBP2pokAYKepp4YYqGMZYk/hTESOeQaPMByBSSoWjIBwabGuEA6n1pAOJzSL1pQCKTBzmgBX6VCwzzUrAkcUw9MUDGOAVxUaAbqeahPDjFICwBzmmTxs4wjbTUm4cUjMARTASInoTnFR3Aw6tnFSbxuwBUF3KwUBVzmkwLBwEBzTlHHNQRkyRAY6VLGQBhjzTAbKo2dehqQHKCmsuV9qeg4oAapNKzlVzTsY7U2RQyEUANLZAJOPalEnBBNNYAbRipPLXB9aAKVtn7RL6GrDxrwTUaRlXbnrUkq7o8dKAJVOAMGpeSKgVVwvrVj+GgQh96QYPSlpEwc47UwGlRnNKTkcUjDIIqOIPvIY8dqAHk8U3n14pTg5Hemg4wDSGKnPFSiocEHip0GB70CBFAJp3akB+Y0tUAKKXPFIDSA80AKRk01s4p2aSgBo61GcgkCpc800/eNICJARIeODUqH5ajJyDjqKW3bcpz60ASLwDzTAzE4HSpAOKYfl5oAk6iigHijNADcc0jCkbrS80AMHA5ppqRulJtGKAInA4xSjjmnOucUoHy0AG7OMU7OCKQKB0p+2gBdoBzSCg80AUAIw5FOtwVmHuaQg5p0OfOX60CM0NhOeSKdDKrNjgGlk8vByQKoygQskiNkZ9azLNfZ8tNeISJjpTbe4WRetSKQmec1VwBFwmO4pNuTzQZFDZzxTiwPORTEJtxmm89qWRgByaAQRmkBBKrbsg4qFyzRsMc1bdQTSBR0pAV7UOUA9KlYnODUsahcgU7A707ARDEalj0pyHeAV6Uu4MSOopysAOBTAoiKVbxiCcGpishc4fFWqRUGc0rAV33qvzc1NA+5AcYp0wzGcdaitc4IYUwHSnA5ojBwS3PpTph8vSli5TmgB0Th+1OAG7pTBhHwO9OVsuQRx600IS4yYyq9TUVqrpFiTrU5IP4U1M5OelIYm8ZxSO4FOYDPTmkZQRzQAm7IGKTHJzSjHTFVbhpRKvl/d70APlGOM9aqEMswBPBpZzNkHHeoZvO81GVeO9SwL207QKQjA5IpqGRl6VVZ5SzKVOBQwNFQOMEdKaw+lZ0U1xuPy8dqivbq5iRcDJJ5xQBpcq20HANNMTG4Dg/LjmqyTyNHuZCMDNTwTvJCHK/hRcC2ZAo5pyuGAK1ReRzIMIcGpYXkDBSmB607gXs/LzUchwaa7njApSN2MjpTAr3BYgEHFTW5coN1JcFAo3HFLAw2ZHSgBJyQucgUwqSuS/FOcCQEVCshCsCDgGgC0ijZ1qaPBQYNQKGKnjtT4AQvIxTETDFGAAcUxuBml7UAItI4wwIo6GlHJpDI5Bg5FJEmVGefepigPWnLjHHSmkIaFA4o5zgU3fyQB0p6noadgGBv3uCKeWAOKa3EoOKccE80AA5JpuMHNOyMnFNJyaQCjmg5waQtg4pcjFADe1MJIOcU9jxxTO4yeaAG4Oc4xSwjBOTTi2TimhRkH0oAlz2piEZIpwGeRTIwd5yKAJfpQelA9KD70AMb2pR0pvUUvTigAbFNzQ44601lJxQA84IoB4xTdpKnFPUDHNABGcjmlJ5qPeFbFLnmgCUUc5pqmnZxigBR05oj/ANcn1o60keROn1oAy5rVXU5J/OoHtozBtyfzq35qkdRTQyMCKzLsVtPgMYKEkjPWrxXB71XYt/yz6irQBKgnrQhELwBupOKkiCr8uTxUmRjmo9ozuHWmAXQ/ckjtSQSfugTT2wy4psSbUKmgQ9iT0poY5xT0AA61E7bHAPegBEeTc2enapUf5MmkXAzTS+1CcU0BJGp3k9jSq48wr3FMjkJAqNpMEseAO9FwLp5pvNRrIPl561NTAbJnbxTIsgZqRulRp90g80AOkYEUkTDbxTQh2dabGhGaALXWkyAcVGWAANQzt828HoKBItYAOfWk3YPFMV8xg0wsxYYoGTmg1FNJsAPvSuwO00AAVlcnPFNm7YGaUSZcrSSvtAoACox0qBhzVjeCBioJDk0mA9RtWoplIJIoil3s656U6QHbgUgI7fDR56nNOliDjtxUdpuSNgR3qdWyOlACeXlMD0qG1DIzR+hqyAeMVDM3lXAf160ICwUGRTyFGBSZBXdmnKARmqAQgH8KVmXNLt4zVeWPMgIJ6UALKA4Hy55qSEAIcUidMGnIMMaBCsnGRUBTirRwaYcAUASJgKKUYzxTRgrzSKcCmFh0gB4pV5HNMbtTxQBGp3MQO1SquDQoA5FLTSAU02kkbGOKQHA6UAIPvHin5AxTaXtQAjsAwoOCcGkcDIzSnqKQCHGcUgHrQRlqd0HNADX7UgbJI9KcxHFJgbqAEpjfeFOY01geKABxkjFCfeIzQTzjFOTHpQA6PjIp3Qk00cGlB5oAd2pDzS9qMYoAYetJjmnEUlADXGaauehp7DIpmQTQCFDYpwbIqMdaeB0xQDEKjPNOA5pCMmlXgUALTWyGBpy0jgnpQA/vTkx5qfWmgcClT/XR/WmgOcVPLcDJNTM2zLAZNRj7xLHAFNmDGI4PFYGhZtpfm+YYzVtWYNjsaogHyFIPOOtT2hfy/nOTTQmWW3YNNUN/FTTIARTwD1piKsUpM7RkHjoaug8c1Vmba6sBU6PuXNO4DsgZNRSONwNPBznIpkgVuMUCHZDggGhfu4qKMBZMZ61MEA6UgGltpHFK+CMEZFDKD1NMkLKvyjPpQMmAHyj0qXdzVWMvgFhipS2BnrVCJZGAUnPSq1tdLIXHcUskuYy23GKp2jjEjBcH0ouBpq5aPI5pV4GD1NV7Qs0WTwc1O5wQe9MQjEBTzTWZdo4qJxgMzHOamG0qtAx4+4MdKimdl247mpzwtV7mQKqn3oAmnj82PBpsiZVR6VIGyoIpkh4BPrQIUrgZ71UvWYRcHoeau5yBUcsaspGOtAyvFLuUZGOKUNwcigxhFAHQU1e9SBHGjJIzKOtTksaCOBjrTC4Vjk0MB4UhTk1GJH87YRgUSOdgI7GjejH/AGsUgHvvZCEYA9jTZ4Wa2G45YDrUSPvj/d+tWXcgIuOvWmgC0G63GTkjirCrgdarw/I7L61YAxxmmgJQPlxTCOeKVZFPAPNIwOcimAw8E8UqnFKxwMmkLDtQIVSGDVGYz5ZG7n1p2RUaA4bnNA7ksedgBPTvTunSlVf3YpUBwaYhwUYFOHNNNKOtABjHFIc0pPNIaYCnoKQnBpc4AzSSDjigAPal6U3OQKM0XAVhkZpaSlJFIAAwaQjPWml+RzSk460wGum4DnGKTad3Xilc9KOOuaQDQMGkdiAMUBvmobB60ANJ+YA96BvByOlBHf0oU5IOaAHKzA8ipByeaYHDfLTzgYzQA8dKKBQaYDTkU0nHNPPSmYyKQCE8Uz3qTHGKaRg80AMPJqQdqYRzkVIooBh60AUo5BooAAPmp1JSmhAL2pYsGRSPWkHSiEYkUe9UBzkyuqjjIJ5pZfliAFS3uVg+Ud6GTMCk1gaDlj/crTreUE7MYIqTaVhBx0FQx8yZ6Z6UMVyeQcUqyHbj0qCSZ45QjKcHvS+ZlSRRcBtzJuiIHBFOtJQVFRKhYEnoaS2B3MnTBoAvggGk2/P1pqrgcnmonmKkDHemIn8sCXNLhjmqzzESqT0qSK6DMQRigB8gKcsMimmfjjoKnkCyR4z1qt9nwjJu60WAkMybAWOAakQZyc5B6VB9mQxhZDnHSp1KJHtB4FMBzbdmKjSNRnaAM0ZXZknioVy8o2nigRcjjwoFPeMEg+lNQk5HpT1NUBE3XbjimtncAKS4dkb5RnNRAylkO360rgXTyKqXqfusn1q3nAFMmQSLtPQ0wCEgxr9KcQGFJFHsGOwpDyDg0APFI/SkQ9qVxkUCIZMYqKMgrx60ksyxq27tVRZged2BnipGXnzjAqqIvmJZuSam3FiBjigIpbkHihgMeRUQqTzSROmM45IqSSIP82MYqJSXOFUYpDGW8y7SEGBmrb7jtqq0BRCV65zVlyRErHrQhCTsUZXHTvVmFgV3+tRMBJH7Yp8GNgAOcVSAkEY3Fh1p2SAM03cFOM8+lCneM88GmAM6tkGkHI45FPaAOPTNPhiWJAoOcUWEVpIJJCpBwAeamCbUNT4pJACpp2AYhGADTz04poRcBqkGKYDcUhFPoIoAYetQziQsuzpnmrB60vWgCPacg/nT26UAig9DQBEMg+1AXB3ZpcAClBytIBGbAzS4yuaTAOc05cbcCgCtIcMB71KV3U2ZR1qQHigBko+UVGZMPtwanPSon65x1oATPPSg0c+lKw4zQDF7U0dRgUU5euaAGfMGyBxTyWODjilBJPtUigYoABnApd3FLjimleKAF7UUgzilz60AMPWkIyKD96lbpQIjNPU8UxjgcUnQUFEydKb3pFbAxSLIM4zzQIlHNKaYGGTS7sjigBwNOi/1q/WmLUkQ/er9aaAxHYbfm6VG8ysgA6Zq55SlSCKoNCA+09M1iUaKcxD6VEFUMCRyOlSRx4jABpk0TGJth+aqAkKK/B5pphUDAHFR2zPt+cfNU0h4zyKQEKrt4Xp3qFsR3IPZqs/L19ajuYg6gg8g0WAmGN1QKqvK2R06VKpGAc0g4ckDrQBWcbpQOgzUxtgGzmmybt4O3vUpcltpFAEgiBTOT0plqSSwYdKljOIzUcQJz2piJ2QMpFNWBdv4UFtvenRyAnk0wIpIiEwMVTgjkEjHP0FXZXzn5uBUFurNKcHil1GWkjbYOee9MKlcncfpU/TGeKiJHmOPaqEQThy6lSRT7WRnLBhjFJOwMXXHNSwxkICDSAsdRTV5oFNTAc80wJDwMUwDA4FP6nFIAeRQA1TzTiTjFNwQ2aew4oArvEmSSM5qqYEboverUu/B54qKLp1qWAIMHB6Uo4NNwRJyeDUrKSvFAEM5OwqD161XhHkxkK2STSzeYSw7CoLIO0rA9BSAtlyQQfypzufIBRcn0qKSJvML9sVLb5+zAgc0wJowfL5GMjpTII9hK5PNWokJUZpGXYwOKpIBpi+ZSR0qyFAFNU5NP9qdhC0nSkzg04c0wFFRygBCafmmTECM5oAFwYhSrwKSLBjFOIyKAELgnApwYZx3qLbhwaUj96DQBIetKelNPNBOKAEXdzupTQvIpSOKAIl5zmoySrHnipVHJpjJkGkAxpccDvT4mYpzSIoyBjpUmPTpQA1hlTSA4oLHkY4puNycUAOkOUOKjYnYuD0oZW24BoT7pHXFADo2JHNOYZFNB7DrSPkLQDExhs0ucd6TPTihOuDQA+Nj3HNS5OOKZ9Kcp4oAAzEjHTvUg6UxeKcKYCE01qcaSkBE1L1FKwoA4oAjxijFKwopjFVfmzSiMK+e9KGANPI5pEiFRQFx0oY7ce9OFAxMe9SRD94tNB5p8X+sX600B//Z";
@@ -378,39 +388,21 @@ PERFORMANCE: sleep is the recovery drug (cold room, wind-down, salt+sweet+water 
 MINDSET: guilt is the enemy, not a bad day — one day on track after seven bad ones is improvement. Motto: streamlining health — everything simple, everything in one place; progress made easy.
 KEY PRINCIPLE: one solid ~1,000 kcal meal a day, five days a week, does most of the nutrition heavy lifting. Small steps beat nothing; progress is built one completed session at a time. Brand voice: serious training, zero intimidation — demanding but warm, direct, real. Never shame a missed day.`;
 
-async function askCoach(history, program, week) {
+// Every AI call goes through MI_AI.call: same relay, same worker, plus the daily
+// usage cap (member / trial / free) counted client-side and sent as headers.
+async function askCoach(history, program, week, ctx, tier) {
   const system = `${COACH_KNOWLEDGE}
 Current week: ${week + 1} of 6 (${WEEK_PLAN[week].tag} — ${WEEK_PLAN[week].cue})
+${window.MI_AI ? "ABOUT THIS MEMBER (from their induction — reference it, they told you this): " + window.MI_AI.context(ctx || {}) : ""}
 Current program JSON: ${JSON.stringify(program)}
 Respond ONLY with raw JSON, no markdown fences: {"reply": "short coaching answer", "program": null}
 If asked to change the program, return the FULL updated program object (same schema) in "program" and summarise the change in "reply". THE USER'S REQUEST ALWAYS WINS — never refuse a customisation or claim they already train a muscle enough; give your honest advice in one line, then do exactly what they asked.`;
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 700, system, messages: history }),
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message || "API error");
-  const text = (data.content || []).map((b) => (b.type === "text" ? b.text : "")).join("");
-  return safeJSON(text);
+  return window.MI_AI.call({ model: "claude-sonnet-4-6", max_tokens: 700, system, messages: history }, tier, { feature: "coach" });
 }
 
-// ---------- AI: edit today's session (time / focus) ----------
-async function aiEditSession(request, dayObj, week) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 900,
-      system: `THE USER'S REQUEST ALWAYS WINS — never refuse, never say they already train something enough; repeating exercises across days is allowed when asked. You adjust ONE training session for the Max Intensity method (10/6/6/6, tempo 3-1-3-1, ~1 RIR work set, back-off −10%). Keep the philosophy: intensity over volume, priority muscles first, cut volume not intensity when short on time. Current session (week ${week + 1}): ${JSON.stringify(dayObj)}. Respond ONLY with raw JSON, no fences: {"reply":"one short line on what you changed","exercises":[{"name":"","scheme":[10,6,6,6],"note":"","tempo":"3-1-3-1","rest":"2–3 min"}]}. Keep the same schema for every exercise.`,
-      messages: [{ role: "user", content: request }],
-    }),
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message || "API error");
-  const text = (data.content || []).map((b) => (b.type === "text" ? b.text : "")).join("");
-  return safeJSON(text);
+// ---------- AI: edit today's session (time / focus / add / swap) ----------
+async function aiEditSession(request, dayObj, week, ctx, tier) {
+  return window.MI_AI.editSession({ request, day: dayObj, week, tier, ...(ctx || {}) });
 }
 
 // ---------- Units ----------
@@ -492,58 +484,89 @@ function applySplit(prog, split) {
   return pr;
 }
 
-// ---------- AI: macro estimate ----------
-async function estimateFood(description) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 300,
-      system: 'You estimate nutrition from a plain-text food description. Respond ONLY with raw JSON, no markdown fences: {"name":"short label","kcal":0,"protein":0,"carbs":0,"fat":0}. Whole-number estimates for the full portion described.',
-      messages: [{ role: "user", content: description }],
-    }),
+// ---------- Muscle priorities: several body parts, in the order chosen ----------
+// The first priority drives the split (unchanged applySplit above); every
+// further priority is moved to the front of the sessions it belongs to, after
+// the ones before it. Abs is special: a full 10-minute block goes FIRST on the
+// two leg days, so the core gets the session's best energy without pushing the
+// upper-body work sets down the order.
+const ABS_BLOCK = [
+  { name: "Cable Crunch", scheme: [10, 6, 6, 6], note: "abs block · kneeling at the stand, round the spine", tempo: "3-1-3-1", rest: "60 s" },
+  { name: "Hanging Knee Raise", scheme: [10, 6, 6, 6], note: "abs block · knees to chest, no swing", tempo: "3-1-3-1", rest: "60 s" },
+  { name: "Weighted Plank", scheme: [45, 45, 45, 45], note: "abs block · seconds, plate on the back — 10 min total", tempo: "hold", rest: "60 s" },
+];
+const PRIORITY_KEYS = {
+  chest: ["incline dumbbell press", "bench", "clavicular", "flye", "fly", "chest press", "dips"],
+  back: ["row", "pulldown", "pull-up", "chin"],
+  shoulders: ["lateral", "press behind", "shoulder press", "overhead"],
+  arms: ["curl", "tricep", "crossover", "dips"],
+  legs: ["leg press", "extension", "leg curl", "squat", "calf"],
+  glutes: ["hip thrust", "glute", "rdl", "abductor"],
+  abs: ["crunch", "knee raise", "plank"],
+};
+const splitFor = (priorities) => {
+  const f = (priorities || [])[0];
+  return f === "legs" || f === "glutes" ? "legglute" : f === "shoulders" ? "shoulder" : f === "chest" ? "chest" : f === "arms" ? "arm" : "balanced";
+};
+function applyPriorities(prog, priorities) {
+  const pri = (priorities || []).filter((k) => PRIORITY_KEYS[k]);
+  let pr = applySplit(prog, splitFor(pri));
+  // hits are ordered by the keyword list, so the muscle's main lift leads
+  const moveFirst = (exs, keys) => {
+    const hit = [], rest = [];
+    exs.forEach((e) => { const n = (e.name || "").toLowerCase(); const ki = keys.findIndex((k) => n.includes(k)); (ki === -1 ? rest : hit).push(ki === -1 ? e : { e, ki }); });
+    hit.sort((a, b) => a.ki - b.ki);
+    return [...hit.map((h) => h.e), ...rest];
+  };
+  // strip any previous abs block so re-applying is idempotent
+  pr.days.forEach((d) => { d.exercises = d.exercises.filter((e) => !/abs block/.test(e.note || "")); });
+  // later priorities go first, so the first priority ends up in front
+  [...pri].reverse().forEach((k) => {
+    if (k === "abs") return;
+    pr.days.forEach((d) => {
+      const lower = /leg|glute/i.test(d.name || "");
+      const belongs = (k === "legs" || k === "glutes") ? lower : !lower;
+      if (belongs) d.exercises = moveFirst(d.exercises, PRIORITY_KEYS[k]);
+    });
   });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message || "API error");
-  const text = (data.content || []).map((b) => (b.type === "text" ? b.text : "")).join("");
-  return safeJSON(text);
+  if (pri.includes("abs")) {
+    pr.days.filter((d) => /^legs/i.test(d.name || "")).forEach((d) => {
+      d.exercises = d.exercises.filter((e) => !/cable crunch/i.test(e.name || ""));
+      d.exercises = [...ABS_BLOCK.map((e) => ({ ...e, scheme: [...e.scheme] })), ...d.exercises];
+    });
+  }
+  pr.priorities = pri;
+  return pr;
+}
+
+// ---------- AI: macro estimate ----------
+async function estimateFood(description, tier) {
+  return window.MI_AI.call({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 300,
+    system: 'You estimate nutrition from a plain-text food description. Respond ONLY with raw JSON, no markdown fences: {"name":"short label","kcal":0,"protein":0,"carbs":0,"fat":0}. Whole-number estimates for the full portion described.',
+    messages: [{ role: "user", content: description }],
+  }, tier, { feature: "food" });
 }
 
 // ---------- AI: swap machine ----------
-async function askSwaps(habit, goalLabel) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 700,
-      system: `You are the Max Intensity swap machine. Philosophy: no banned foods, only smarter swaps — 90% of eating well is what you don't eat; homemade over shop-bought; keep it enjoyable so it's doable forever. User goal: ${goalLabel}. Given a food habit, suggest 2-4 practical swaps. UK context (e.g. blue milk = full fat, green = semi-skimmed, red = skimmed). Examples: lots of fizzy drinks -> diet/zero versions or not-from-concentrate juice cut with sparkling water; loads of heavy cream and full-fat milk on a cut -> green or red top milk; crisps -> beef jerky or popcorn. Respond ONLY with raw JSON, no markdown fences: {"swaps":[{"from":"the habit food","to":"the swap","why":"one short line"}]}`,
-      messages: [{ role: "user", content: habit }],
-    }),
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message || "API error");
-  const text = (data.content || []).map((b) => (b.type === "text" ? b.text : "")).join("");
-  return safeJSON(text);
+async function askSwaps(habit, goalLabel, tier) {
+  return window.MI_AI.call({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 700,
+    system: `You are the Max Intensity swap machine. Philosophy: no banned foods, only smarter swaps — 90% of eating well is what you don't eat; homemade over shop-bought; keep it enjoyable so it's doable forever. User goal: ${goalLabel}. Given a food habit, suggest 2-4 practical swaps. UK context (e.g. blue milk = full fat, green = semi-skimmed, red = skimmed). Examples: lots of fizzy drinks -> diet/zero versions or not-from-concentrate juice cut with sparkling water; loads of heavy cream and full-fat milk on a cut -> green or red top milk; crisps -> beef jerky or popcorn. Respond ONLY with raw JSON, no markdown fences: {"swaps":[{"from":"the habit food","to":"the swap","why":"one short line"}]}`,
+    messages: [{ role: "user", content: habit }],
+  }, tier, { feature: "swaps" });
 }
 
 // ---------- AI: meal builder from liked foods ----------
-async function buildMealAI(likedFoods, remaining, goalLabel) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 500,
-      system: `You build one specific, easy meal for the Max Intensity plan (goal: ${goalLabel}) using mostly foods the user likes: ${likedFoods.join(", ") || "anything"}. Roughly fit what's left of today's targets: ${JSON.stringify(remaining)} (kcal/protein/carbs/fat). Whole foods, homemade, simple. Respond ONLY with raw JSON, no markdown fences: {"name":"meal name","how":"one-line how to make it","kcal":0,"protein":0,"carbs":0,"fat":0}`,
-      messages: [{ role: "user", content: "Build me a meal." }],
-    }),
-  });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message || "API error");
-  const text = (data.content || []).map((b) => (b.type === "text" ? b.text : "")).join("");
-  return safeJSON(text);
+async function buildMealAI(likedFoods, remaining, goalLabel, tier) {
+  return window.MI_AI.call({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 500,
+    system: `You build one specific, easy meal for the Max Intensity plan (goal: ${goalLabel}) using mostly foods the user likes: ${likedFoods.join(", ") || "anything"}. Roughly fit what's left of today's targets: ${JSON.stringify(remaining)} (kcal/protein/carbs/fat). Whole foods, homemade, simple. Respond ONLY with raw JSON, no markdown fences: {"name":"meal name","how":"one-line how to make it","kcal":0,"protein":0,"carbs":0,"fat":0}`,
+    messages: [{ role: "user", content: "Build me a meal." }],
+  }, tier, { feature: "meal" });
 }
 
 function safeJSON(text) {
@@ -654,6 +677,35 @@ function MaxIntensityApp() {
   const [prHit, setPrHit] = useState(null);
   const [flashN, setFlashN] = useState(0);
 
+  // V4 — transformation loop, community, inputs
+  const [rank, setRank] = useState(null);            // { name, index, next, parts, entries, via }
+  const [rankUp, setRankUp] = useState(null);        // { from, to }
+  const [prs, setPrs] = useState([]);                // [{ date, name, w }]
+  const [sessionPrs, setSessionPrs] = useState([]);
+  const [checkins, setCheckins] = useState([]);      // [{ date, data }] private, on-device
+  const [showAssess, setShowAssess] = useState(false);
+  const [rirAsk, setRirAsk] = useState(null);        // { ex, set } — asked during rest
+  const [rirNote, setRirNote] = useState(null);      // { line, next } — advice for the next set
+  const [shortSheet, setShortSheet] = useState(false);
+  const [shortMins, setShortMins] = useState(40);
+  const [shortPri, setShortPri] = useState("");
+  const [swapSheet, setSwapSheet] = useState(null);  // { i, options, busy }
+  const [numsSheet, setNumsSheet] = useState(false);
+  const [numsIn, setNumsIn] = useState({});
+  const [mealPrefs, setMealPrefs] = useState({ tastes: "", shops: "", allergies: "", foodFile: "", foodFileName: "" });
+  const [mealPrep, setMealPrep] = useState(null);
+  const [mealPrepBusy, setMealPrepBusy] = useState(false);
+  const [showMealPrefs, setShowMealPrefs] = useState(false);
+  const [voiceTarget, setVoiceTarget] = useState(null); // 'meal' | 'workout'
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const [voiceMsg, setVoiceMsg] = useState("");
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [health, setHealth] = useState({});          // manual Apple Health imports { date: { steps, sleep, restingHr } }
+  const [healthIn, setHealthIn] = useState({ steps: "", sleep: "", restingHr: "" });
+  const [adminCode, setAdminCode] = useState("");
+  const [rankSeen, setRankSeen] = useState(0);
+  const speech = MI.useSpeech();
+
 
   useEffect(() => {
     (async () => {
@@ -709,8 +761,38 @@ function MaxIntensityApp() {
         g.lastOpen = today;
       }
       setGame(g);
+      // V4 keys
+      const r0 = await loadKey("mi-rank", null);
+      setRank(r0 || (st0 && st0.rank) || null);
+      setRankSeen(await loadKey("mi-rankseen", (r0 || (st0 && st0.rank) || { index: 0 }).index || 0));
+      setPrs(await loadKey("mi-prs", []));
+      setCheckins(await loadKey("mi-checkins", []));
+      setMealPrefs(await loadKey("mi-mealprefs", { tastes: "", shops: "", allergies: "", foodFile: "", foodFileName: "" }));
+      setMealPrep(await loadKey("mi-mealprep", null));
+      setHealth(await loadKey("mi-health", {}));
+      setAdminCode(await loadKey("mi-admin", ""));
       setLoaded(true);
     })();
+  }, []);
+  useEffect(() => { if (loaded) saveKey("mi-rank", rank); }, [rank, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-rankseen", rankSeen); }, [rankSeen, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-prs", prs); }, [prs, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-checkins", checkins); }, [checkins, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-mealprefs", mealPrefs); }, [mealPrefs, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-mealprep", mealPrep); }, [mealPrep, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-health", health); }, [health, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-admin", adminCode); }, [adminCode, loaded]);
+  // iOS wrapper hook: HealthKit is not available on the web. A native shell can
+  // call window.MI_HEALTH.import({ "YYYY-MM-DD": { steps, sleep, restingHr, weightKg } }).
+  useEffect(() => {
+    window.MI_HEALTH = {
+      import: (payload) => {
+        if (!payload || typeof payload !== "object") return;
+        setHealth((h) => ({ ...h, ...payload }));
+        Object.keys(payload).forEach((d) => { if (payload[d] && payload[d].weightKg) setWeights((w) => ({ ...w, [d]: Number(payload[d].weightKg) })); });
+      },
+      available: false,
+    };
   }, []);
   useEffect(() => { if (loaded) saveKey("mi-program", program); }, [program, loaded]);
   useEffect(() => { if (loaded) saveKey("mi-logs", logs); }, [logs, loaded]);
@@ -814,6 +896,15 @@ function MaxIntensityApp() {
 
   const trialLeft = trialStart ? Math.max(0, TRIAL_DAYS - Math.floor((Date.now() - trialStart) / 86400000)) : 0;
   const hasAI = pro || (trialStart && trialLeft > 0);
+  // Daily AI usage tier: generous for members, tight before the trial.
+  const aiTier = pro ? "member" : hasAI ? "trial" : "free";
+  const aiLeft = () => (window.MI_AI ? window.MI_AI.remaining(aiTier) : 0);
+  // What the coach knows about this member — induction answers, priorities, rank, plan.
+  const coachCtx = () => ({
+    plan: settings?.plan, goal: settings?.goal, priorities: (settings?.priorities || []).map((k) => (MI.MUSCLES.find((m) => m[0] === k) || [])[1] || k),
+    rank: rank ? rank.name : null, induction: settings?.induction || null,
+  });
+  const aiFail = (e, fallback) => (e && e.cap ? e.message : fallback);
   const startTrial = () => { if (!trialStart) setTrialStart(Date.now()); };
   const redeemCode = async () => {
     const c = codeIn.trim().toUpperCase();
@@ -858,7 +949,7 @@ function MaxIntensityApp() {
   };
 
   // ---- guided session flow ----
-  const startSession = () => { setSession({ ex: 0, set: 0, resting: false }); setRestLeft(null); setSessionPts(0); };
+  const startSession = () => { setSession({ ex: 0, set: 0, resting: false }); setRestLeft(null); setSessionPts(0); setSessionPrs([]); setRirAsk(null); setRirNote(null); };
   const resumeSession = () => {
     const li = Math.max(0, day.exercises.length - 1);
     setSession({ ex: li, set: Math.max(0, setsFor(day.exercises[li]) - 1), resting: false });
@@ -933,33 +1024,27 @@ function MaxIntensityApp() {
       }
       if (wNow > bestPrev && bestPrev > 0) {
         setPrHit({ name: exr.name, w: wNow });
-        try {
-          const ctx = new (window.AudioContext || window.webkitAudioContext)();
-          const note = (f, t0, dur, g0, type) => {
-            const o = ctx.createOscillator(), g = ctx.createGain();
-            o.connect(g); g.connect(ctx.destination);
-            o.type = type || "triangle"; o.frequency.value = f;
-            g.gain.setValueAtTime(0.0001, ctx.currentTime + t0);
-            g.gain.exponentialRampToValueAtTime(g0, ctx.currentTime + t0 + 0.02);
-            g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t0 + dur);
-            o.start(ctx.currentTime + t0); o.stop(ctx.currentTime + t0 + dur + 0.05);
-          };
-          // ta-da: C5 E5 G5 C6 + sparkle
-          note(523.25, 0, 0.18, 0.16); note(659.25, 0.12, 0.18, 0.16);
-          note(783.99, 0.24, 0.22, 0.18); note(1046.5, 0.36, 0.55, 0.2); note(1568, 0.4, 0.35, 0.05, "sine");
-        } catch {}
+        const pr = { date: todayKey(), name: exr.name, w: wNow, prev: bestPrev };
+        setSessionPrs((p) => [...p, pr]);
+        setPrs((p) => [...p.slice(-99), pr]);
+        MI.sound("pr"); // ta-da + confetti (the PR overlay below)
       }
       setFlashN((x) => x + 1);
     }
     if (session.set === n - 1) markDone(activeDay, session.ex, true);
+    setRirNote(null);
     const nxt = advancePointer(session);
     if (nxt.done) {
       saveSessionToHistory(nextLogs);
       awardSession(nextLogs);
+      checkRankUp(nextLogs);
       setSession({ done: true });
       setRestLeft(null);
+      setRirAsk(null);
     } else {
       setSession({ ...session, resting: true });
+      // RIR load coaching after warm-up 2 and after the work set
+      setRirAsk(!isDeload && (session.set === 1 || session.set === 2) ? { ex: session.ex, set: session.set } : null);
       startRest(150);
     }
   };
@@ -990,7 +1075,7 @@ function MaxIntensityApp() {
     const q = foodInput.trim();
     if (!q || estimating) return;
     setEstimating(true);
-    try { const item = await estimateFood(q); logMeal(item); setFoodInput(""); } catch {}
+    try { const item = await estimateFood(q, aiTier); logMeal(item); setFoodInput(""); } catch (e) { setVoiceMsg(aiFail(e, "Couldn't estimate that — try again or add it manually.")); }
     setEstimating(false);
   };
   const removeFood = (idx) => {
@@ -1019,14 +1104,14 @@ function MaxIntensityApp() {
     const q = swapInput.trim();
     if (!q || swapping) return;
     setSwapping(true);
-    try { const out = await askSwaps(q, goalLabel()); setSwaps(out.swaps || []); }
-    catch (e) { setSwaps([{ from: "", to: "", why: "Error: " + (e.message || "unknown") + " — tap Swap again." }]); }
+    try { const out = await askSwaps(q, goalLabel(), aiTier); setSwaps(out.swaps || []); }
+    catch (e) { setSwaps([{ from: "", to: "", why: aiFail(e, "Error: " + (e.message || "unknown") + " — tap Swap again.") }]); }
     setSwapping(false);
   };
   const runMealBuilder = (remaining) => async () => {
     if (buildingMeal) return;
     setBuildingMeal(true);
-    try { setMealIdea(await buildMealAI(myFoods, remaining, goalLabel())); } catch {}
+    try { setMealIdea(await buildMealAI(myFoods, remaining, goalLabel(), aiTier)); } catch (e) { setVoiceMsg(aiFail(e, "Couldn't build a meal right now.")); }
     setBuildingMeal(false);
   };
   const BACKUP_KEYS = ["mi-program", "mi-logs", "mi-week", "mi-profile", "mi-targets", "mi-food", "mi-history", "mi-weights", "mi-myfoods", "mi-settings", "mi-pro", "mi-trial", "mi-mymeals", "mi-override", "mi-game", "mi-pwseen"];
@@ -1054,14 +1139,17 @@ function MaxIntensityApp() {
     }));
     return best;
   };
-  const boardCall = async (method, bodyObj) => {
-    const res = await window.fetch(MI_SERVER + "/board", {
+  // Worker endpoints. /board and /wall share the app token; extra headers carry the admin code.
+  const workerCall = (path) => async (method, bodyObj, qs, extraHeaders) => {
+    const res = await window.fetch(MI_SERVER + path + (qs || ""), {
       method,
-      headers: { "Content-Type": "application/json", "x-mi-app": MI_APP_TOKEN },
+      headers: { "Content-Type": "application/json", "x-mi-app": MI_APP_TOKEN, ...(extraHeaders || {}) },
       body: bodyObj ? JSON.stringify(bodyObj) : undefined,
     });
     return res.json();
   };
+  const boardCall = workerCall("/board");
+  const wallCall = workerCall("/wall");
   const loadBoard = async () => {
     try { const r = await boardCall("GET"); setBoard(r.rows || []); } catch {}
   };
@@ -1071,10 +1159,63 @@ function MaxIntensityApp() {
     try {
       setBoardBusy(true);
       const bl = bestLift();
-      await boardCall("POST", { handle: hd, points: game.points, streak: game.streak, gymDays: Object.keys(history).length, bestName: bl.name, bestKg: bl.kg });
+      const L = window.MI_PROJ ? window.MI_PROJ.levelFor(game.points) : { level: 1 };
+      await boardCall("POST", { handle: hd, points: game.points, streak: game.streak, gymDays: Object.keys(history).length, bestName: bl.name, bestKg: bl.kg, rank: rank ? rank.name : "", rankIndex: rank ? rank.index : 0, level: L.level });
       await loadBoard();
     } catch { if (!silent) alert("Couldn't update the board — check your connection."); }
     setBoardBusy(false);
+  };
+
+  // ---- rank: recompute from the induction numbers scaled by the block's logged gain ----
+  const estimatedRank = (L) => {
+    if (!rank || !window.MI_RANK || !window.MI_PROJ) return null;
+    const entries = rank.entries || [];
+    if (!entries.length) return null;
+    const g = window.MI_PROJ.blockGain(program, L || logs);
+    if (!g.pct || g.pct <= 0) return null;
+    const bw = Number(settings?.bw) ? (settings.unit === "lb" ? Number(settings.bw) / 2.2046 : Number(settings.bw)) : 0;
+    const scaled = entries.map((e) => ({ key: e.key, value: Number(e.value) * (1 + g.pct / 100) }));
+    const r = window.MI_RANK.computeRank(scaled, settings?.sex, bw);
+    return r ? { ...r, entries: scaled, via: "block", gainPct: g.pct } : null;
+  };
+  const checkRankUp = (L) => {
+    const est = estimatedRank(L);
+    if (est && est.index > (rank ? rank.index : 0)) {
+      const from = rank ? rank.name : "Bronze";
+      setRank(est); setRankSeen(est.index);
+      setTimeout(() => setRankUp({ from, to: est.name }), 900);
+    }
+  };
+  const updateRankNumbers = () => {
+    if (!window.MI_RANK) return;
+    const keys = rank && rank.entries && rank.entries.length ? rank.entries.map((e) => e.key) : (settings?.knowsLiftNumbers === "bodyweight" ? ["pushups", "bwsquats", "pullups"] : ["bench", "squat", "ohp"]);
+    const entries = keys.map((k) => ({ key: k, value: Number(numsIn[k]) || (rank && rank.entries ? (rank.entries.find((e) => e.key === k) || {}).value : 0) })).filter((e) => e.value > 0);
+    const bw = Number(settings?.bw) ? (settings.unit === "lb" ? Number(settings.bw) / 2.2046 : Number(settings.bw)) : 0;
+    const r = window.MI_RANK.computeRank(entries, settings?.sex, bw);
+    if (!r) return;
+    const from = rank ? rank.name : "Bronze", fromIdx = rank ? rank.index : 0;
+    setRank({ ...r, entries, via: "manual" });
+    setNumsSheet(false);
+    if (r.index > fromIdx) { setRankSeen(r.index); setTimeout(() => setRankUp({ from, to: r.name }), 300); }
+    setTimeout(() => { try { submitBoard(true); } catch {} }, 600);
+  };
+  const projectionNow = () => (settings?.projection) || (window.MI_PROJ ? window.MI_PROJ.projection({ goal: settings?.goal, bwKg: Number(settings?.bw) || 0, exp: settings?.exp, knowsLiftNumbers: settings?.knowsLiftNumbers, strength: settings?.strength || {} }) : null);
+  // The real line for the projection graph: bodyweight by block week, or the
+  // bench estimate moved by the block's average work-set gain.
+  const actualPoints = () => {
+    const P = projectionNow(); if (!P) return [];
+    const hist = Object.keys(history).sort();
+    const first = hist.length ? new Date(hist[0] + "T12:00:00").getTime() : null;
+    if (P.metric === "bodyweight") {
+      if (!first) return [];
+      const byWeek = {};
+      Object.keys(weights).sort().forEach((d) => { const w = Math.floor((new Date(d + "T12:00:00").getTime() - first) / (7 * 86400000)); if (w >= 0 && w <= 6) byWeek[w] = weights[d]; });
+      return Object.keys(byWeek).map((w) => ({ w: Number(w), v: byWeek[w] }));
+    }
+    const g = window.MI_PROJ.blockGain(program, logs);
+    if (!g.weekly.length) return [];
+    const base = g.weekly[0].avg;
+    return g.weekly.map((x) => ({ w: x.w, v: Math.round(P.start * (x.avg / base) * 10) / 10 }));
   };
 
   const saveBodyweight = () => {
@@ -1105,49 +1246,115 @@ function MaxIntensityApp() {
       return p;
     });
   };
-  const aiSwapExercise = async (i) => {
-    if (exSwapping !== null) return;
-    if (!hasAI) { alert("AI swap is part of MAX AI — start your free trial from the Coach tab."); return; }
-    setExSwapping(i);
-    try {
-      const exr = day.exercises[i];
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 200,
-          system: 'Suggest ONE substitute exercise hitting the same muscles, doable with dumbbells, a cable stand, a dip stand, an incline bench and a Smith machine. THE USER\'S REQUEST ALWAYS WINS: never refuse or lecture — if they want a variation they already use elsewhere, that is allowed. Keep the Max Intensity style: strict tempo, chest-supported where possible. Respond ONLY with raw JSON, no fences: {"name":"exercise name","note":"short setup tip"}',
-          messages: [{ role: "user", content: `Replace: ${exr.name}${exr.note ? " (" + exr.note + ")" : ""}. Other exercises that day: ${day.exercises.map((e) => e.name).join(", ")}. Suggest something not already in that list.` }],
-        }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error.message || "API error");
-      const text = (data.content || []).map((b) => (b.type === "text" ? b.text : "")).join("");
-      const out = safeJSON(text);
-      if (out && out.name) {
-        setProgram((prev) => {
-          const p = structuredClone(prev);
-          p.days[activeDay].exercises[i].name = out.name;
-          p.days[activeDay].exercises[i].note = out.note || "";
-          return p;
-        });
-      }
-    } catch {}
-    setExSwapping(null);
+  // Recommended swaps: three options for the exercise, pick one.
+  const SWAP_FALLBACK = {
+    chest: [["Incline Flys", "dumbbells, deep stretch", "Same upper chest, less shoulder"], ["Assisted Dips (machine)", "use assistance, strict 3-1-3-1", "Chest and triceps"], ["Incline Dumbbell Press", "30° bench", "The staple"]],
+    back: [["Straight-Arm Cable Pulldown", "on the stand", "Lats without the arms"], ["Smith Wide-Grip Row", "chest on incline bench", "Upper back thickness"], ["Hip Braced One-Arm Cable Lat Row", "cable stand", "Unilateral lats"]],
+    shoulders: [["Smith Shoulder Press", "seated, strict", "Front and side delts"], ["Cable Lateral Raise", "or DB laterals", "Side delts, no swing"], ["Smith Press Behind Neck", "light, full control", "Delts and traps"]],
+    arms: [["Preacher Curl", "machine, or DB over incline bench", "Biceps, no cheating"], ["Alternating DB Curls", "no swing", "Biceps"], ["Tricep Cable Crossovers", "on the stand", "Triceps, long head"]],
+    legs: [["Leg Press", "feet mid-platform", "Quads and glutes"], ["Leg Extension", "pause at the top", "Quads in isolation"], ["Calf Press", "full stretch at the bottom", "Calves"]],
+    glutes: [["Hip Thrust", "drive through heels", "Glutes, heavy"], ["Barbell RDL", "hinge, flat back", "Hamstrings and glutes"], ["Hip Abductor", "lean forward slightly", "Glute med"]],
   };
-  const runEditSession = async () => {
-    const q = editReq.trim();
+  const aiSwapExercise = async (i) => {
+    const exr = day.exercises[i];
+    const others = day.exercises.map((e) => e.name);
+    const m = MI.musclesFor(exr.name)[0] || "chest";
+    const fb = (SWAP_FALLBACK[m] || SWAP_FALLBACK.chest).filter(([n]) => !others.includes(n)).map(([name, note, why]) => ({ name, note, why }));
+    setSwapSheet({ i, options: fb, busy: hasAI, source: hasAI ? "coach" : "list" });
+    if (!hasAI) return;
+    try {
+      const out = await window.MI_AI.swapOptions({ exercise: exr.name + (exr.note ? " (" + exr.note + ")" : ""), others, tier: aiTier });
+      if (out && out.options && out.options.length) setSwapSheet({ i, options: out.options.slice(0, 3), busy: false, source: "coach" });
+      else setSwapSheet({ i, options: fb, busy: false, source: "list" });
+    } catch (e) { setSwapSheet({ i, options: fb, busy: false, source: "list", err: aiFail(e, "") }); }
+  };
+  const applySwap = (i, opt) => {
+    changeProgram((p) => {
+      p.days[activeDay].exercises[i].name = opt.name;
+      p.days[activeDay].exercises[i].note = opt.note || "";
+      return p;
+    });
+    setSwapSheet(null);
+  };
+  const runEditSession = async (reqOverride) => {
+    const q = (reqOverride || editReq).trim();
     if (!q || editingSession) return;
     setEditingSession(true);
     try {
-      const out = await aiEditSession(q, baseDay, week);
+      const out = await aiEditSession(q, baseDay, week, coachCtx(), aiTier);
       if (out && out.exercises && out.exercises.length) {
-        setOverride({ date: todayKey(), dayIdx: activeDay, exercises: out.exercises, reply: out.reply || "Session adjusted." });
+        setOverride({ date: todayKey(), dayIdx: activeDay, exercises: out.exercises, reply: out.reply || "Session adjusted.", removed: out.removed || [], added: out.added || [] });
         setEditReq(""); setShowEditReq(false);
       }
-    } catch {}
+    } catch (e) { setVoiceMsg(aiFail(e, "Couldn't reach the coach. Try again.")); }
     setEditingSession(false);
+  };
+  // Deterministic short-on-time rebuild: no coach call needed, works offline.
+  const runShortOnTime = () => {
+    const out = window.MI_PROJ.shortOnTime(baseDay, shortMins, shortPri);
+    setOverride({ date: todayKey(), dayIdx: activeDay, exercises: out.exercises, reply: out.reply, short: true });
+    setShortSheet(false);
+  };
+  // Voice logging for the session: transcript → coach parse → sets filled in.
+  const applyVoiceWorkout = async (transcript) => {
+    if (!transcript.trim()) return;
+    setVoiceBusy(true); setVoiceMsg("");
+    try {
+      const out = await window.MI_AI.workoutVoice({ transcript, exercises: day.exercises, unit, tier: aiTier });
+      (out.entries || []).forEach((en) => {
+        const ei = Number(en.exercise), si = Number(en.set);
+        if (!(ei >= 0 && ei < day.exercises.length)) return;
+        if (en.weight) setSet(activeDay, ei, Math.max(0, Math.min(3, si || 2)), "weight", wIn(String(en.weight)));
+        if (en.reps) setSet(activeDay, ei, Math.max(0, Math.min(3, si || 2)), "reps", String(en.reps));
+      });
+      setVoiceMsg(out.heard ? "Logged: " + out.heard : "Logged.");
+    } catch (e) { setVoiceMsg(aiFail(e, "Couldn't parse that — type it in instead.")); }
+    setVoiceBusy(false); setVoiceTarget(null);
+  };
+  const applyVoiceMeal = async (transcript) => {
+    if (!transcript.trim()) return;
+    setVoiceBusy(true); setVoiceMsg("");
+    try { const item = await window.MI_AI.mealVoice({ transcript, tier: aiTier }); logMeal(item); setVoiceMsg("Logged " + item.name + "."); }
+    catch (e) { setVoiceMsg(aiFail(e, "Couldn't estimate that — type it in instead.")); }
+    setVoiceBusy(false); setVoiceTarget(null);
+  };
+  const logMealPhoto = async (file) => {
+    if (!file || photoBusy) return;
+    setPhotoBusy(true); setVoiceMsg("");
+    try { const img = await MI.downscale(file, 800, 0.7); const item = await window.MI_AI.mealPhoto({ image: img, tier: aiTier }); logMeal(item); setVoiceMsg("Logged " + item.name + " from the photo."); }
+    catch (e) { setVoiceMsg(aiFail(e, "Couldn't read that photo — try again in better light.")); }
+    setPhotoBusy(false);
+  };
+  const runMealPrep = async () => {
+    if (mealPrepBusy) return;
+    setMealPrepBusy(true);
+    try { setMealPrep(await window.MI_AI.mealPrep({ ...mealPrefs, targets, goal: goalLabel(), tier: aiTier })); setShowMealPrefs(false); }
+    catch (e) { setVoiceMsg(aiFail(e, "Couldn't reach the coach for meal prep.")); }
+    setMealPrepBusy(false);
+  };
+  const readFoodFile = (file) => {
+    if (!file) return;
+    if (file.size > 200000) { setVoiceMsg("Keep the food file under 200 KB — a shopping list or a week of meals is plenty."); return; }
+    const r = new FileReader();
+    r.onload = () => setMealPrefs((m) => ({ ...m, foodFile: String(r.result || "").slice(0, 20000), foodFileName: file.name }));
+    r.readAsText(file);
+  };
+  const applyAssessment = (out) => {
+    const pri = (out.priorities || []).map((p) => String(p).toLowerCase()).filter((p) => PRIORITY_KEYS[p]).slice(0, 3);
+    if (pri.length) {
+      setSettings((s) => ({ ...(s || {}), priorities: pri, split: splitFor(pri), done: true, assessment: { date: todayKey(), text: out.assessment, week6: out.week6, week12: out.week12 } }));
+      changeProgram((p) => applyPriorities(p, pri));
+    } else setSettings((s) => ({ ...(s || {}), assessment: { date: todayKey(), text: out.assessment, week6: out.week6, week12: out.week12 }, done: true }));
+  };
+  const answerRir = (r) => {
+    if (!rirAsk) return;
+    setSet(activeDay, rirAsk.ex, rirAsk.set, "rir", r);
+    const adv = window.MI_PROJ.rirAdvice(rirAsk.set, r, isDeload);
+    const done = getSet(week, activeDay, rirAsk.ex, rirAsk.set);
+    const base = Number(done.weight) || 0;
+    const suggest = base && adv.next ? Math.round((base * (1 + adv.next)) / 2.5) * 2.5 : null;
+    setRirNote({ ...adv, ex: rirAsk.ex, set: rirAsk.set + 1, suggest });
+    setRirAsk(null);
   };
 
   // any change to program shape must carry the logs with it (by exercise name)
@@ -1186,11 +1393,11 @@ function MaxIntensityApp() {
     setInput("");
     setThinking(true);
     try {
-      const out = await askCoach(hist, program, week);
+      const out = await askCoach(hist, program, week, coachCtx(), aiTier);
       setChat((c) => [...c, { role: "assistant", content: out.reply }]);
       if (out.program && out.program.days) setProgram(out.program);
-    } catch {
-      setChat((c) => [...c, { role: "assistant", content: "Couldn't reach the coach. Try again." }]);
+    } catch (e) {
+      setChat((c) => [...c, { role: "assistant", content: aiFail(e, "Couldn't reach the coach. Try again.") }]);
     }
     setThinking(false);
   };
@@ -1208,467 +1415,95 @@ function MaxIntensityApp() {
   const P_CHART = "M4 20V10M10 20V4M16 20v-8M20 20H4";
 
   // ---- design system ----
-  const card = "rounded-xl border border-neutral-800 bg-[#141414]";
-  const chip = "rounded-md px-3 py-1.5 text-xs font-semibold";
-  const cta = "dp rounded-lg bg-[#FF2B2B] text-white uppercase tracking-[0.12em] active:bg-red-700";
-  const eyebrow = "mono text-[10px] uppercase tracking-[0.25em] text-[#FF2B2B]";
+  const card = MI.ui.card;
+  const chip = MI.ui.chip;
+  const cta = MI.ui.cta;
+  const ghost = MI.ui.ghost;
+  const eyebrow = MI.ui.eyebrow;
 
-  // ---- enrollment funnel: one idea per screen, tap to advance ----
-  // Screens 1-14 below are the rebuilt funnel: problem-awareness, the gap,
-  // rank calibration. Screens after the reveal are the remaining setup and are
-  // replaced by the projection / coach / commitment / close stages.
-  const FUNNEL = [
-    // -- 1-6 OPENING: problem-awareness. No personal data collected here. --
-    {
-      k: "hardWorkNoChange", kind: "choice",
-      q: "Do you train hard and still look the same?",
-      sub: "The work goes in. The mirror does not move.",
-      opts: [["yes", "Yes"], ["sometimes", "Some of the time"], ["notyet", "I'm not training yet"]],
-    },
-    {
-      k: "quitBefore", kind: "choice",
-      q: "Have you started a program and quit before it finished?",
-      sub: "Most programs have no end date, so they end whenever you stop. Six weeks has an end date.",
-      opts: [["once", "Yes"], ["multiple", "More than once"], ["never", "No"]],
-    },
-    {
-      k: "trainingStatus", kind: "choice",
-      q: "Where is your training right now?",
-      sub: "It only changes where you start.",
-      opts: [["none", "Not training", "Starting from zero"], ["intermittent", "On and off", "Some weeks yes, some no"], ["consistent", "In every week", "Already showing up"]],
-    },
-    {
-      k: "sessionUnplanned", kind: "choice",
-      q: "Do you decide the session when you get there?",
-      sub: "You turn up. Your program should already know the number you have to beat.",
-      opts: [["yes", "Yes"], ["sometimes", "Sometimes"], ["no", "No"]],
-    },
-    {
-      k: "mainBlocker", kind: "choice",
-      q: "What actually gets in the way?",
-      sub: "Whichever one it actually is.",
-      opts: [["direction", "Not knowing what to do next"], ["momentum", "Losing momentum"], ["time", "Time"], ["ceiling", "Nothing — I want more out of what I already do"]],
-    },
-    {
-      k: "goal", kind: "choice",
-      q: "What do you want out of the next six weeks?",
-      sub: "Say it plainly. The block gets built around this.",
-      opts: [["Lose fat", "Lose fat", "Keep your strength, drop the weight"], ["Build muscle", "Build muscle", "Add size where you want it"], ["More athletic", "More athletic", "Fitter, faster, harder to tire out"]],
-    },
-
-    // -- 7-10 THE GAP: current self to desired self. --
-    {
-      k: "bodyOutcome", kind: "choice",
-      q: "What do you want to see in the mirror?",
-      sub: "Six weeks from now, same light, same photo.",
-      opts: [["lean", "Lean and defined", "Less around the middle, shape you can see"], ["big", "Bigger and heavier", "More size on your arms, chest and back"], ["capable", "Strong and capable", "Lift heavy, move well, stay hard to break"]],
-    },
-    {
-      k: "sex", kind: "choice",
-      q: "Strength standards are set by sex.",
-      sub: "It sets your rank thresholds and your food targets. Nothing else.",
-      opts: [["Male", "Male"], ["Female", "Female"]],
-    },
-    {
-      k: "bw", kind: "weight",
-      q: "What do you weigh right now?",
-      sub: "Rough is fine. It is the number your progress gets measured from.",
-    },
-    {
-      k: "beforePhoto", kind: "photo",
-      q: "Take your before photo",
-      sub: "In six weeks this is the only thing that will not argue with you. Stored on your phone, never uploaded.",
-    },
-
-    // -- 11-14 RANK CALIBRATION. --
-    {
-      k: "knowsLiftNumbers", kind: "choice",
-      q: "Do you know what you lift?",
-      sub: "Either answer, you walk out of here with a number to beat.",
-      opts: [["lifts", "I know my numbers", "Bench, squat, overhead press"], ["bodyweight", "I train without tracking numbers", "Your rank comes off reps in one set"]],
-    },
-    {
-      k: "strength", kind: "numbers",
-      q: "Set your three numbers",
-      sub: "Best single rep you are confident in. A close estimate is enough.",
-    },
-    {
-      k: "rankArmed", kind: "armed",
-      q: "Seven ranks. Every one you climb is a heavier bar.",
-      sub: "Bronze to Iridescent. Everyone on the app sits somewhere on this ladder.",
-    },
-    { k: "rank", kind: "reveal", q: "" },
-  ];
-
-  // Remaining setup. Replaced by the projection, coach, commitment and close
-  // stages — until then it keeps enrollment complete and the app working.
-  const BRIDGE = [
-    { k: "name", kind: "input", q: "Who's training?", ph: "Your name" },
-    { k: "exp", kind: "choice", q: "Time in the gym", opts: [["Just starting", "Just starting"], ["1–3 years", "1–3 years"], ["3+ years", "3+ years"]] },
-    { k: "daysPerWeek", kind: "choice", q: "Days per week", sub: "The block is built on 4. Pick what you'll actually hit.", opts: [[3, "3"], [4, "4"], [5, "5"]] },
-    { k: "split", kind: "choice", q: "Where's the focus?", sub: "Priority muscles go first in every session — they get your best energy.", opts: [["balanced", "Balanced"], ["legglute", "Legs & glutes"], ["shoulder", "Shoulders"], ["chest", "Chest"], ["arm", "Arms"]] },
-  ];
-
-  const OB_STEPS = FUNNEL.concat(BRIDGE);
-
-  // Bodyweight in kg regardless of the unit on screen.
-  const obBwKg = () => {
-    const n = Number(ob.bw);
-    if (!n) return 0;
-    return ob.unit === "lb" ? n / 2.2046 : n;
+  // ---- enrollment funnel (app/funnel.jsx) + paywall ----
+  // The week-1 session the coach demo rebuilds, built from the priorities picked so far.
+  const buildDemoDay = (priorities, goal) => {
+    try { const p = applyPriorities(structuredClone(DEFAULT_PROGRAM), priorities || []); return p.days[0]; }
+    catch { return DEFAULT_PROGRAM.days[0]; }
   };
-
-  // The three numbers the rank is computed from, in the order they are shown.
-  const rankRows = () =>
-    ob.knowsLiftNumbers === "bodyweight"
-      ? [
-          { key: "pushups", label: "Press-ups", unit: "in one set", step: 1, min: 0, max: 200 },
-          { key: "bwsquats", label: "Bodyweight squats", unit: "in one set", step: 1, min: 0, max: 300 },
-          { key: "pullups", label: "Pull-ups", unit: "in one set", step: 1, min: 0, max: 100 },
-        ]
-      : [
-          { key: "bench", label: "Bench press", unit: "kg", step: 2.5, min: 20, max: 300 },
-          { key: "squat", label: "Back squat", unit: "kg", step: 2.5, min: 20, max: 400 },
-          { key: "ohp", label: "Overhead press", unit: "kg", step: 2.5, min: 15, max: 200 },
-        ];
-
-  // Seeded low on purpose: the common motion should be up from the default,
-  // never down from a number the app assumed you could lift.
-  const rankSeed = (key) => {
-    const bw = obBwKg();
-    if (key === "bench") return bw ? Math.max(20, Math.round((bw * 0.5) / 2.5) * 2.5) : 40;
-    if (key === "squat") return bw ? Math.max(20, Math.round((bw * 0.75) / 2.5) * 2.5) : 60;
-    if (key === "ohp") return bw ? Math.max(15, Math.round((bw * 0.35) / 2.5) * 2.5) : 30;
-    if (key === "pushups") return 10;
-    if (key === "bwsquats") return 20;
-    if (key === "pullups") return 2;
-    return 0;
+  // Real numbers from the board and the wall for the social-proof screen. No invented testimonials.
+  const loadProof = async () => {
+    try {
+      const b = await boardCall("GET");
+      const rows = (b && (b.rows || [])) || [];
+      let posts = [];
+      try { const w = await wallCall("GET"); posts = (w && (w.posts || w.rows || w.items)) || []; } catch {}
+      if (!rows.length && !posts.length) return null;
+      const topStreak = rows.reduce((m, r) => Math.max(m, r.streak || 0), 0);
+      const best = rows.reduce((m, r) => ((r.bestKg || 0) > (m.kg || 0) ? { kg: r.bestKg, name: r.bestName } : m), {});
+      return { members: rows.length, topStreak, bestLift: best, posts: posts.filter((p) => p.type !== "goal" && p.text).slice(0, 2) };
+    } catch { return null; }
   };
-
-  const rankVal = (key) => (ob.strength && ob.strength[key] !== undefined ? ob.strength[key] : rankSeed(key));
-
-  // Functional update so every press counts — recomputing from the rendered
-  // value would collapse rapid presses into one.
-  const bumpRank = (key, delta, min, max) =>
-    setOb((o) => {
-      const cur = o.strength && o.strength[key] !== undefined ? o.strength[key] : rankSeed(key);
-      return { ...o, strength: { ...(o.strength || {}), [key]: Math.min(max, Math.max(min, cur + delta)) } };
-    });
-
-  const computedRank = () => {
-    if (!window.MI_RANK) return null;
-    const entries = rankRows().map((r) => ({ key: r.key, value: rankVal(r.key) }));
-    return window.MI_RANK.computeRank(entries, ob.sex, obBwKg());
-  };
-
-  // The reveal answers back the obstacle they named on screen 5.
-  const BLOCKER_ANSWER = {
-    direction: "You'll know the exact weight before you walk in.",
-    momentum: "Every session moves the rank. That's what keeps you in it.",
-    time: "Two sessions a week, upper and legs. That's the floor that still works.",
-    ceiling: "+2.5% a session, every session. That's the ceiling moving.",
-  };
-
-  // Downscaled and re-encoded so the before photo fits in device storage.
-  const readBeforePhoto = (file) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const max = 720;
-        const scale = Math.min(1, max / Math.max(img.width, img.height));
-        const c = document.createElement("canvas");
-        c.width = Math.round(img.width * scale);
-        c.height = Math.round(img.height * scale);
-        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-        const data = c.toDataURL("image/jpeg", 0.7);
-        setOb((o) => ({ ...o, beforePhoto: data }));
-        saveKey("mi-beforephoto", data);
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const obFinish = () => {
+  const obFinish = (res) => {
     setObBuilding(true);
     setTimeout(() => {
-      const s = { ...ob, name: (ob.name || "").trim() || "Athlete", done: true };
+      const s = { ...(settings || {}), ...res, done: true };
+      delete s.beforePhoto; // lives under its own key
       setSettings(s);
-      changeProgram((p) => applySplit(p, s.split));
-      const bwKg = Number(s.bw) ? (s.unit === "lb" ? Number(s.bw) / 2.2046 : Number(s.bw)) : 0;
+      setOb((o) => ({ ...o, ...res }));
+      changeProgram((p) => { const q = applyPriorities(p, res.priorities || []); q.name = (res.plan || "MAX INTENSITY") + " block"; return q; });
+      if (res.rank) { setRank({ ...res.rank, entries: rankEntriesFrom(res), via: "induction" }); setRankSeen(res.rank.index); }
+      if (res.handle) setHandle(res.handle);
+      const bwKg = Number(res.bw) ? (res.unit === "lb" ? Number(res.bw) / 2.2046 : Number(res.bw)) : 0;
       if (bwKg) {
         const kg = Math.round(bwKg * 10) / 10;
-        const gi = s.goal === "Lose fat" ? 0 : s.goal === "Build muscle" ? 2 : 1;
+        const gi = res.goal === "Lose fat" ? 0 : res.goal === "Build muscle" ? 2 : 1;
         setCalcKg(String(kg));
         setProfile({ kg, activityIdx: 2, goalIdx: gi });
         setTargets(calcTargets(kg, 2, gi));
       }
+      if (res.trial && !trialStart && !pro) setTrialStart(Date.now());
       setObBuilding(false);
       setObStep(0);
-      if (!pro && !trialStart) setShowPaywall(true);
       setTutStep(0); saveKey("mi-tut", true);
     }, 1600);
   };
-
-  // Advancing sets the absolute next step rather than incrementing. Two taps
-  // from the same rendered screen therefore both target the same step and the
-  // second is a no-op — an increment would run the user past the end of the
-  // array. Both handlers close over the obStep of the render that drew them.
-  const obNext = () => {
-    if (obStep >= OB_STEPS.length - 1) obFinish();
-    else setObStep(obStep + 1);
-  };
-
-  const obBack = () => setObStep(Math.max(0, obStep - 1));
-
-  const obPick = (k, v) => {
-    setOb((o) => ({ ...o, [k]: v }));
-    setTimeout(obNext, 180);
+  // The three rank numbers as computeRank entries, from the funnel's answers.
+  const rankEntriesFrom = (s) => {
+    const keys = s.knowsLiftNumbers === "bodyweight" ? ["pushups", "bwsquats", "pullups"] : ["bench", "squat", "ohp"];
+    return keys.map((k) => ({ key: k, value: (s.strength || {})[k] })).filter((e) => e.value !== undefined && e.value !== "");
   };
 
   const renderOnboarding = () => {
     if (!loaded || (settings && settings.done)) return null;
     if (obBuilding) {
+      const pn = window.MI_PROJ ? window.MI_PROJ.planName(ob.goal || (settings && settings.goal)) : { name: "MASS GAINER" };
       return (
-        <div className="fixed inset-0 z-[90] flex flex-col items-center justify-center bg-[#050505] px-8 text-center">
-          <img src={BICEP} alt="" className="h-14 w-auto" />
-          <p className="dp mt-6 text-3xl uppercase text-[#F2EFE8]">Building your<br /><span className="text-[#FF2B2B]">program</span></p>
-          <div className="mono mt-6 space-y-2 text-xs text-neutral-500">
+        <div className="fixed inset-0 z-[90] flex flex-col items-center justify-center overflow-hidden bg-[#050505] px-8 text-center">
+          <MI.Plate plate="skeleton" opacity={0.14} position="center 30%" size="auto 120%" />
+          <img src={BICEP} alt="" className="relative h-14 w-auto" />
+          <p className="dp relative mt-6 text-3xl uppercase text-[#F2EFE8]">Building your<br /><span className="text-[#FF2B2B]">{pn.name}</span></p>
+          <div className="mono relative mt-6 space-y-2 text-xs text-neutral-500">
             <p>✓ 6-week block · 10/6/6/6 · tempo 3-1-3-1</p>
-            <p>✓ {String(ob.split) === "balanced" ? "Balanced split" : "Priority muscles moved first"}</p>
-            <p>✓ {ob.daysPerWeek} sessions a week, planned for you</p>
+            <p>✓ {(ob.priorities || []).length ? "Priority muscles moved first" : "Balanced split"}</p>
+            <p>✓ {ob.daysPerWeek || 4} sessions a week, planned for you</p>
           </div>
-          <p className="mono mt-8 text-[10px] uppercase tracking-[0.3em] text-neutral-600">Progress made easy</p>
+          <p className="mono relative mt-8 text-[10px] uppercase tracking-[0.3em] text-neutral-600">Progress made easy</p>
         </div>
       );
     }
-    const st = OB_STEPS[Math.min(obStep, OB_STEPS.length - 1)];
-    if (!st) return null;
-    const val = ob[st.k];
-    const isReveal = st.kind === "reveal";
-
     return (
-      <div className="fixed inset-0 z-[90] flex flex-col overflow-y-auto bg-[#050505] px-6 pb-8 pt-5">
-        {/* progress rail */}
-        <div className="h-[3px] w-full shrink-0 rounded-full bg-neutral-900">
-          <div className="h-[3px] rounded-full bg-[#FF2B2B] transition-all duration-300" style={{ width: `${((obStep + 1) / OB_STEPS.length) * 100}%` }} />
-        </div>
-        <div className="mt-4 flex shrink-0 items-center justify-between">
-          {obStep > 0 && !isReveal ? (
-            <button onClick={obBack} className="mono text-sm text-neutral-500" aria-label="Back">‹ Back</button>
-          ) : <span />}
-          <span className="mono text-[10px] text-neutral-600">{obStep + 1} / {OB_STEPS.length}</span>
-        </div>
-
-        {!isReveal && (
-          <>
-            <p className="dp mt-8 text-[34px] uppercase leading-[0.95] text-[#F2EFE8]">{st.q}</p>
-            {st.sub && <p className="mt-3 text-sm leading-relaxed text-neutral-500">{st.sub}</p>}
-          </>
-        )}
-
-        <div className="mt-8 flex-1">
-          {/* ---- tap cards ---- */}
-          {st.kind === "choice" && (
-            <div className="space-y-2.5">
-              {st.opts.map((o) => {
-                const v = o[0], l = o[1], hint = o[2];
-                const on = val === v;
-                return (
-                  <button
-                    key={String(v)}
-                    onClick={() => obPick(st.k, v)}
-                    className={
-                      "block w-full rounded-lg border px-5 py-[18px] text-left transition-colors " +
-                      (on ? "border-[#FF2B2B] bg-[#FF2B2B] text-white" : "border-neutral-800 bg-[#111] text-neutral-300 active:border-[#FF2B2B]")
-                    }
-                  >
-                    <span className="dp block text-lg uppercase tracking-wide">{l}</span>
-                    {hint && <span className={"mono mt-1 block text-[11px] " + (on ? "text-red-100" : "text-neutral-500")}>{hint}</span>}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* ---- free text (name) ---- */}
-          {st.kind === "input" && (
-            <input
-              autoFocus
-              value={val || ""}
-              onChange={(e) => setOb((o) => ({ ...o, [st.k]: e.target.value }))}
-              onKeyDown={(e) => { if (e.key === "Enter") obNext(); }}
-              placeholder={st.ph}
-              className="w-full border-b-2 border-neutral-800 bg-transparent pb-3 text-2xl text-[#F2EFE8] placeholder-neutral-700 focus:border-[#FF2B2B] focus:outline-none"
-            />
-          )}
-
-          {/* ---- bodyweight: slider, no keyboard ---- */}
-          {st.kind === "weight" && (() => {
-            const kg = ob.unit === "lb";
-            const cur = Number(ob.bw) || (kg ? 176 : 80);
-            const min = kg ? 88 : 40, max = kg ? 440 : 200, step = kg ? 1 : 0.5;
-            const set = (n) => setOb((o) => ({ ...o, bw: String(Math.min(max, Math.max(min, Math.round(n / step) * step))) }));
-            return (
-              <div>
-                <div className="flex items-center justify-end gap-1">
-                  {["kg", "lb"].map((u) => (
-                    <button
-                      key={u}
-                      onClick={() => setOb((o) => {
-                        const n = Number(o.bw) || 80;
-                        const conv = u === "lb" ? n * 2.2046 : n / 2.2046;
-                        return { ...o, unit: u, bw: String(Math.round(conv * 2) / 2) };
-                      })}
-                      className={"mono rounded px-2.5 py-1 text-[11px] " + (ob.unit === u ? "bg-[#FF2B2B] text-white" : "bg-neutral-900 text-neutral-500")}
-                    >{u}</button>
-                  ))}
-                </div>
-                <p className="mono mt-6 text-center text-[64px] font-semibold leading-none text-[#F2EFE8]">
-                  {cur}<span className="ml-2 text-xl text-neutral-500">{ob.unit}</span>
-                </p>
-                <div className="mt-8 flex items-center gap-4">
-                  <button onClick={() => set(cur - step)} className="dp h-12 w-12 shrink-0 rounded-lg border border-neutral-800 bg-[#111] text-xl text-neutral-400" aria-label="Less">−</button>
-                  <input
-                    type="range" min={min} max={max} step={step} value={cur}
-                    onChange={(e) => set(Number(e.target.value))}
-                    className="mi-range h-2 flex-1"
-                    aria-label="Bodyweight"
-                  />
-                  <button onClick={() => set(cur + step)} className="dp h-12 w-12 shrink-0 rounded-lg border border-neutral-800 bg-[#111] text-xl text-neutral-400" aria-label="More">+</button>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* ---- before photo ---- */}
-          {st.kind === "photo" && (
-            <div>
-              {ob.beforePhoto ? (
-                <img src={ob.beforePhoto} alt="Your before photo" className="mx-auto max-h-[38vh] rounded-lg border border-neutral-800" />
-              ) : (
-                <div className="flex h-[38vh] items-center justify-center rounded-lg border border-dashed border-neutral-800 bg-[#0d0d0d]">
-                  <p className="mono text-xs text-neutral-700">Nothing yet</p>
-                </div>
-              )}
-              <label className={cta + " mt-6 block w-full cursor-pointer py-4 text-center text-base"}>
-                {ob.beforePhoto ? "Retake" : "Take photo"}
-                <input type="file" accept="image/*" capture="user" className="hidden"
-                  onChange={(e) => { const f = e.target.files && e.target.files[0]; if (f) readBeforePhoto(f); }} />
-              </label>
-              <p className="mono mt-3 text-center text-[10px] text-neutral-600">Stored on your phone only.</p>
-            </div>
-          )}
-
-          {/* ---- the three numbers ---- */}
-          {st.kind === "numbers" && (
-            <div className="space-y-3">
-              {rankRows().map((r) => {
-                const v = rankVal(r.key);
-                return (
-                  <div key={r.key} className={card + " px-4 py-3"}>
-                    <p className="mono text-[11px] uppercase tracking-wider text-neutral-500">{r.label}</p>
-                    <div className="mt-1.5 flex items-center gap-3">
-                      <button onClick={() => bumpRank(r.key, -r.step, r.min, r.max)} className="dp h-11 w-11 shrink-0 rounded-lg border border-neutral-800 bg-[#111] text-lg text-neutral-400" aria-label={"Less " + r.label}>−</button>
-                      <p className="mono flex-1 text-center text-2xl font-semibold text-[#F2EFE8]">
-                        {v}<span className="ml-1.5 text-xs text-neutral-600">{r.unit}</span>
-                      </p>
-                      <button onClick={() => bumpRank(r.key, r.step, r.min, r.max)} className="dp h-11 w-11 shrink-0 rounded-lg border border-neutral-800 bg-[#111] text-lg text-neutral-400" aria-label={"More " + r.label}>+</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* ---- the beat before the reveal ---- */}
-          {st.kind === "armed" && (
-            <div className="flex h-full flex-col justify-end">
-              <div className="mb-6 flex flex-wrap gap-1.5">
-                {(window.MI_RANK ? window.MI_RANK.TIERS : []).map((t) => (
-                  <span key={t} className="mono rounded border border-neutral-800 px-2 py-1 text-[10px] uppercase tracking-wider text-neutral-600">{t}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ---- the reveal ---- */}
-          {isReveal && (() => {
-            const r = ob.rank;
-            if (!r) return null;
-            const blocker = BLOCKER_ANSWER[ob.mainBlocker];
-            return (
-              <div className="mi-flip flex h-full flex-col justify-center">
-                <p className={eyebrow}>Your rank</p>
-                <p className="dp mt-2 text-[52px] uppercase leading-[0.9] text-[#FF2B2B]">{r.name}</p>
-                <p className="dp text-[26px] uppercase leading-tight text-[#F2EFE8]">Rank {r.index + 1} of 7</p>
-                <div className={card + " mt-8 px-5 py-4"}>
-                  <p className="text-sm leading-relaxed text-neutral-300">
-                    {r.next
-                      ? <>Climbing ranks is how you'll get stronger — {r.next.name} takes {r.next.phrase}.</>
-                      : <>Climbing ranks is how you'll get stronger — you're at the top, so all that's left is holding it at +2.5% a block.</>}
-                  </p>
-                  {blocker && <p className="mono mt-3 text-[11px] leading-relaxed text-neutral-500">{blocker}</p>}
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-
-        {/* ---- continue bar ---- */}
-        {st.kind === "weight" && (
-          <button onClick={obNext} className={cta + " mt-6 w-full shrink-0 py-4 text-base"}>Continue</button>
-        )}
-        {st.kind === "input" && (
-          <button onClick={obNext} className={cta + " mt-6 w-full shrink-0 py-4 text-base"}>Continue</button>
-        )}
-        {st.kind === "numbers" && (
-          <button onClick={obNext} className={cta + " mt-6 w-full shrink-0 py-4 text-base"}>Continue</button>
-        )}
-        {st.kind === "photo" && (
-          <div className="mt-6 shrink-0">
-            <button onClick={obNext} className={ob.beforePhoto ? cta + " w-full py-4 text-base" : "mono w-full py-4 text-sm text-neutral-500"}>
-              {ob.beforePhoto ? "Continue" : "Skip for now"}
-            </button>
-          </div>
-        )}
-        {st.kind === "armed" && (
-          <button
-            onClick={() => { const r = computedRank(); setOb((o) => ({ ...o, rank: r })); setTimeout(obNext, 380); }}
-            className={cta + " mt-6 w-full shrink-0 py-4 text-base"}
-          >Show my rank</button>
-        )}
-        {isReveal && (
-          <button onClick={obNext} className={cta + " mt-6 w-full shrink-0 py-4 text-base"}>Start climbing</button>
-        )}
-      </div>
+      <MI.Funnel
+        initial={{ ...ob, ...(settings || {}), beforePhoto: ob.beforePhoto }}
+        buildDay={buildDemoDay}
+        onPhoto={(d) => { setOb((o) => ({ ...o, beforePhoto: d })); saveKey("mi-beforephoto", d); }}
+        loadProof={loadProof}
+        onFinish={obFinish}
+        trialDays={TRIAL_DAYS}
+      />
     );
   };
-  // ---- post-onboarding paywall (Ladder-order: setup -> offer -> app) ----
-  const renderPaywall = () => {
-    if (!showPaywall) return null;
-    return (
-      <div className="fixed inset-0 z-[85] flex flex-col bg-[#050505] px-6 pb-8 pt-10">
-        <p className={eyebrow}>Setup complete</p>
-        <p className="dp mt-1 text-[40px] uppercase leading-[0.95] text-[#F2EFE8]">Your coach,<br /><span className="text-[#FF2B2B]">in your pocket</span></p>
-        <div className="mt-6 space-y-3">
-          {["Coach chat trained on the Max Intensity method", "Rebuild any session — short on time, different focus", "Meal builder & swaps from YOUR foods", "Every AI feature, unlocked"].map((l) => (
-            <div key={l} className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#FF2B2B] text-[10px] text-white">✓</span>
-              <p className="text-sm text-neutral-300">{l}</p>
-            </div>
-          ))}
-        </div>
-        <div className="mt-auto">
-          <button onClick={() => { startTrial(); setShowPaywall(false); }} className={cta + " w-full py-4 text-base"}>Begin my {TRIAL_DAYS}-day free trial</button>
-          <p className="mono mt-2 text-center text-[10px] text-neutral-500">Then £30/mo or £240/yr (4 months free) — cancel any time. No card needed today.</p>
-          <p className="mono mt-1 text-center text-[10px] text-[#FF2B2B]">Founding members: DM Max for a locked-for-life rate — first 50 only.</p>
-          <button onClick={() => setShowPaywall(false)} className="mono mt-4 w-full py-2 text-xs text-neutral-600">Continue with the free tracker</button>
-        </div>
-      </div>
-    );
-  };
+  const renderPaywall = () => (
+    <MI.Paywall open={showPaywall} onClose={() => setShowPaywall(false)}
+      onTrial={(plan) => { startTrial(); setSettings((s) => ({ ...(s || {}), subPlan: plan, done: true })); }}
+      trialStart={trialStart} trialDays={TRIAL_DAYS} codeIn={codeIn} setCodeIn={setCodeIn} redeemCode={redeemCode} pro={pro} />
+  );
 
   // ---- tutorial (first open after setup) ----
   const TUT = [
@@ -1744,13 +1579,55 @@ function MaxIntensityApp() {
             <button key={u} onClick={() => setSettings((s) => ({ ...(s || { done: true }), unit: u, done: true }))} className={seg(unit === u)}>{u}</button>
           ))}
         </div>
-        <p className={eyebrow + " mt-6"}>Split focus</p>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {[["balanced", "Balanced"], ["legglute", "Legs & glutes"], ["shoulder", "Shoulders"], ["chest", "Chest"], ["arm", "Arms"]].map(([v, l]) => (
-            <button key={v} onClick={() => { setSettings((s) => ({ ...(s || { done: true }), split: v, done: true })); changeProgram((p) => applySplit(p, v)); }} className={seg(settings?.split === v)}>{l}</button>
-          ))}
+        {/* profile */}
+        <div className="mt-6">
+          <MI.PlateCard plate="skeleton" opacity={0.14} innerClassName="flex items-center gap-4 p-4">
+            {rank ? <MI.RankBadge name={rank.name} index={rank.index} size={52} /> : <MI.RankBadge name="Bronze" index={0} size={52} className="opacity-40" />}
+            <div className="min-w-0 flex-1">
+              <p className="dp text-xl uppercase text-[#F2EFE8]">{settings?.name || "Athlete"}</p>
+              <p className="mono mt-0.5 text-[10px] text-neutral-400">{rank ? rank.name + " · " : ""}{settings?.plan || "MAX INTENSITY"}{handle ? " · @" + handle : ""}</p>
+              <MI.LevelPill points={game.points} className="mt-1.5" />
+            </div>
+          </MI.PlateCard>
         </div>
-        <p className="mt-1.5 text-[11px] text-neutral-600">Changing focus moves your priority muscles to the front of each session.</p>
+
+        <p className={eyebrow + " mt-6"}>Muscle priorities</p>
+        <p className="mt-1 text-[11px] text-neutral-500">Pick up to three, in order. They lead every session. Abs adds a 10-minute block first on leg days.</p>
+        <div className="mt-2">
+          <MI.MuscleMap worked={settings?.priorities || []} priority={settings?.priorities || []} height={150} />
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {MI.MUSCLES.map(([k, l]) => {
+            const sel = settings?.priorities || [];
+            const on = sel.includes(k);
+            return (
+              <button key={k} onClick={() => {
+                const nextP = on ? sel.filter((x) => x !== k) : sel.length >= 3 ? sel : [...sel, k];
+                setSettings((s) => ({ ...(s || {}), priorities: nextP, split: splitFor(nextP), done: true }));
+                changeProgram((p) => applyPriorities(p, nextP));
+              }} className={seg(on)}>{on ? (sel.indexOf(k) + 1) + " · " : ""}{l}</button>
+            );
+          })}
+        </div>
+
+        <p className={eyebrow + " mt-6"}>Rank numbers</p>
+        <div className={card + " mt-2 p-4"}>
+          <p className="text-xs text-neutral-400">{rank ? rank.name + ", rank " + (rank.index + 1) + " of 7" + (rank.next ? " — " + rank.next.name + " takes " + rank.next.phrase : "") : "No rank yet."}</p>
+          <button onClick={() => { const init = {}; (rank && rank.entries ? rank.entries : []).forEach((e) => { init[e.key] = e.value; }); setNumsIn(init); setNumsSheet(true); setShowSettings(false); }} className={ghost + " mt-3 w-full py-3 text-xs"}>Update my numbers</button>
+        </div>
+
+        <p className={eyebrow + " mt-6"}>Apple Health</p>
+        <div className={card + " mt-2 p-4"}>
+          <p className="text-xs leading-relaxed text-neutral-400">HealthKit isn't available on the web. Until the iOS build lands, import today's numbers by hand from the Health app — they show on your calendar and the coach sees them.</p>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {[["steps", "Steps"], ["sleep", "Sleep h"], ["restingHr", "Rest HR"]].map(([k, ph]) => (
+              <input key={k} inputMode="decimal" value={healthIn[k]} onChange={(e) => setHealthIn({ ...healthIn, [k]: e.target.value })} placeholder={ph} className="mono rounded-lg bg-neutral-900 px-2 py-2.5 text-right text-xs placeholder-neutral-600" />
+            ))}
+          </div>
+          <button onClick={() => { const d = todayKey(); setHealth((h) => ({ ...h, [d]: { ...(h[d] || {}), steps: Number(healthIn.steps) || undefined, sleep: Number(healthIn.sleep) || undefined, restingHr: Number(healthIn.restingHr) || undefined } })); setHealthIn({ steps: "", sleep: "", restingHr: "" }); }} className={ghost + " mt-2 w-full py-2.5 text-xs"}>Import today's numbers</button>
+          {health[todayKey()] && <p className="mono mt-2 text-[10px] text-neutral-500">Today: {health[todayKey()].steps ? health[todayKey()].steps + " steps" : ""}{health[todayKey()].sleep ? " · " + health[todayKey()].sleep + "h sleep" : ""}{health[todayKey()].restingHr ? " · " + health[todayKey()].restingHr + " bpm resting" : ""}</p>}
+          <p className="mono mt-2 text-[9px] text-neutral-600">iOS hook: window.MI_HEALTH.import(payload) — the native shell fills this automatically.</p>
+        </div>
         <p className={eyebrow + " mt-6"}>How to edit your workout</p>
         <div className={card + " mt-2 p-4 text-sm leading-relaxed text-neutral-400"}>
           1. Train tab → tap <span className="text-neutral-200">Edit</span> above the list.<br />
@@ -1799,6 +1676,10 @@ function MaxIntensityApp() {
             </div>
           )}
         </div>
+        <p className={eyebrow + " mt-6"}>Community admin</p>
+        <div className={card + " mt-2 p-3.5"}>
+          <input value={adminCode} onChange={(e) => setAdminCode(e.target.value)} placeholder="Admin code (Max only) — unlocks the verification queue" className="mono w-full rounded-lg bg-neutral-900 px-3 py-2.5 text-xs placeholder-neutral-700" />
+        </div>
         <button onClick={() => { setTutStep(0); setShowSettings(false); }} className="mono mt-5 w-full rounded-lg border border-neutral-800 py-3 text-xs text-neutral-400">Replay the tutorial</button>
         <button onClick={() => { setSettings((s) => ({ ...(s || {}), done: false })); setObStep(0); setShowSettings(false); }} className="mono mt-3 w-full rounded-lg border border-neutral-800 py-3 text-xs text-neutral-400">Re-run the setup questions</button>
         <p className="mono mt-5 text-center text-[9px] uppercase tracking-[0.25em] text-neutral-700">Max Intensity · V3</p>
@@ -1810,17 +1691,17 @@ function MaxIntensityApp() {
   const renderSession = () => {
     if (!session) return null;
     if (session.done) {
-      const totalSets = day.exercises.reduce((t, exr, i) => t + (((dayLogs[i] || {}).sets) || []).filter((s) => s && (s.weight || s.reps)).length, 0);
+      const items = day.exercises.map((exr, i) => ({ name: exr.name, sets: (((dayLogs[i] || {}).sets) || []).filter(Boolean).map((s) => ({ w: s.weight || "", r: s.reps || "", rir: s.rir })) }));
+      const rirs = items.flatMap((it) => it.sets.map((s) => s.rir)).filter((r) => r !== undefined && r !== null);
+      const worked = Array.from(new Set(day.exercises.flatMap((e) => MI.musclesFor(e.name))));
       return (
-        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-[#050505] px-6 text-center">
-          <p className="dp text-[52px] uppercase leading-[0.9] text-[#F2EFE8]">Session<br /><span className="text-[#FF2B2B]">complete</span></p>
-          <p className="mono mt-4 text-sm text-neutral-400">{day.name} · Week {week + 1} · {totalSets} sets</p>
-          {sessionPts > 0 && <p className="dp mt-3 text-2xl uppercase text-[#FF2B2B]">+{sessionPts} pts</p>}
-          <p className="mono mt-1 text-xs uppercase tracking-widest text-neutral-500">{game.streak}-day streak · saved to your calendar</p>
-          <p className="mt-5 max-w-xs text-sm text-neutral-500">Progress built one completed session at a time. Now leave and grow.</p>
-          <button onClick={endSession} className={cta + " mt-8 w-full max-w-xs py-4 text-base"}>Done</button>
-          <button onClick={resumeSession} className="mono mt-3 py-1 text-xs text-neutral-600">‹ Not finished — go back</button>
-        </div>
+        <MI.Recap
+          day={day.name} week={week + 1} plan={settings?.plan || "MAX INTENSITY"} items={items} prs={sessionPrs} pts={sessionPts}
+          streak={game.streak} points={game.points} rank={rank ? rank.name : "Bronze"} unit={unit} wOut={wOut}
+          worked={worked} priority={settings?.priorities || []} name={settings?.name || "Athlete"}
+          avgRir={rirs.length ? rirs.reduce((a, b) => a + Number(b), 0) / rirs.length : null}
+          onDone={endSession} onResume={resumeSession}
+        />
       );
     }
     const exr = day.exercises[session.ex];
@@ -1876,6 +1757,20 @@ function MaxIntensityApp() {
 
         {session.resting ? (
           <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+            {rirAsk ? (
+              <div className={card + " mb-6 w-full max-w-xs border-[#7f1d1d] p-4 text-left"}>
+                <p className={eyebrow}>{rirAsk.set === 2 ? "How was the work set?" : "How's the weight feeling?"}</p>
+                <p className="mt-1 text-sm text-neutral-300">Reps in reserve — how many more could you have done, strict tempo?</p>
+                <div className="mt-3 grid grid-cols-4 gap-2">
+                  {[0, 1, 2, 3].map((r) => (
+                    <button key={r} onClick={() => answerRir(r)} className={"dp rounded-lg border py-3 text-lg " + (r === 1 ? "border-[#FF2B2B] bg-[#FF2B2B] text-white" : "border-neutral-700 bg-[#111] text-neutral-200")}>{r === 3 ? "3+" : r}</button>
+                  ))}
+                </div>
+                <p className="mono mt-2 text-[9px] text-neutral-600">1 in reserve is the target. It tunes the next set; +2.5% next week still needs 6 clean reps.</p>
+              </div>
+            ) : rirNote ? (
+              <p className="mono mb-4 max-w-xs text-xs text-[#F2EFE8]"><span className="text-[#FF2B2B]">Coach · </span>{rirNote.line}</p>
+            ) : null}
             <p className="dp text-3xl uppercase tracking-widest text-[#FF2B2B]">Rest</p>
             <p className="mono mt-2 text-[84px] font-semibold leading-none text-[#F2EFE8]">
               {Math.floor(Math.max(0, restLeft ?? 0) / 60)}:{String(Math.max(0, restLeft ?? 0) % 60).padStart(2, "0")}
@@ -1895,6 +1790,7 @@ function MaxIntensityApp() {
               <span className={chip + " border border-neutral-800 bg-[#141414] text-neutral-400"}>tempo {exr.tempo}</span>
               <span className={chip + " border border-neutral-800 bg-[#141414] text-neutral-400"}>rest {exr.rest}</span>
               <button onClick={() => openDemo(exr.name)} className={chip + " border border-neutral-800 bg-[#141414] text-neutral-300"}>▶ form</button>
+              <button onClick={() => { setVoiceMsg(""); setVoiceTarget("workout"); }} className={chip + " flex items-center gap-1 border border-neutral-800 bg-[#141414] text-neutral-300"} aria-label="Log by voice"><MI.Ic d={MI.PATHS.MIC} className="h-3 w-3" /> voice</button>
             </div>
             <p className="mt-2.5 text-[11px] text-neutral-600">{BREATH}</p>
 
@@ -1948,11 +1844,20 @@ function MaxIntensityApp() {
               </div>
             </div>
             {isWork && <p className="mono mt-2 text-[10px] uppercase tracking-widest text-[#FF2B2B]">This set is the session. 1 in reserve.</p>}
+            {rirNote && rirNote.ex === session.ex && rirNote.set === session.set && (
+              <div className={card + " mt-3 flex items-center gap-3 border-[#7f1d1d] px-3.5 py-2.5"}>
+                <p className="min-w-0 flex-1 text-xs text-neutral-200"><span className="mono text-[#FF2B2B]">Coach · </span>{rirNote.line}</p>
+                {rirNote.suggest && !setLog.weight && (
+                  <button onClick={() => setSet(activeDay, session.ex, session.set, "weight", String(rirNote.suggest))} className={cta + " shrink-0 px-3 py-2 text-[10px]"}>Use {wOut(String(rirNote.suggest))} {unit}</button>
+                )}
+              </div>
+            )}
+            {voiceMsg && <p className="mono mt-2 text-[10px] text-neutral-400">{voiceMsg}</p>}
 
             <div className="mt-auto pb-8">
               <button onClick={logSetAndContinue} className={cta + " w-full py-4 text-lg"}>Log set →</button>
               <button
-                onClick={() => { const nx = advancePointer(session); if (nx.done) { saveSessionToHistory(); awardSession(); setSession({ done: true }); } else setSession(nx); }}
+                onClick={() => { const nx = advancePointer(session); if (nx.done) { saveSessionToHistory(); awardSession(); checkRankUp(); setSession({ done: true }); setRirAsk(null); } else { setRirNote(null); setSession(nx); } }}
                 className="mono mt-3 w-full py-2 text-xs text-neutral-600"
               >
                 skip this set
@@ -1970,6 +1875,7 @@ function MaxIntensityApp() {
     ["program", "Train", "M4 10h2m12 0h2M8 6v8M16 6v8M8 10h8"],
     ["nutrition", "Eat", "M12 3c-4 3-6 6-6 9a6 6 0 0012 0c0-3-2-6-6-9zM12 8v4"],
     ["calendar", "Log", "M5 5h14v14H5zM5 9h14M9 3v4M15 3v4"],
+    ["community", "Wall", MI.PATHS.USERS],
     ["rules", "Learn", "M6 4h9a3 3 0 013 3v13H9a3 3 0 00-3 3V4zM6 17h12"],
     ["coach", "Coach", "M4 6h16v9H9l-5 4V6z"],
   ];
@@ -2011,6 +1917,12 @@ function MaxIntensityApp() {
           </span>
           <p className="dp text-base uppercase tracking-wide text-[#F2EFE8]">Max <span className="text-[#FF2B2B]">Intensity</span></p>
           <div className="ml-auto flex items-center gap-3">
+            {rank && (
+              <button onClick={() => { setTab("calendar"); setLogView("progress"); }} className="flex items-center gap-1" aria-label={"Rank " + rank.name}>
+                <MI.RankBadge name={rank.name} index={rank.index} size={20} />
+                <span className="mono hidden text-[10px] uppercase tracking-wider text-neutral-400 min-[400px]:inline">{rank.name}</span>
+              </button>
+            )}
             <span className="flex items-center gap-1">
               <Ic d={P_FLAME} fill className={(game.streak >= 30 ? "h-5 w-5" : game.streak >= 7 ? "h-[17px] w-[17px]" : "h-3.5 w-3.5") + " text-[#FF2B2B]"} />
               <span className="mono text-[11px] font-semibold text-neutral-300">{game.streak}</span>
@@ -2058,13 +1970,32 @@ function MaxIntensityApp() {
       {/* ---------- TRAIN ---------- */}
       {tab === "program" && (
         <main className="px-4 pb-32">
-          <div className="pt-3">
-            <p className={eyebrow}>Week {week + 1} · {wk.tag}{settings?.split && settings.split !== "balanced" ? " · " + ({legglute:"Legs & glutes",shoulder:"Shoulders",chest:"Chest",arm:"Arms"}[settings.split] || "") + " focus" : ""}</p>
-            <div className="mt-1 flex items-end justify-between">
-              <h2 className="dp text-[46px] uppercase leading-[0.9]">{day.name}</h2>
-              <span className="mono pb-1 text-xs text-neutral-500">{doneCount}/{day.exercises.length} done</span>
-            </div>
+          <div className="pt-1">
+            <MI.PlateHeader plate={MI.plateFor("session", day.name)}
+              eyebrow={(settings?.plan ? settings.plan + " · " : "") + "Week " + (week + 1) + " · " + wk.tag + ((settings?.priorities || []).length ? " · " + settings.priorities.map((k) => (MI.MUSCLES.find((m) => m[0] === k) || [])[1]).filter(Boolean).join(", ") + " first" : "")}
+              title={day.name}
+              right={<span className="mono pb-1 text-xs text-neutral-500">{doneCount}/{day.exercises.length} done</span>} />
             <p className="mt-2 text-sm text-neutral-500">{wk.cue}</p>
+            {/* Day 5 reminder promised on the trial timeline: two days before the trial ends */}
+            {trialStart && !pro && trialLeft > 0 && trialLeft <= 2 && (
+              <button onClick={() => setShowPaywall(true)} className={card + " mt-3 flex w-full items-center gap-3 border-[#7f1d1d] px-3.5 py-2.5 text-left"}>
+                <Ic d={P_LOCK} className="h-4 w-4 shrink-0 text-[#FF2B2B]" />
+                <p className="min-w-0 flex-1 text-xs text-neutral-200">Your trial ends in {trialLeft} day{trialLeft === 1 ? "" : "s"}. Keep the coach for £{MI.PRICES.monthly}/mo, or £{MI.PRICES.yearly}/yr — nothing is charged automatically.</p>
+                <MI.Ic d={MI.PATHS.ARROW} className="h-4 w-4 text-neutral-600" />
+              </button>
+            )}
+            {(() => {
+              const last = checkins.length ? checkins[checkins.length - 1] : null;
+              const since = last ? Math.floor((Date.now() - new Date(last.date + "T12:00:00").getTime()) / 86400000) : null;
+              const due = ob.beforePhoto && (since === null ? Object.keys(history).length >= 3 : since >= 7);
+              return due ? (
+                <button onClick={() => { setTab("calendar"); setLogView("progress"); }} className={card + " mt-3 flex w-full items-center gap-3 border-[#7f1d1d] px-3.5 py-2.5 text-left"}>
+                  <MI.Ic d={MI.PATHS.CAMERA} className="h-4 w-4 shrink-0 text-[#FF2B2B]" />
+                  <p className="min-w-0 flex-1 text-xs text-neutral-200">Weekly photo check-in due. Same light, same spot — 20 seconds.</p>
+                  <MI.Ic d={MI.PATHS.ARROW} className="h-4 w-4 text-neutral-600" />
+                </button>
+              ) : null;
+            })()}
             {(() => {
               const plan = dayPlan[todayKey()] || rhythmFor(settings?.split)[(new Date().getDay() + 6) % 7];
               return <p className="mono mt-1.5 text-[10px] uppercase tracking-widest text-neutral-500">Today on the plan: <span className={plan === "REST" ? "text-neutral-400" : "text-[#FF2B2B]"}>{plan === "REST" ? "Rest — part of the plan" : plan}</span></p>;
@@ -2101,27 +2032,35 @@ function MaxIntensityApp() {
           </div>
 
           {ovActive && (
-            <div className={card + " mt-4 flex items-center gap-3 border-[#7f1d1d] p-3"}>
-              <p className="min-w-0 flex-1 text-xs text-neutral-300"><span className="mono text-[#FF2B2B]">Adjusted · </span>{override.reply}</p>
-              <button onClick={() => setOverride(null)} className="mono shrink-0 rounded-md border border-neutral-700 px-2.5 py-1 text-[10px] text-neutral-400">Revert</button>
+            <div className={card + " mt-4 border-[#7f1d1d] p-3"}>
+              <div className="flex items-center gap-3">
+                <p className="min-w-0 flex-1 text-xs text-neutral-300"><span className="mono text-[#FF2B2B]">{override.short ? "Short on time · " : "Adjusted · "}</span>{override.reply}</p>
+                <button onClick={() => setOverride(null)} className="mono shrink-0 rounded-md border border-neutral-700 px-2.5 py-1 text-[10px] text-neutral-400">Revert</button>
+              </div>
+              {((override.added || []).length > 0 || (override.removed || []).length > 0) && (
+                <p className="mono mt-1.5 text-[10px] text-neutral-500">
+                  {(override.added || []).length > 0 && <span className="text-[#F2EFE8]">+ {(override.added || []).join(", ")}</span>}
+                  {(override.added || []).length > 0 && (override.removed || []).length > 0 && " · "}
+                  {(override.removed || []).length > 0 && <span className="line-through">{(override.removed || []).join(", ")}</span>}
+                </p>
+              )}
             </div>
           )}
           {!ovActive && (
-            <div className="mt-4">
-              {!showEditReq ? (
-                <div className="flex gap-2">
-                  <button onClick={() => { setShowEditReq(true); setEditReq("I've only got 45 minutes today"); }} className="mono flex-1 rounded-lg border border-neutral-800 bg-[#141414] py-2.5 text-[10px] uppercase tracking-widest text-neutral-400">Short on time</button>
-                  <button onClick={() => { setShowEditReq(true); setEditReq("Focus "); }} className="mono flex-1 rounded-lg border border-neutral-800 bg-[#141414] py-2.5 text-[10px] uppercase tracking-widest text-neutral-400">Focus a muscle</button>
-                </div>
-              ) : hasAI ? (
-                <div className="flex gap-2">
-                  <input value={editReq} onChange={(e) => setEditReq(e.target.value)} onKeyDown={(e) => e.key === "Enter" && runEditSession()} placeholder="e.g. only 45 min · focus shoulders" className="flex-1 rounded-lg border border-neutral-800 bg-[#141414] px-3.5 py-2.5 text-sm placeholder-neutral-600" />
-                  <button onClick={runEditSession} disabled={editingSession} className={cta + " px-4 text-xs disabled:opacity-50"}>{editingSession ? "…" : "Go"}</button>
-                  <button onClick={() => setShowEditReq(false)} className="mono rounded-lg border border-neutral-800 px-3 text-xs text-neutral-500" aria-label="Close">✕</button>
-                </div>
-              ) : (
-                <LockCard title="Adjust today" lines={["Short on time? Different focus? MAX AI rebuilds today's session around you — philosophy intact."]} />
-              )}
+            <div className={card + " mt-4 p-3.5"}>
+              <p className="dp text-sm uppercase text-neutral-200">Anything you want to change about today?</p>
+              <p className="mono mt-0.5 text-[10px] text-neutral-500">Plain language. The coach inserts it, removes the overlap, and tells you why in one line.</p>
+              <div className="mt-2.5 flex gap-2">
+                <input value={editReq} onChange={(e) => setEditReq(e.target.value)} onKeyDown={(e) => e.key === "Enter" && runEditSession()} placeholder='e.g. "add bench" · "swap dips for flys" · "no cables today"' className="min-w-0 flex-1 rounded-lg border border-neutral-800 bg-[#0d0d0d] px-3.5 py-3 text-sm placeholder-neutral-600" />
+                <button onClick={() => (hasAI ? runEditSession() : setShowPaywall(true))} disabled={editingSession} className={cta + " px-4 text-xs disabled:opacity-50"}>{editingSession ? "…" : hasAI ? "Go" : <Ic d={P_LOCK} className="h-3.5 w-3.5" />}</button>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <button onClick={() => { setShortPri(""); setShortSheet(true); }} className="mono rounded-md border border-neutral-800 bg-[#141414] px-3 py-2 text-[10px] uppercase tracking-widest text-neutral-300">Short on time</button>
+                <button onClick={() => (hasAI ? runEditSession("Add bench press") : setShowPaywall(true))} className="mono rounded-md border border-neutral-800 bg-[#141414] px-3 py-2 text-[10px] uppercase tracking-widest text-neutral-400">Add bench</button>
+                <button onClick={() => { setEditing(true); }} className="mono rounded-md border border-neutral-800 bg-[#141414] px-3 py-2 text-[10px] uppercase tracking-widest text-neutral-400">Swap an exercise</button>
+              </div>
+              {!hasAI && <p className="mono mt-2 text-[9px] text-neutral-600">Short-on-time works free. Plain-language edits are Max AI — {aiLeft()} free call{aiLeft() === 1 ? "" : "s"} left today.</p>}
+              {voiceMsg && !session && <p className="mono mt-2 text-[10px] text-neutral-400">{voiceMsg}</p>}
             </div>
           )}
 
@@ -2159,8 +2098,8 @@ function MaxIntensityApp() {
                       <div className="flex gap-2">
                         <button onClick={() => moveEx(i, -1)} className="rounded-lg border border-neutral-700 px-3 py-2 text-xs font-bold text-neutral-300" aria-label="Move up">↑</button>
                         <button onClick={() => moveEx(i, 1)} className="rounded-lg border border-neutral-700 px-3 py-2 text-xs font-bold text-neutral-300" aria-label="Move down">↓</button>
-                        <button onClick={() => aiSwapExercise(i)} disabled={exSwapping !== null} className="dp flex-1 rounded-lg bg-[#FF2B2B] py-2 text-[11px] uppercase text-white disabled:opacity-50">
-                          {exSwapping === i ? "Swapping…" : hasAI ? "AI swap" : "AI swap (locked)"}
+                        <button onClick={() => aiSwapExercise(i)} className="dp flex-1 rounded-lg bg-[#FF2B2B] py-2 text-[11px] uppercase text-white disabled:opacity-50">
+                          Swaps
                         </button>
                         <button onClick={() => openDemo(exr.name)} className="rounded-lg border border-neutral-700 px-3 text-[10px] font-bold uppercase text-neutral-300">▶</button>
                         <button onClick={() => removeEx(i)} className="rounded-lg border border-[#7f1d1d] px-3 text-[10px] font-bold uppercase text-[#FF2B2B]">✕</button>
@@ -2276,7 +2215,9 @@ function MaxIntensityApp() {
         const gaining = profile?.goalIdx === 2;
         const meals = gaining ? GAIN_MEALS : profile?.goalIdx === 0 ? CUT_MEALS : [...GAIN_MEALS, ...CUT_MEALS];
         return (
-          <main className="px-4 pb-32 pt-3">
+          <main className="px-4 pb-32 pt-1">
+            <MI.PlateHeader plate="torso" eyebrow={"Eat · " + (targets ? goalLabel() : "set your numbers")} title="Fuel" opacity={0.18}
+              right={targets ? <span className="mono pb-1 text-xs text-neutral-500">{Math.round(totals.kcal)} / {targets.kcal} kcal</span> : null} />
             {needSetup ? (
               <div className={card + " p-5"}>
                 <p className={eyebrow}>Targets</p>
@@ -2350,6 +2291,52 @@ function MaxIntensityApp() {
                     <p className="mt-1 text-xs leading-relaxed text-neutral-400">One solid ~1,000 kcal meal a day, five days a week, does the heavy lifting. One decision. Survives a bad week. 35 min of prep = 3 days covered.</p>
                   </div>
                 </div>
+
+                {/* meal-prep recommendations from tastes, shops, allergies + a food file */}
+                <MI.PlateCard plate="torso" opacity={0.12} className="mt-3" innerClassName="p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="dp text-sm uppercase text-neutral-200">Meal prep for you</p>
+                    <button onClick={() => setShowMealPrefs(!showMealPrefs)} className="mono rounded-md border border-neutral-800 px-2.5 py-1 text-[10px] text-neutral-400">{showMealPrefs ? "Close" : mealPrep ? "Redo" : "Set up"}</button>
+                  </div>
+                  <p className="mt-0.5 text-[10px] text-neutral-500">Three recommendations, not a planner maze. Built from what you like, where you shop and what you can't eat.</p>
+                  {showMealPrefs && (
+                    <div className="mt-3 space-y-2">
+                      <input value={mealPrefs.tastes} onChange={(e) => setMealPrefs({ ...mealPrefs, tastes: e.target.value })} placeholder="What you like — e.g. mince, rice, curry, eggs" className="w-full rounded-lg bg-neutral-900 px-3 py-2.5 text-sm placeholder-neutral-600" />
+                      <input value={mealPrefs.shops} onChange={(e) => setMealPrefs({ ...mealPrefs, shops: e.target.value })} placeholder="Where you shop — e.g. Aldi, Tesco, the butcher" className="w-full rounded-lg bg-neutral-900 px-3 py-2.5 text-sm placeholder-neutral-600" />
+                      <input value={mealPrefs.allergies} onChange={(e) => setMealPrefs({ ...mealPrefs, allergies: e.target.value })} placeholder="Allergies or foods to avoid — or 'none'" className="w-full rounded-lg bg-neutral-900 px-3 py-2.5 text-sm placeholder-neutral-600" />
+                      <div className="flex items-center gap-2">
+                        <label className="mono flex cursor-pointer items-center gap-1.5 rounded-lg border border-neutral-700 px-3 py-2.5 text-[10px] uppercase tracking-wider text-neutral-300">
+                          <MI.Ic d={MI.PATHS.FILE} className="h-3.5 w-3.5" />{mealPrefs.foodFileName ? "Change food file" : "Add a food file"}
+                          <input type="file" accept=".txt,.csv,.md,.json,text/plain,text/csv" className="hidden" onChange={(e) => readFoodFile(e.target.files && e.target.files[0])} />
+                        </label>
+                        {mealPrefs.foodFileName && <span className="mono min-w-0 flex-1 truncate text-[10px] text-neutral-500">{mealPrefs.foodFileName}</span>}
+                        {mealPrefs.foodFileName && <button onClick={() => setMealPrefs({ ...mealPrefs, foodFile: "", foodFileName: "" })} className="mono text-[10px] text-neutral-600">✕</button>}
+                      </div>
+                      <p className="mono text-[9px] text-neutral-600">A shopping list, a week of meals, what's in the freezer — plain text or CSV. The coach reads it when it recommends.</p>
+                      <button onClick={() => (hasAI ? runMealPrep() : setShowPaywall(true))} disabled={mealPrepBusy} className={cta + " w-full py-3 text-xs disabled:opacity-50"}>{mealPrepBusy ? "Cooking up recommendations…" : hasAI ? "Recommend my meal prep" : "Max AI — start the trial"}</button>
+                    </div>
+                  )}
+                  {mealPrep && !showMealPrefs && (
+                    <div className="mt-3 space-y-2">
+                      {(mealPrep.recommendations || []).map((r, i) => (
+                        <div key={i} className="rounded-lg bg-[#0d0d0d]/80 p-3.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-neutral-100">{r.name}</p>
+                              <p className="mono mt-0.5 text-[10px] text-neutral-500">{r.kcal} kcal · P{r.protein} C{r.carbs} F{r.fat}</p>
+                            </div>
+                            <button onClick={() => logMeal({ name: r.name, kcal: r.kcal, protein: r.protein, carbs: r.carbs, fat: r.fat })} className={cta + " shrink-0 px-3 py-2 text-[10px]"}>Log</button>
+                          </div>
+                          <p className="mt-1.5 text-xs leading-relaxed text-neutral-400">{r.how}</p>
+                          {r.shop && <p className="mono mt-1 text-[10px] text-neutral-500">Shop: {r.shop}</p>}
+                          {r.why && <p className="mt-1 text-[11px] text-[#FF2B2B]">{r.why}</p>}
+                        </div>
+                      ))}
+                      {mealPrep.note && <p className="mono text-[10px] text-neutral-400">{mealPrep.note}</p>}
+                    </div>
+                  )}
+                  {!mealPrep && !showMealPrefs && <button onClick={() => setShowMealPrefs(true)} className={ghost + " mt-3 w-full py-3 text-xs"}>Tell it what you like</button>}
+                </MI.PlateCard>
 
                 <div className="mt-6 mb-2 flex items-center justify-between">
                   <p className={eyebrow}>My daily meals — tap to log</p>
@@ -2472,12 +2459,22 @@ function MaxIntensityApp() {
                   </div>
                 )}
 
-                <p className={eyebrow + " mt-6 mb-2"}>Quick log</p>
+                <p className={eyebrow + " mt-6 mb-2"}>Quick log — type, photo or voice</p>
                 <div className="flex gap-2">
-                  <input value={foodInput} onChange={(e) => setFoodInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addFood()} placeholder="e.g. 300g mince, potatoes, milk" className="flex-1 rounded-lg border border-neutral-800 bg-[#141414] px-3.5 py-2.5 text-sm placeholder-neutral-600" />
+                  <input value={foodInput} onChange={(e) => setFoodInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addFood()} placeholder="e.g. 300g mince, potatoes, milk" className="min-w-0 flex-1 rounded-lg border border-neutral-800 bg-[#141414] px-3.5 py-2.5 text-sm placeholder-neutral-600" />
                   <button onClick={addFood} disabled={estimating || !hasAI} className={cta + " px-4 text-xs disabled:opacity-50"}>{estimating ? "…" : hasAI ? "Log" : <Ic d={P_LOCK} className="h-3.5 w-3.5" />}</button>
                 </div>
-                <p className="mono mt-1.5 text-[9px] text-neutral-600">AI estimates the macros — weigh the big stuff.</p>
+                <div className="mt-2 flex gap-2">
+                  <label className={"flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-neutral-800 bg-[#141414] py-3 text-[10px] uppercase tracking-widest " + (hasAI ? "text-neutral-300" : "text-neutral-600")}>
+                    <MI.Ic d={MI.PATHS.CAMERA} className="h-4 w-4" />{photoBusy ? "Reading…" : "Photo"}
+                    <input type="file" accept="image/*" capture="environment" className="hidden" disabled={!hasAI || photoBusy} onChange={(e) => logMealPhoto(e.target.files && e.target.files[0])} />
+                  </label>
+                  <button onClick={() => { setVoiceMsg(""); setVoiceTarget("meal"); }} className={"flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-neutral-800 bg-[#141414] py-3 text-[10px] uppercase tracking-widest " + (hasAI ? "text-neutral-300" : "text-neutral-600")}>
+                    <MI.Ic d={MI.PATHS.MIC} className="h-4 w-4" />Voice note
+                  </button>
+                </div>
+                {voiceMsg && <p className="mono mt-1.5 text-[10px] text-neutral-400">{voiceMsg}</p>}
+                <p className="mono mt-1.5 text-[9px] text-neutral-600">AI estimates the macros — weigh the big stuff. {aiLeft()} calls left today.</p>
                 <button onClick={() => setShowManual(!showManual)} className="mono mt-2 text-[10px] uppercase tracking-widest text-neutral-500 underline underline-offset-2">{showManual ? "Hide manual entry" : "Add manually (free)"}</button>
                 {showManual && (
                   <div className={card + " mt-2 p-3"}>
@@ -2681,16 +2678,19 @@ function MaxIntensityApp() {
                   <p className="mono mt-1 text-[10px] text-neutral-500">Points will convert to subscription discounts when the community launches.</p>
                   </div>
                 </div>
+                {/* rank + projection vs actual */}
+                <div className="mt-3">
+                  <MI.RankCard rank={rank} estRank={estimatedRank()} name={settings?.name} gainPct={window.MI_PROJ ? window.MI_PROJ.blockGain(program, logs).pct : 0}
+                    onUpdate={() => { const init = {}; (rank && rank.entries ? rank.entries : []).forEach((e) => { init[e.key] = e.value; }); setNumsIn(init); setNumsSheet(true); }} />
+                </div>
+                <div className="mt-3">
+                  <MI.ProjectionGraph projection={projectionNow()} actual={actualPoints()} unit={unit} wOut={wOut} />
+                </div>
                 {/* overall strength: total work-set load per week */}
                 {(() => {
-                  const weekly = [];
-                  for (let w2 = 0; w2 < 5; w2++) {   // deload week excluded — lighter by design
-                    let tot = 0;
-                    program.days.forEach((d, di) => d.exercises.forEach((_, ei) => {
-                      tot += Number((logs[`w${w2}-d${di}`]?.[ei]?.sets?.[2] || {}).weight) || 0;
-                    }));
-                    if (tot > 0) weekly.push([w2, tot]);
-                  }
+                  // average work-set load per logged exercise, so a half-logged week
+                  // reads as what it is rather than a collapse (deload week excluded)
+                  const weekly = window.MI_PROJ.blockGain(program, logs).weekly.map((x) => [x.w, Math.round(x.avg * 10) / 10]);
                   const vals = weekly.map((x) => x[1]);
                   const mn = Math.min(...vals), mx = Math.max(...vals);
                   const poly = weekly.length > 1 ? weekly.map(([w2, v]) => `${(w2 / 5) * 100},${mx === mn ? 20 : 38 - ((v - mn) / (mx - mn)) * 34}`).join(" ") : null;
@@ -2704,7 +2704,7 @@ function MaxIntensityApp() {
                           <Ic d={P_CHART} className="h-4 w-4 text-[#FF2B2B]" />
                           <p className="dp text-sm uppercase text-neutral-200">Overall strength</p>
                         </div>
-                        <p className="mt-1 text-[11px] text-neutral-500">Total weight on your work sets, week by week — the whole block in one line.</p>
+                        <p className="mt-1 text-[11px] text-neutral-500">Average work-set load, week by week — the whole block in one line.</p>
                         {poly ? (
                           <>
                             <svg viewBox="0 0 100 40" className="mt-3 h-20 w-full" preserveAspectRatio="none" aria-hidden="true">
@@ -2778,49 +2778,41 @@ function MaxIntensityApp() {
                   )}
                 </div>
 
-                <div className={card + " mt-3 overflow-hidden"}>
-                  <div className="h-1 w-full bg-[#FF2B2B]" />
-                  <div className="p-4">
-                    <div className="flex items-center justify-between">
-                      <p className="dp text-lg uppercase text-[#F2EFE8]">Leaderboard</p>
-                      {handle && <button onClick={() => submitBoard(false)} disabled={boardBusy} className="mono rounded-md border border-neutral-800 px-2.5 py-1 text-[10px] text-neutral-400 disabled:opacity-50">{boardBusy ? "…" : "Update mine"}</button>}
-                    </div>
-                    {!handle ? (
-                      <div className="mt-2">
-                        <p className="text-xs text-neutral-500">Put your name up — points, streak and best lift, against everyone on the method. Your Instagram handle is shown to other members.</p>
-                        <div className="mt-2 flex gap-2">
-                          <input value={handleIn} onChange={(e) => setHandleIn(e.target.value)} placeholder="@yourhandle" className="mono flex-1 rounded-lg bg-neutral-900 px-3 py-2.5 text-sm placeholder-neutral-700" />
-                          <button onClick={() => { const v = handleIn.replace(/^@/, "").trim(); if (/^[a-zA-Z0-9._]{2,30}$/.test(v)) { setHandle(v); setTimeout(() => submitBoard(false), 300); } else alert("Enter a valid Instagram handle."); }} className={cta + " px-4 text-xs"}>Join</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="mt-2">
-                        {!board ? (
-                          <button onClick={loadBoard} className="mono w-full rounded-lg border border-neutral-800 py-2.5 text-xs text-neutral-400">Load leaderboard</button>
-                        ) : board.length === 0 ? (
-                          <p className="text-xs text-neutral-600">Nobody on the board yet — you're about to be first.</p>
-                        ) : (
-                          <div className="space-y-1">
-                            {board.map((r, ri) => (
-                              <div key={r.handle} className={"flex items-center gap-2 rounded-lg px-2.5 py-2 " + (r.handle === handle.toLowerCase().replace(/^@/, "") ? "bg-[#1c0808]" : ri % 2 ? "bg-neutral-900/40" : "")}>
-                                <span className={"dp w-7 shrink-0 text-sm " + (ri === 0 ? "text-[#FF2B2B]" : "text-neutral-600")}>{ri + 1}</span>
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-xs font-semibold text-neutral-200">@{r.handle}</p>
-                                  {r.bestKg > 0 && <p className="mono truncate text-[9px] text-neutral-600">{wOut(String(r.bestKg))} {unit} · {r.bestName}</p>}
-                                </div>
-                                <div className="mono shrink-0 text-right">
-                                  <p className="text-xs font-semibold text-[#FF2B2B]">{r.points}</p>
-                                  <p className="text-[8px] uppercase text-neutral-600">{r.streak}d streak</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <p className="mono mt-2 text-[9px] text-neutral-600">Updates after every session. Points will convert to discounts.</p>
-                      </div>
-                    )}
-                  </div>
+                {/* PR moments */}
+                <MI.PlateCard plate="arm" opacity={0.12} rule innerClassName="p-4">
+                  <div className="flex items-center gap-2"><MI.Ic d={MI.PATHS.TROPHY} className="h-4 w-4 text-[#FF2B2B]" /><p className="dp text-sm uppercase text-neutral-200">PR moments</p></div>
+                  {prs.length === 0 ? <p className="mt-2 text-xs text-neutral-600">Beat an all-time work-set weight and it lands here — with the confetti.</p> : (
+                    <ul className="mt-2 space-y-1">
+                      {[...prs].reverse().slice(0, 8).map((p, i) => (
+                        <li key={i} className="flex items-baseline justify-between gap-2 text-sm">
+                          <span className="min-w-0 truncate text-neutral-300">{p.name}</span>
+                          <span className="mono shrink-0 text-xs text-[#FF2B2B]">{wOut(String(p.w))} {unit} <span className="text-neutral-600">· {MI.fmtDate(p.date)}</span></span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {prs.length > 0 && <button onClick={() => { const p = prs[prs.length - 1]; setPrHit({ name: p.name, w: p.w }); setSession(null); MI.sound("pr"); }} className="mono mt-2 text-[10px] uppercase tracking-widest text-neutral-500 underline underline-offset-2">Replay the last one</button>}
+                </MI.PlateCard>
+
+                {/* private weekly photo check-in */}
+                <div className="mt-3">
+                  <MI.PhotoCheckin checkins={checkins} beforePhoto={ob.beforePhoto}
+                    onAdd={(data) => setCheckins((c) => [...c.filter((x) => x.date !== todayKey()), { date: todayKey(), data }].slice(-26))}
+                    onDelete={(d) => setCheckins((c) => c.filter((x) => x.date !== d))}
+                    onAssess={() => setShowAssess(true)} />
                 </div>
+                {settings?.assessment && (
+                  <div className={card + " mt-3 p-4"}>
+                    <p className={eyebrow}>Last assessment · {MI.fmtDate(settings.assessment.date)}</p>
+                    <p className="mt-1.5 text-sm leading-relaxed text-neutral-300">{settings.assessment.text}</p>
+                  </div>
+                )}
+
+                <button onClick={() => setTab("community")} className={card + " mt-3 flex w-full items-center gap-3 p-4 text-left"}>
+                  <MI.Ic d={MI.PATHS.USERS} className="h-5 w-5 text-[#FF2B2B]" />
+                  <div className="min-w-0 flex-1"><p className="dp text-sm uppercase text-neutral-200">Leaderboard and wall</p><p className="mono mt-0.5 text-[10px] text-neutral-500">Rank, level and streak against everyone on the method.</p></div>
+                  <MI.Ic d={MI.PATHS.ARROW} className="h-4 w-4 text-neutral-600" />
+                </button>
               </>
             )}
           </main>
@@ -2926,11 +2918,19 @@ function MaxIntensityApp() {
             {thinking && <div className={card + " mono w-fit px-3.5 py-2.5 text-xs text-neutral-500"}>coach is thinking…</div>}
             <div ref={chatEnd} />
           </div>
+          <p className="mono px-4 pt-1 text-[9px] text-neutral-600">{aiLeft()} coach calls left today{settings?.induction ? " · reads your induction: " + ((settings.induction.obstacles || []).slice(0, 2).join(", ") || settings.induction.goalLine || "") : ""}</p>
           <div className="flex gap-2 p-3">
             <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Ask your coach…" className="flex-1 rounded-lg border border-neutral-800 bg-[#141414] px-3.5 py-2.5 text-sm placeholder-neutral-600" />
             <button onClick={send} disabled={thinking} className={cta + " px-4 text-xs disabled:opacity-50"}>Send</button>
           </div>
         </main>
+      )}
+
+      {/* ---------- COMMUNITY ---------- */}
+      {tab === "community" && (
+        <MI.Community handle={handle} setHandle={(h) => { setHandle(h); setTimeout(() => submitBoard(true), 300); }} game={game} rank={rank ? rank.name : null}
+          history={history} bestLift={bestLift()} boardCall={boardCall} wallCall={wallCall} unit={unit} wOut={wOut} prs={prs}
+          projection={projectionNow()} planName={settings?.plan} adminCode={adminCode} setAdminCode={setAdminCode} checkins={checkins} beforePhoto={ob.beforePhoto} />
       )}
 
       {/* ---------- NEXT FIELD BAR ---------- */}
@@ -2990,6 +2990,78 @@ function MaxIntensityApp() {
       )}
 
       {renderSession()}
+
+      {/* ---------- SHEETS ---------- */}
+      <MI.Sheet open={shortSheet} onClose={() => setShortSheet(false)} title="Short on time">
+        <p className="mt-1 text-xs text-neutral-500">Cuts warm-up sets and rests first, pairs a circuit under 40 minutes, keeps every work set. Volume goes, intensity stays.</p>
+        <p className={MI.ui.label + " mt-4"}>How long have you got?</p>
+        <div className="mt-2 grid grid-cols-4 gap-2">
+          {[25, 30, 40, 45].map((m) => <button key={m} onClick={() => setShortMins(m)} className={"dp rounded-lg border py-3 text-lg " + (shortMins === m ? "border-[#FF2B2B] bg-[#FF2B2B] text-white" : "border-neutral-800 bg-[#111] text-neutral-300")}>{m}<span className="text-[10px]"> min</span></button>)}
+        </div>
+        <p className={MI.ui.label + " mt-4"}>What do you want to prioritise?</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {[["", "Keep the order"], ...baseDay.exercises.map((e) => [e.name, e.name])].map(([v, l]) => (
+            <button key={v || "keep"} onClick={() => setShortPri(v)} className={chip + " " + (shortPri === v ? "bg-[#FF2B2B] text-white" : "border border-neutral-800 text-neutral-400")}>{l}</button>
+          ))}
+        </div>
+        <button onClick={runShortOnTime} className={cta + " mt-5 w-full py-4 text-base"}>Rebuild for {shortMins} minutes</button>
+        {hasAI && <button onClick={() => { setShortSheet(false); runEditSession("I've only got " + shortMins + " minutes" + (shortPri ? ", prioritise " + shortPri : "")); }} className="mono mt-3 w-full py-2 text-xs text-neutral-500">Or let the coach rebuild it in plain language</button>}
+      </MI.Sheet>
+
+      <MI.Sheet open={!!swapSheet} onClose={() => setSwapSheet(null)} title="Recommended swaps">
+        {swapSheet && (
+          <>
+            <p className="mt-1 text-xs text-neutral-500">For <span className="text-[#F2EFE8]">{(day.exercises[swapSheet.i] || {}).name}</span>. Same muscles, same method.{swapSheet.busy ? " Coach is thinking…" : swapSheet.source === "coach" ? "" : " Rule-based list" + (hasAI ? "" : " — the coach picks for your session on Max AI") + "."}</p>
+            <div className="mt-3 space-y-2">
+              {swapSheet.options.map((o, k) => (
+                <button key={k} onClick={() => applySwap(swapSheet.i, o)} className={card + " block w-full p-4 text-left"}>
+                  <p className="dp text-base uppercase tracking-wide text-neutral-100">{o.name}</p>
+                  {o.note && <p className="mono mt-0.5 text-[10px] text-neutral-500">{o.note}</p>}
+                  {o.why && <p className="mt-1 text-xs text-neutral-400">{o.why}</p>}
+                </button>
+              ))}
+            </div>
+            {swapSheet.err && <p className="mono mt-2 text-[10px] text-[#FF2B2B]">{swapSheet.err}</p>}
+          </>
+        )}
+      </MI.Sheet>
+
+      <MI.Sheet open={numsSheet} onClose={() => setNumsSheet(false)} title="Update my numbers">
+        <p className="mt-1 text-xs text-neutral-500">Best single rep you're confident in, strict form. Your rank is recomputed from these.</p>
+        <div className="mt-3 space-y-2">
+          {(rank && rank.entries && rank.entries.length ? rank.entries.map((e) => e.key) : (settings?.knowsLiftNumbers === "bodyweight" ? ["pushups", "bwsquats", "pullups"] : ["bench", "squat", "ohp"])).map((k) => {
+            const lift = window.MI_RANK ? (window.MI_RANK.LIFTS.find((l) => l.key === k) || window.MI_RANK.BODYWEIGHT.find((l) => l.key === k)) : null;
+            const isLift = !!(window.MI_RANK && window.MI_RANK.LIFTS.find((l) => l.key === k));
+            return (
+              <div key={k} className="flex items-center gap-3">
+                <p className="mono flex-1 text-xs text-neutral-300">{lift ? lift.label : k}</p>
+                <input inputMode="decimal" value={numsIn[k] ?? ""} onChange={(e) => setNumsIn({ ...numsIn, [k]: e.target.value })} placeholder={isLift ? "kg" : "reps"} className="mono w-24 rounded-lg bg-neutral-900 px-3 py-2.5 text-right text-sm placeholder-neutral-700" />
+              </div>
+            );
+          })}
+        </div>
+        <button onClick={updateRankNumbers} className={cta + " mt-4 w-full py-3.5 text-sm"}>Recompute my rank</button>
+      </MI.Sheet>
+
+      <MI.Sheet open={!!voiceTarget} onClose={() => { speech.stop(); setVoiceTarget(null); }} title={voiceTarget === "meal" ? "Say what you ate" : "Say the set"} z={78}>
+        <p className="mt-1 text-xs text-neutral-500">{voiceTarget === "meal" ? '"Three eggs, two slices of sourdough and a banana."' : '"Incline press, 32s for six." Weight in ' + unit + ". Assumes the work set unless you say which."}</p>
+        {speech.supported ? (
+          <button onClick={() => (speech.listening ? speech.stop() : speech.start())} className={"mt-4 flex w-full items-center justify-center gap-2 rounded-lg border py-5 " + (speech.listening ? "border-[#FF2B2B] bg-[#1c0808] text-[#FF2B2B]" : "border-neutral-700 text-neutral-200")}>
+            <MI.Ic d={MI.PATHS.MIC} className="h-6 w-6" /><span className="dp text-lg uppercase">{speech.listening ? "Listening… tap to stop" : "Tap and speak"}</span>
+          </button>
+        ) : <p className="mono mt-3 rounded-md bg-neutral-900 px-3 py-2 text-[11px] text-neutral-400">Voice isn't available in this browser. Type it below — same parsing.</p>}
+        <textarea value={speech.transcript} onChange={(e) => speech.setTranscript(e.target.value)} rows={3} placeholder="Or type it here" className="mt-3 w-full rounded-lg bg-neutral-900 px-3 py-2.5 text-sm text-neutral-100 placeholder-neutral-600" />
+        <button onClick={() => (voiceTarget === "meal" ? applyVoiceMeal(speech.transcript) : applyVoiceWorkout(speech.transcript))} disabled={voiceBusy || !speech.transcript.trim() || !hasAI} className={cta + " mt-3 w-full py-3.5 text-sm disabled:opacity-50"}>{voiceBusy ? "Working…" : hasAI ? "Log it" : "Max AI — start the trial"}</button>
+        {voiceMsg && <p className="mono mt-2 text-[10px] text-neutral-400">{voiceMsg}</p>}
+      </MI.Sheet>
+
+      <MI.PhotoAssess open={showAssess} onClose={() => setShowAssess(false)} photo={checkins.length ? checkins[checkins.length - 1].data : ob.beforePhoto} hasAI={hasAI} tier={aiTier}
+        ob={{ goal: settings?.goal, bwKg: Number(settings?.bw) ? (settings.unit === "lb" ? Number(settings.bw) / 2.2046 : Number(settings.bw)) : 0, sex: settings?.sex, exp: settings?.exp }}
+        onApply={applyAssessment} onStartTrial={() => { setShowAssess(false); setShowPaywall(true); }}
+        projection12={window.MI_PROJ ? window.MI_PROJ.projection12({ goal: settings?.goal, bwKg: Number(settings?.bw) || 0, exp: settings?.exp, knowsLiftNumbers: settings?.knowsLiftNumbers, strength: settings?.strength || {} }) : null} />
+
+      {rankUp && <MI.RankUp from={rankUp.from} to={rankUp.to} onClose={() => setRankUp(null)} />}
+
       {renderSettings()}
       {renderTutorial()}
       {renderPaywall()}
