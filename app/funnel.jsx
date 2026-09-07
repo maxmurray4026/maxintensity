@@ -672,9 +672,15 @@ try {
     };
 
     const noHeader = ["reveal", "projection", "demo", "plan", "proof", "timeline", "paywall"].includes(st.kind);
+    /* Background plate progression: the body (muscles) while we talk about them,
+       the skeleton through rank and projection, the classroom once the plan exists. */
+    const phase = step < 13 ? "muscles" : step < 18 ? "skeleton" : "classroom";
+    const phaseIndex = step < 13 ? step : step < 18 ? step - 13 : step - 18;
+    const quiet = ["reveal", "projection", "demo", "plan", "hold"].includes(st.kind); // these screens carry their own plate
 
     return (
       <div className="fixed inset-0 z-[90] flex flex-col overflow-y-auto bg-[#050505] px-6 pb-8" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 20px)" }}>
+        {!quiet && <MI.Plate key={phase + phaseIndex} plate={MI.libraryPlate(phase, phaseIndex)} opacity={phase === "classroom" ? 0.08 : 0.14} position={phase === "classroom" ? undefined : "right -10%"} size={phase === "classroom" ? undefined : "auto 78%"} className="!fixed" red={0.6} />}
         <style>{`
           .mi-card3d { perspective: 1100px; }
           .mi-card3d-inner { position: relative; transform-style: preserve-3d; transition: transform .85s cubic-bezier(.2,.8,.2,1); }

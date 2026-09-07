@@ -7,12 +7,33 @@ try {
 (function (MI) {
   const { useState } = React;
 
+  /* Canonical plates. `lum: true` = raster engraving, red ink on cream paper:
+     rendered by luminance — inverted so the paper falls to black and vanishes
+     under screen blending while the ink carries the bone/red duotone. */
+  const A = "assets/anatomy/";
   MI.PLATES = {
-    skeleton: { file: "assets/anatomy/skeleton.svg", pos: "right -10%", size: "auto 150%" },
-    legs: { file: "assets/anatomy/legs.svg", pos: "right 20%", size: "auto 150%" },
-    back: { file: "assets/anatomy/back.svg", pos: "right 20%", size: "auto 160%" },
-    torso: { file: "assets/anatomy/torso-heart.svg", pos: "right 30%", size: "auto 170%" },
-    arm: { file: "assets/anatomy/arm.svg", pos: "right 10%", size: "auto 150%" },
+    skeleton: { file: A + "skeleton.jpg", lum: true, pos: "right 0%", size: "auto 150%" },
+    legs: { file: A + "legs.jpg", lum: true, pos: "right 30%", size: "auto 150%" },
+    back: { file: A + "back.jpg", lum: true, pos: "right 15%", size: "auto 160%" },
+    torso: { file: A + "torso-heart.jpg", lum: true, pos: "right 20%", size: "auto 150%" },
+    arm: { file: A + "arm.jpg", lum: true, pos: "right 10%", size: "auto 150%" },
+    musclesFront: { file: A + "muscles-front.jpg", lum: true, pos: "right 10%", size: "auto 150%" },
+    musclesBack: { file: A + "muscles-back.jpg", lum: true, pos: "right 10%", size: "auto 150%" },
+    classroom: { file: A + "classroom.jpg", lum: true, pos: "center 40%", size: "cover" },
+    hero: { file: A + "hero.jpg", lum: true, pos: "center 20%", size: "cover" },
+  };
+  /* Library plates for backgrounds. The enrollment funnel walks muscles →
+     skeleton → classroom as the story moves from the body to the rank to the plan. */
+  MI.LIBRARY = {
+    muscles: ["b-muscles-front", "a-muscles-back", "a-shoulder-arm", "b-arm-flexed", "a-arm-back", "b-muscles-back", "a-muscles-front", "b-legs-front", "a-legs", "b-head-neck", "a-knee", "b-hand", "b-foot", "a-muscles-front-2"],
+    skeleton: ["b-skeleton", "a-skeleton", "a-skeleton-2", "a-torso-heart", "b-torso-heart"],
+    classroom: ["b-study-sheet", "classroom", "hero", "a-hands-organs", "a-heart", "b-study-sheet", "classroom", "hero", "b-study-sheet"],
+  };
+  MI.libraryPlate = (phase, i) => {
+    const list = MI.LIBRARY[phase] || MI.LIBRARY.muscles;
+    const name = list[Math.max(0, i) % list.length];
+    const wide = name === "classroom" || name === "hero" || name === "b-study-sheet";
+    return { file: A + name + ".jpg", lum: true, pos: wide ? "center 30%" : "right 15%", size: wide ? "cover" : "auto 120%" };
   };
 
   /* Which plate a section gets. Legs behind lower-body, back/shoulder behind
@@ -30,12 +51,30 @@ try {
   };
 
   /* Absolutely positioned backdrop. Parent needs `relative overflow-hidden`. */
+  /* `plate` is a key of MI.PLATES or a plate object (see MI.libraryPlate). */
   MI.Plate = ({ plate = "skeleton", opacity = 0.18, position, size, flip, red = 0.55, className, style }) => {
-    const p = MI.PLATES[plate] || MI.PLATES.skeleton;
+    const p = typeof plate === "object" && plate ? plate : (MI.PLATES[plate] || MI.PLATES.skeleton);
     const url = `url(${p.file})`;
     const pos = position || p.pos, sz = size || p.size;
+    if (p.lum) {
+      /* Raster engraving. Two screen-blended layers: a bone-tinted base and a
+         red-tinted layer faded in along the duotone gradient. Invert + contrast
+         sends the cream paper to black (invisible under `screen`) and lifts the
+         ink. No stacking context on the wrapper, so the blend reaches the card. */
+      const bg = { backgroundImage: url, backgroundRepeat: "no-repeat", backgroundPosition: pos, backgroundSize: sz, transform: flip ? "scaleX(-1)" : undefined };
+      /* brightness before contrast pulls the solid ink fills down to a murmur
+         and leaves the engraved line-work as the highlight — so the plate reads
+         as etched lines, not a bright negative, and never fights the numbers. */
+      const base = "invert(1) grayscale(1) brightness(.62) contrast(2.6) ";
+      const fade = `linear-gradient(155deg, transparent ${Math.max(0, Math.round((1 - red) * 100) - 15)}%, #000 100%)`;
+      return (
+        <div aria-hidden className={"pointer-events-none absolute inset-0 overflow-hidden " + (className || "")} style={style}>
+          <div className="absolute inset-0" style={{ ...bg, opacity, filter: base + "sepia(.5) saturate(.5) brightness(1.15)", mixBlendMode: "screen" }} />
+          <div className="absolute inset-0" style={{ ...bg, opacity: Math.min(1, opacity * 1.8), filter: base + "sepia(1) saturate(8) hue-rotate(-40deg) brightness(1.25)", mixBlendMode: "screen", WebkitMaskImage: fade, maskImage: fade }} />
+        </div>
+      );
+    }
     const mask = { WebkitMaskImage: url, maskImage: url, WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat", WebkitMaskPosition: pos, maskPosition: pos, WebkitMaskSize: sz, maskSize: sz };
-    if (p.lum) { mask.WebkitMaskMode = "luminance"; mask.maskMode = "luminance"; }
     return (
       <div aria-hidden className={"pointer-events-none absolute inset-0 z-0 " + (className || "")}
         style={{ opacity, transform: flip ? "scaleX(-1)" : undefined, ...mask, background: `linear-gradient(155deg, #F2EFE8 ${Math.round((1 - red) * 100)}%, #FF2B2B 100%)`, ...(style || {}) }} />
@@ -52,14 +91,14 @@ try {
   );
 
   /* Section header with a plate strip behind it. */
-  MI.PlateHeader = ({ plate, eyebrow, title, right, opacity = 0.2 }) => (
+  MI.PlateHeader = ({ plate, eyebrow, title, right, opacity = 0.22 }) => (
     <div className="relative -mx-4 overflow-hidden px-4 py-3">
-      <MI.Plate plate={plate} opacity={opacity} position="right 28%" size="auto 340%" />
+      <MI.Plate plate={plate} opacity={opacity} position="right 22%" size="auto 300%" />
       <div className="relative z-10">
         {eyebrow && <p className={MI.ui.eyebrow}>{eyebrow}</p>}
         <div className="mt-1 flex items-end justify-between">
           <h2 className="dp text-[46px] uppercase leading-[0.9] text-[#F2EFE8]">{title}</h2>
-          {right}
+          {right && <span className="rounded-md bg-[#050505]/75 px-1.5 py-0.5">{right}</span>}
         </div>
       </div>
     </div>

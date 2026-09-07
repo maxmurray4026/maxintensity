@@ -1,5 +1,5 @@
 const { launch } = require('./harness'); const mock = require('./mock');
-const S = process.env.S || __dirname + '/shots'; require('fs').mkdirSync(S, { recursive: true }); let n = 0;
+const S = process.env.S || __dirname; require('fs').mkdirSync(S + '/shots', { recursive: true }); let n = 0;
 (async () => {
   const h = await launch({ worker: mock.worker, port: 8767 });
   const page = h.page;

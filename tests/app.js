@@ -1,7 +1,7 @@
 // In-app walkthrough after enrollment: seeds storage as a finished member, then exercises
 // the train edit, session + RIR + recap, progress page, wall/board, photo check-in, eat tab.
 const { launch } = require('./harness'); const mock = require('./mock');
-const S = process.env.S || __dirname + '/shots'; require('fs').mkdirSync(S, { recursive: true }); let n = 0;
+const S = process.env.S || __dirname; require('fs').mkdirSync(S + '/shots', { recursive: true }); let n = 0;
 let PNG = null;
 let page;
 (async () => {
