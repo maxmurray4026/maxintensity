@@ -7,11 +7,13 @@ is needed.
 
 ```
 cd tests && npm install && npx playwright install chromium
-npm test            # syntax check → full funnel → in-app walkthrough
+npm test            # syntax → logic → full funnel → in-app walkthrough
 ```
 
 - `syntax.js` compiles every JSX module and the main script with Babel.
-- `funnel.js` taps through all 27 enrollment screens (rank reveal, projection,
+- `logic.js` checks priority ordering (glutes→abs, abs first, chest→arms) and the
+  week scheduler (no two lower-body days adjacent) inside the page.
+- `funnel.js` taps through all 25 enrollment screens (rank reveal, projection,
   live coach demo, plan name, induction, ignite, account, proof, trial, paywall,
   downsell) and checks what lands in storage.
 - `app.js` seeds a member and exercises: plain-language edit ("add bench"),

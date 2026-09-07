@@ -13,8 +13,7 @@ const S = process.env.S || __dirname; require('fs').mkdirSync(S + '/shots', { re
   await tap('Yes'); console.log(await step(), await q());
   await tap('More than once'); console.log(await step(), await q());
   await tap('On and off'); console.log(await step(), await q());
-  await tap('Sometimes'); console.log(await step(), await q());
-  await tap('Losing momentum'); console.log(await step(), await q()); await shot('blocker-done');
+  console.log('recomp option present:', await root().getByRole('button', { name: 'Lose fat + build muscle' }).count());
   await tap('Build muscle'); console.log(await step(), await q());
   await tap('Bigger and heavier'); console.log(await step(), await q());
   await tap('Male'); console.log(await step(), await q()); await shot('weight');
@@ -32,8 +31,10 @@ const S = process.env.S || __dirname; require('fs').mkdirSync(S + '/shots', { re
   await tap('Chest'); await tap('Arms'); await shot('priorities');
   await tap('Build around'); console.log(await step()); await shot('demo-a');
   await tap("I've only got 40 min"); await page.waitForTimeout(600); await shot('demo-thinking'); await page.waitForTimeout(1500); await shot('demo-rebuilt');
+  console.log('two-set copy:', (await page.innerText('body')).includes('working set and the back-off'));
   console.log('demo calls:', mock.calls.filter((c) => c.path === '/').length, 'tier hdr:', (mock.calls.find((c) => c.path === '/') || {}).headers?.['x-mi-tier']);
   await tap("That's my coach"); await page.waitForTimeout(600); await shot('plan');
+  console.log('plan loop:', (await page.innerText('body')).includes('ADD REPS'), '| scheme numbers gone:', !(await page.innerText('body')).includes('10 / 6 / 6 / 6'));
   await tap('Continue'); console.log(await step(), await q());
   await tap('Lost motivation'); await tap('No time'); await shot('obstacles');
   await tap('Show me how'); console.log(await step(), await q()); await shot('induction');

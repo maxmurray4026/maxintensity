@@ -32,8 +32,23 @@ try {
           {dA && <path d={dA} fill="none" stroke="#FF2B2B" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
           {(actual || []).map((p, i) => <circle key={i} cx={X(p.w)} cy={Y(p.v)} r="3.2" fill="#FF2B2B" />)}
           <g transform={`translate(${X(6) - 6}, ${Y(P.points[6].v) - 6})`}><path d={MI.PATHS.TROPHY} transform="scale(.5)" fill="none" stroke="#F2EFE8" strokeWidth="2.5" /></g>
-          <text x={X(6) + 6} y={Y(P.points[6].v) + 18} textAnchor="end" fontFamily="IBM Plex Mono, monospace" fontSize="9" fill="#9a9a9a">est. {fmt(P.at6)}</text>
-          {last && <text x={Math.min(X(last.w) + 4, W - 30)} y={Y(last.v) - 8} fontFamily="IBM Plex Mono, monospace" fontSize="10" fontWeight="600" fill="#FF2B2B">{fmt(last.v)}</text>}
+          {/* labels as chips, floated off the lines so they never sit on the stroke */}
+          {(() => {
+            const chip = (x, y, text, strong, anchor) => {
+              const w = text.length * 6.2 + 12, h = 16;
+              const cx = anchor === "end" ? x - w : anchor === "start" ? x : x - w / 2;
+              return (
+                <g key={text + x}>
+                  <rect x={cx} y={y} width={w} height={h} rx="4" fill="#0b0b0b" stroke={strong ? "#FF2B2B" : "#2a2a2a"} />
+                  <text x={cx + w / 2} y={y + 11.5} textAnchor="middle" fontFamily="IBM Plex Mono, monospace" fontSize="9.5" fontWeight={strong ? "600" : "400"} fill="#F2EFE8">{text}</text>
+                </g>
+              );
+            };
+            const estY = Y(P.points[6].v);
+            const out = [chip(X(6) + 4, estY + 10, "est. " + fmt(P.at6), false, "end")];
+            if (last) { const ly = Y(last.v); out.push(chip(Math.min(X(last.w), W - 40), ly - 28 < padT - 10 ? ly + 10 : ly - 28, fmt(last.v), true, "middle")); }
+            return out;
+          })()}
           <text x={X(0)} y={H - 6} fontFamily="IBM Plex Mono, monospace" fontSize="9" fill="#666">W1</text>
           <text x={X(3)} y={H - 6} textAnchor="middle" fontFamily="IBM Plex Mono, monospace" fontSize="9" fill="#666">W4</text>
           <text x={X(6)} y={H - 6} textAnchor="end" fontFamily="IBM Plex Mono, monospace" fontSize="9" fill="#666">W6</text>
@@ -95,6 +110,16 @@ try {
   /* Private weekly photo check-in: reminder, gallery, before vs now. */
   MI.PhotoCheckin = ({ checkins, beforePhoto, onAdd, onDelete, onAssess }) => {
     const [cmp, setCmp] = useState(null);
+    const [pending, setPending] = useState(null); // object URL shown instantly while the file is processed
+    const [err, setErr] = useState("");
+    const take = async (f) => {
+      if (!f) return;
+      setErr(""); setCmp(null);
+      const url = MI.previewUrl(f); setPending(url);
+      try { const data = await MI.downscale(f, 720, 0.7); onAdd(data); }
+      catch (e) { setErr(e.message || "Couldn't read that photo."); }
+      setPending(null); if (url) setTimeout(() => URL.revokeObjectURL(url), 2000);
+    };
     const last = (checkins || []).length ? checkins[checkins.length - 1] : null;
     const daysSince = last ? Math.floor((Date.now() - new Date(last.date + "T12:00:00").getTime()) / 86400000) : beforePhoto ? 7 : 0;
     const due = !last ? !!beforePhoto : daysSince >= 7;
@@ -113,14 +138,21 @@ try {
             <span className="mono absolute left-2 top-2 rounded bg-black/70 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-neutral-300">Before</span>
           </div>
           <div className="relative overflow-hidden rounded-lg border border-neutral-800 bg-[#0d0d0d]" style={{ aspectRatio: "3 / 4" }}>
-            {now ? <img src={now.data} alt="Now" className="h-full w-full object-cover" /> : <p className="mono absolute inset-0 flex items-center justify-center text-[10px] text-neutral-700">nothing yet</p>}
-            <span className="mono absolute left-2 top-2 rounded bg-[#FF2B2B] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white">{now ? MI.fmtDate(now.date) : "Now"}</span>
+            {pending ? <img src={pending} alt="Uploading" className="h-full w-full object-cover opacity-70" /> : now ? <img src={now.data} alt="Now" className="h-full w-full object-cover" /> : <p className="mono absolute inset-0 flex items-center justify-center text-[10px] text-neutral-700">nothing yet</p>}
+            <span className="mono absolute left-2 top-2 rounded bg-[#FF2B2B] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white">{pending ? "Saving…" : now ? MI.fmtDate(now.date) : "Now"}</span>
           </div>
         </div>
-        <label className={cta + " mt-3 block w-full cursor-pointer py-3.5 text-center text-sm"}>
-          {last ? "Add this week's photo" : "Take check-in photo"}
-          <input type="file" accept="image/*" capture="user" className="hidden" onChange={async (e) => { const f = e.target.files && e.target.files[0]; if (f) onAdd(await MI.downscale(f, 720, 0.7)); }} />
-        </label>
+        {err && <p className="mono mt-2 text-[10px] text-[#FF2B2B]">{err}</p>}
+        <div className="mt-3 flex gap-2">
+          <label className={cta + " block flex-1 cursor-pointer py-3.5 text-center text-sm"}>
+            {last ? "Take this week's photo" : "Take check-in photo"}
+            <input type="file" accept="image/*" capture="user" className="hidden" onChange={(e) => { take(e.target.files && e.target.files[0]); e.target.value = ""; }} />
+          </label>
+          <label className={ghost + " block cursor-pointer px-4 py-3.5 text-center text-[10px]"}>
+            Library
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => { take(e.target.files && e.target.files[0]); e.target.value = ""; }} />
+          </label>
+        </div>
         {(checkins || []).length > 0 && (
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
             {checkins.map((c, i) => (

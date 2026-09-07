@@ -6,7 +6,8 @@
     "syntax": "node syntax.js",
     "funnel": "node funnel.js",
     "app": "node app.js",
-    "test": "node syntax.js && node funnel.js && node app.js"
+    "logic": "node logic.js",
+    "test": "node syntax.js && node logic.js && node funnel.js && node app.js"
   },
   "devDependencies": {
     "@babel/standalone": "7.23.5",

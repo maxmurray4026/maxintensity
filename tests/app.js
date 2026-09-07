@@ -29,18 +29,24 @@ let page;
   }, rank);
   await page.goto('http://localhost:8768/index.html'); await page.waitForTimeout(3500);
   PNG = Buffer.from((await page.evaluate(() => { const c = document.createElement('canvas'); c.width = 60; c.height = 80; const g = c.getContext('2d'); g.fillStyle = '#444'; g.fillRect(0, 0, 60, 80); g.fillStyle = '#F2EFE8'; g.fillRect(20, 10, 20, 60); return c.toDataURL('image/png'); })).split(',')[1], 'base64');
-  await shot('train');
-  console.log('header:', (await page.innerText('header')).replace(/\n+/g, ' | ').slice(0, 160));
+  await shot('today');
+  const today = await page.innerText('main');
+  console.log('today has:', ["LET'S", 'TODAY\'S SESSION', 'WEEKLY QUESTS', 'TODAY\'S INTAKE', 'YOUR LEAGUE', 'SHIELD'].map((k) => k + '=' + today.toUpperCase().includes(k)).join(' '));
+  await page.getByRole('button', { name: 'Train', exact: true }).click(); await page.waitForTimeout(400); await shot('train');
+  const train = await page.innerText('main');
+  console.log('train has:', ['UP NEXT', 'DAYS / WEEK', 'MASS GAINER'].map((k) => k + '=' + train.toUpperCase().includes(k)).join(' '));
   // --- add bench via plain language ---
   await page.getByRole('button', { name: 'Add bench' }).click(); await page.waitForTimeout(1200); await shot('add-bench');
   const banner = await page.locator('main').innerText();
   console.log('override:', banner.match(/Adjusted[^\n]*/)?.[0], '|', banner.match(/\+ Flat[^\n]*/)?.[0]);
   // --- short on time sheet ---
-  await page.getByRole('button', { name: 'Revert' }).click(); await page.waitForTimeout(200);
+  await page.getByRole('button', { name: 'Undo — full session' }).click(); await page.waitForTimeout(200);
   await page.getByRole('button', { name: 'Short on time' }).click(); await page.waitForTimeout(400); await shot('short-sheet');
   await page.getByRole('button', { name: '30 min' }).click(); await page.getByRole('button', { name: 'Rebuild for 30' }).click(); await page.waitForTimeout(400);
   console.log('short:', (await page.locator('main').innerText()).match(/Short on time ·[^\n]*/)?.[0]);
-  await page.getByRole('button', { name: 'Revert' }).click(); await page.waitForTimeout(200);
+  console.log('undo present:', await page.getByRole('button', { name: 'Undo — full session' }).count());
+  await page.getByRole('button', { name: 'Undo — full session' }).click(); await page.waitForTimeout(200);
+  console.log('undone:', !(await page.locator('main').innerText()).includes('Short on time ·'));
   // --- swaps sheet ---
   await page.getByRole('button', { name: 'Edit', exact: true }).click(); await page.waitForTimeout(200);
   await page.getByRole('button', { name: 'Swaps' }).nth(1).click(); await page.waitForTimeout(900); await shot('swaps');
@@ -49,6 +55,7 @@ let page;
   await page.getByRole('button', { name: 'Done editing' }).click(); await page.waitForTimeout(200);
   console.log('second exercise now:', (await page.locator('ul li').nth(1).innerText()).replace(/\n+/g,' | ').slice(0,80));
   // --- session with RIR + PR + recap ---
+  await page.getByRole('button', { name: 'Train', exact: true }).click(); await page.waitForTimeout(300);
   await page.getByRole('button', { name: 'Start session' }).click(); await page.waitForTimeout(400); await shot('session');
   const logSet = async (w, r) => { await page.fill('#sess-w', w); await page.fill('#sess-r', r); await page.getByRole('button', { name: 'Log set' }).first().click(); await page.waitForTimeout(400); };
   await logSet('20', '10');
@@ -80,8 +87,8 @@ let page;
   await shot('recap-2');
   await page.getByRole('button', { name: 'Done — leave and grow' }).click(); await page.waitForTimeout(800);
   // --- progress page ---
-  await page.getByRole('button', { name: 'Log', exact: true }).click(); await page.waitForTimeout(300);
-  await page.getByRole('button', { name: 'Progress' }).click(); await page.waitForTimeout(600); await shot('progress-top');
+  await page.getByRole('button', { name: 'Progress', exact: true }).click(); await page.waitForTimeout(300);
+  await page.locator('main').getByRole('button', { name: 'Progress', exact: true }).click(); await page.waitForTimeout(600); await shot('progress-top');
   await page.evaluate(() => window.scrollTo(0, 900)); await page.waitForTimeout(300); await shot('progress-mid');
   await page.evaluate(() => window.scrollTo(0, 1800)); await page.waitForTimeout(300); await shot('progress-low');
   const prog = await page.innerText('main');
@@ -97,21 +104,39 @@ let page;
   await page.getByRole('button', { name: 'Apply to my plan' }).click(); await page.waitForTimeout(500);
   console.log('priorities after apply:', await page.evaluate(() => JSON.parse(localStorage.getItem('mi:mi-settings')).priorities));
   // --- wall & board ---
-  await page.getByRole('button', { name: 'Wall', exact: true }).click(); await page.waitForTimeout(900); await shot('wall');
+  await page.getByRole('button', { name: 'Leaderboard and wall' }).click(); await page.waitForTimeout(900);
+  await page.getByRole('button', { name: 'Feed', exact: true }).click(); await page.waitForTimeout(900); await shot('wall');
   const wall = await page.innerText('main'); console.log('wall posts:', wall.includes('jess.lifts'), wall.includes('Hip thrust 80'));
   await page.getByRole('button', { name: 'Testimony' }).click(); await page.waitForTimeout(200);
   await page.locator('textarea').fill('Week 2 and the bar already moved. First time I know what I am doing in there.');
-  await page.getByRole('button', { name: 'Post to the wall' }).click(); await page.waitForTimeout(900);
+  await page.getByRole('button', { name: 'Post to the feed' }).click(); await page.waitForTimeout(900);
+  // upvote + comment
+  await page.getByRole('button', { name: 'Upvote' }).first().click(); await page.waitForTimeout(200);
+  await page.getByRole('button', { name: /comments?$/ }).first().click(); await page.waitForTimeout(200);
+  await page.getByPlaceholder('Say something useful').fill('Massive. What did the hip thrust start at?'); await page.getByRole('button', { name: 'Post', exact: true }).click(); await page.waitForTimeout(500);
+  const lp = mock.calls.filter((c) => c.path === '/wall' && c.method === 'POST' && (c.body.like || c.body.comment)); console.log('like/comment POSTs:', lp.map((c) => c.body.like ? 'like' : 'comment').join(','));
+  await page.getByRole('button', { name: 'Recent', exact: true }).click(); await page.waitForTimeout(200); await shot('feed-recent');
+  // before/after composer
+  await page.getByRole('button', { name: 'Before / after' }).click(); await page.waitForTimeout(300);
+  const bi = page.locator('input[type=file]'); await bi.nth(0).setInputFiles({ name: 'b.png', mimeType: 'image/png', buffer: PNG }); await bi.nth(1).setInputFiles({ name: 'a.png', mimeType: 'image/png', buffer: PNG }); await page.waitForTimeout(600);
+  await page.getByRole('button', { name: 'Build the image' }).click(); await page.waitForTimeout(1200); await shot('before-after');
+  console.log('before/after built:', await page.locator('img[alt="Before and after"]').count());
+  await page.getByRole('button', { name: 'Post to the feed' }).click(); await page.waitForTimeout(300);
+  await page.getByRole('button', { name: 'Post to the feed' }).click(); await page.waitForTimeout(800);
+  const ip = mock.calls.filter((c) => c.path === '/wall' && c.method === 'POST' && c.body.image); console.log('image post sent:', ip.length > 0, 'image bytes:', ip[0] ? ip[0].body.image.length : 0);
+  console.log('image visible on feed:', await page.locator('main img[alt=""]').count() > 0);
   const wp = mock.calls.filter((c) => c.path === '/wall' && c.method === 'POST'); console.log('wall POST:', wp.length, JSON.stringify(wp[0] && wp[0].body).slice(0, 160));
-  await page.getByRole('button', { name: 'Leaderboard' }).click(); await page.waitForTimeout(900); await shot('board');
-  const board = await page.innerText('main'); console.log('board:', board.includes('maxmurray'), board.includes('VERIFIED'), board.includes('Diamond'));
+  await page.getByRole('button', { name: 'League', exact: true }).click(); await page.waitForTimeout(900); await shot('board');
+  console.log('promotion line:', (await page.innerText('main')).includes('PROMOTION LINE'));
+  const board = await page.innerText('main'); await page.getByRole('button', { name: 'Show all ranks' }).click(); await page.waitForTimeout(200);
+  const board2 = await page.innerText('main'); console.log('board:', board2.includes('maxmurray'), board2.includes('VERIFIED'), board2.includes('Diamond'));
   await page.getByRole('button', { name: 'Verify' }).click(); await page.waitForTimeout(300);
   await page.getByPlaceholder('Link to your clip').fill('https://instagram.com/p/abc');
   await page.getByPlaceholder('kg').fill('100');
   await page.getByRole('button', { name: 'Submit for review' }).click(); await page.waitForTimeout(600); await shot('verify');
   const vp = mock.calls.filter((c) => c.path === '/board' && c.method === 'POST' && c.body.verify); console.log('verify POST:', vp.length, JSON.stringify(vp[0] && vp[0].body.verify));
   // --- eat tab ---
-  await page.getByRole('button', { name: 'Eat', exact: true }).click(); await page.waitForTimeout(500); await shot('eat-top');
+  await page.getByRole('button', { name: 'Meals', exact: true }).click(); await page.waitForTimeout(500); await shot('eat-top');
   await page.getByRole('button', { name: 'Set up' }).click(); await page.waitForTimeout(200);
   await page.getByPlaceholder('What you like').fill('mince, rice, eggs'); await page.getByPlaceholder('Where you shop').fill('Aldi'); await page.getByPlaceholder('Allergies').fill('none');
   await page.locator('input[type=file][accept*=".txt"]').setInputFiles({ name: 'food.txt', mimeType: 'text/plain', buffer: Buffer.from('chicken thighs\nrice\neggs\nbutter') });
@@ -125,7 +150,8 @@ let page;
   await page.getByRole('button', { name: 'Log it' }).click(); await page.waitForTimeout(900);
   console.log('voice meal logged:', (await page.innerText('main')).includes('Eggs, sourdough, banana'));
   // --- coach usage line + settings ---
-  await page.getByRole('button', { name: 'Coach', exact: true }).click(); await page.waitForTimeout(300);
+  await page.getByRole('button', { name: 'Coach', exact: true }).first().click(); await page.waitForTimeout(300);
+  console.log('learn segment:', await page.getByRole('button', { name: 'Learn', exact: true }).count());
   console.log('coach line:', (await page.innerText('main')).match(/\d+ coach calls left[^\n]*/)?.[0]);
   await page.getByRole('button', { name: 'Settings' }).click(); await page.waitForTimeout(400); await shot('settings');
   await page.evaluate(() => document.querySelector('.z-\\[80\\]').scrollTo(0, 700)); await page.waitForTimeout(200); await shot('settings-2');

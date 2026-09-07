@@ -10,6 +10,7 @@
 <title>Max Intensity</title>
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="icon" type="image/png" href="apple-touch-icon.png" />
+<link rel="manifest" href="manifest.webmanifest" />
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -37,6 +38,9 @@ window.storage = {
 };
 
 var MI_SERVER = "https://maxintensity-ai.maxmurray4026.workers.dev";
+// Web push: set to the worker's VAPID public key (base64url) once the worker can send pushes.
+// Empty = alerts fire locally from the app through the service worker.
+window.MI_PUSH_PUBLIC_KEY = "";
 var MI_APP_TOKEN = "MI-2026-fj83nD92kLp47xWq95TbZ38vRy60Hs";
 var _fetch = window.fetch.bind(window);
 window.fetch = function(url, opts){
@@ -248,7 +252,7 @@ const LESSONS = [
   { t: "Why the tempo matters", b: "3-1-3-1: three seconds up, hold one, three seconds down, hold one. Constant tension, zero momentum, total honesty — the holds kill the bounce where people hide. If the tempo breaks, the weight is too heavy. Simple." },
   { t: "Stimulus vs fatigue", b: "Sports science 101: fitness and fatigue sit on top of each other. Some weeks you feel weaker — that's fatigue masking fitness, not lost progress. It's why W6 is a deload: drop the fatigue and the fitness shows. Trust the block, not one bad Tuesday." },
   { t: "Why order matters", b: "Every set costs energy, so whatever you train first gets your best. That's why your priority muscle leads the session — and why some lifts fly while the last exercise of the day crawls. Want something to grow? Move it up the order." },
-  { t: "The work set is the session", b: "Two warm-ups get you there, the back-off tops it up — but the one work set at 1 RIR is where the growth signal happens. Hit 6 clean reps and the app tells you to add ~2.5%. That tiny consistent jump is the whole game." },
+  { t: "Two sets are the session", b: "Two warm-ups get you there. Then the two sets that build the muscle: the working set at 1 in reserve, and the back-off straight after it at −10%. Clear 6 clean reps on both and the app tells you to add ~2.5%. Add reps, add weight, add reps, repeat — that tiny consistent loop is the whole game." },
   { t: "One big meal a day", b: "Trying to fix six meals at once fails by Friday. One solid ~1,000-calorie meal, five days a week, does most of the heavy lifting — it's one decision, it survives a bad week, and it kills the evening cravings by accident. 35 minutes of prep covers 3 days." },
   { t: "Small steps beat nothing", b: "A short session still counts. One logged set still counts. Progress is built one completed session at a time — the app tracks streaks because showing up is the skill. Never let a missed day become a missed week." },
   { t: "Why 4 days — and why the rest days", b: "After a hard session, muscle protein synthesis — the actual building — runs elevated for roughly 48 hours. Train a muscle, then let it finish the job. That's why the week runs Upper, Legs, REST, Upper, Legs, REST, REST: every muscle gets hit twice, and every rest day is a growth day, not a day off from progress." },
@@ -386,7 +390,9 @@ LOWER BACK & CORE: Barbell RDLs build hamstrings and lower back; Cable Crunch co
 CARB & FOOD TIMING: carbs + protein 1–2h before training (rice, oats, potatoes, milk); protein + carbs within ~2h after; evening = protein + fats (eggs, yoghurt, sardines); rest days keep protein, ease carbs slightly — growth days not cheat days. Approved foods greenlist: beef mince, eggs, whole milk, sardines, mackerel, chicken thighs, liver, Greek yoghurt, cottage cheese, white rice, potatoes, oats, sourdough, bananas, berries, honey, butter, olive oil, avocado, nuts, dark chocolate, gelatin.
 PERFORMANCE: sleep is the recovery drug (cold room, wind-down, salt+sweet+water pre-bed); caffeine 45–60 min pre-session, none within 9h of bed, cycle off when tolerant; hydration — 2–3% dehydration measurably drops strength, salt food; arrive fed (carbs 1–2h out), warm-up sets are the warm-up.
 MINDSET: guilt is the enemy, not a bad day — one day on track after seven bad ones is improvement. Motto: streamlining health — everything simple, everything in one place; progress made easy.
-KEY PRINCIPLE: one solid ~1,000 kcal meal a day, five days a week, does most of the nutrition heavy lifting. Small steps beat nothing; progress is built one completed session at a time. Brand voice: serious training, zero intimidation — demanding but warm, direct, real. Never shame a missed day.`;
+KEY PRINCIPLE: one solid ~1,000 kcal meal a day, five days a week, does most of the nutrition heavy lifting. Small steps beat nothing; progress is built one completed session at a time. Brand voice: serious training, zero intimidation — demanding but warm, direct, real. Never shame a missed day.
+STIMULUS: the main stimulus is TWO sets — the working set (~1 RIR) and the back-off set straight after it. Never say "one set is the session".
+INTERIM COACHING RULES: (1) When you lack information you need — their bodyweight, the load, how the last set felt, what they ate, how they slept — ask ONE specific question instead of guessing. (2) Nutrition: coach the TIMING of eating — carbs and protein 1–2 h before training, protein and carbs within ~2 h after, the one big meal — rather than prescribing specific foods; the approved-foods list is broad, not a menu, so accept the foods they already eat and time them. (3) Under-PR sessions: when a lift comes in below a previous best, explain that it is normal — fatigue, sleep, stress, a deload week, accumulated volume across the block — so they do not worry, and tell them exactly what to do next (finish the back-off, hold the load next session until it is 1 RIR again). (4) Priority requests are followed LITERALLY and IN ORDER: the first muscle they name goes first in the session, the second next; give one honest line and then do exactly what they asked.`;
 
 // Every AI call goes through MI_AI.call: same relay, same worker, plus the daily
 // usage cap (member / trial / free) counted client-side and sent as headers.
@@ -508,36 +514,38 @@ const splitFor = (priorities) => {
   const f = (priorities || [])[0];
   return f === "legs" || f === "glutes" ? "legglute" : f === "shoulders" ? "shoulder" : f === "chest" ? "chest" : f === "arms" ? "arm" : "balanced";
 };
+// The session order follows the stated priority EXACTLY: first priority's
+// exercises first, then the second's, then the third's, then everything else.
+// Abs is a full 10-minute block placed where "abs" sits in the list — first if
+// abs is the first priority — on the lower-body days (the only days with core).
 function applyPriorities(prog, priorities) {
   const pri = (priorities || []).filter((k) => PRIORITY_KEYS[k]);
-  let pr = applySplit(prog, splitFor(pri));
-  // hits are ordered by the keyword list, so the muscle's main lift leads
-  const moveFirst = (exs, keys) => {
-    const hit = [], rest = [];
-    exs.forEach((e) => { const n = (e.name || "").toLowerCase(); const ki = keys.findIndex((k) => n.includes(k)); (ki === -1 ? rest : hit).push(ki === -1 ? e : { e, ki }); });
-    hit.sort((a, b) => a.ki - b.ki);
-    return [...hit.map((h) => h.e), ...rest];
-  };
-  // strip any previous abs block so re-applying is idempotent
-  pr.days.forEach((d) => { d.exercises = d.exercises.filter((e) => !/abs block/.test(e.note || "")); });
-  // later priorities go first, so the first priority ends up in front
-  [...pri].reverse().forEach((k) => {
-    if (k === "abs") return;
-    pr.days.forEach((d) => {
-      const lower = /leg|glute/i.test(d.name || "");
+  const pr = applySplit(prog, splitFor(pri));
+  const matchIdx = (e, keys) => { const n = (e.name || "").toLowerCase(); return keys.findIndex((k) => n.includes(k)); };
+  const isAbsBlock = (e) => /abs block/.test(e.note || "");
+  pr.days.forEach((d) => {
+    const lower = /leg|glute/i.test(d.name || "");
+    let pool = d.exercises.filter((e) => !isAbsBlock(e));
+    if (pri.includes("abs") && lower) pool = pool.filter((e) => !/cable crunch/i.test(e.name || ""));
+    const ordered = [];
+    pri.forEach((k) => {
+      if (k === "abs") {
+        if (lower) ordered.push(...ABS_BLOCK.map((e) => ({ ...e, scheme: [...e.scheme] })));
+        return;
+      }
       const belongs = (k === "legs" || k === "glutes") ? lower : !lower;
-      if (belongs) d.exercises = moveFirst(d.exercises, PRIORITY_KEYS[k]);
+      if (!belongs) return;
+      const hits = pool.map((e) => ({ e, ki: matchIdx(e, PRIORITY_KEYS[k]) })).filter((x) => x.ki !== -1).sort((a, b) => a.ki - b.ki).map((x) => x.e);
+      hits.forEach((e) => { ordered.push(e); pool = pool.filter((x) => x !== e); });
     });
+    d.exercises = [...ordered, ...pool];
   });
-  if (pri.includes("abs")) {
-    pr.days.filter((d) => /^legs/i.test(d.name || "")).forEach((d) => {
-      d.exercises = d.exercises.filter((e) => !/cable crunch/i.test(e.name || ""));
-      d.exercises = [...ABS_BLOCK.map((e) => ({ ...e, scheme: [...e.scheme] })), ...d.exercises];
-    });
-  }
   pr.priorities = pri;
   return pr;
 }
+// exposed for the logic tests (tests/logic.js)
+window.MI_applyPriorities = applyPriorities;
+window.MI_DEFAULT_PROGRAM = DEFAULT_PROGRAM;
 
 // ---------- AI: macro estimate ----------
 async function estimateFood(description, tier) {
@@ -586,7 +594,7 @@ const todayKey = () => new Date().toISOString().slice(0, 10);
 // MAX INTENSITY V2 — guided session mode, bottom nav, sleeker UI
 // =====================================================
 function MaxIntensityApp() {
-  const [tab, setTab] = useState("program");
+  const [tab, setTab] = useState("today");
   const [program, setProgram] = useState(DEFAULT_PROGRAM);
   const [week, setWeek] = useState(0);
   const [activeDay, setActiveDay] = useState(0);
@@ -704,6 +712,12 @@ function MaxIntensityApp() {
   const [healthIn, setHealthIn] = useState({ steps: "", sleep: "", restingHr: "" });
   const [adminCode, setAdminCode] = useState("");
   const [rankSeen, setRankSeen] = useState(0);
+  const [quests, setQuests] = useState({});           // { mondayKey: { questId: true } } — XP claimed
+  const [wallAct, setWallAct] = useState("");         // mondayKey of the last feed post/respect
+  const [a2hs, setA2hs] = useState(false);            // show the iPhone Add-to-Home-Screen card
+  const [notif, setNotif] = useState({ enabled: false, overtake: true, streak: true });
+  const [coachView, setCoachView] = useState("chat"); // 'chat' | 'learn'
+  const [underPr, setUnderPr] = useState(null);       // { name, w, best } — logged under a previous best
   const speech = MI.useSpeech();
 
 
@@ -753,7 +767,15 @@ function MaxIntensityApp() {
       if (g.lastOpen !== today) {
         const y = new Date(); y.setDate(y.getDate() - 1);
         const yk = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, "0")}-${String(y.getDate()).padStart(2, "0")}`;
-        g.streak = g.lastOpen === yk ? (g.streak || 0) + 1 : 1;
+        const y2 = new Date(); y2.setDate(y2.getDate() - 2);
+        const y2k = `${y2.getFullYear()}-${String(y2.getMonth() + 1).padStart(2, "0")}-${String(y2.getDate()).padStart(2, "0")}`;
+        // rest-day shields: two a week; one covers a single missed day so the streak survives a rest day
+        const mon = new Date(); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+        const monKey = `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, "0")}-${String(mon.getDate()).padStart(2, "0")}`;
+        if (g.shieldWeek !== monKey) { g.shieldWeek = monKey; g.shields = 2; }
+        if (g.lastOpen === yk) g.streak = (g.streak || 0) + 1;
+        else if (g.lastOpen === y2k && (g.shields || 0) > 0) { g.shields -= 1; g.streak = (g.streak || 0) + 1; }
+        else g.streak = 1;
         g.best = Math.max(g.best || 0, g.streak);
         g.points = (g.points || 0) + 5;
         const MILES = { 7: 100, 14: 250, 30: 600, 60: 1500, 100: 3000 };
@@ -771,6 +793,12 @@ function MaxIntensityApp() {
       setMealPrep(await loadKey("mi-mealprep", null));
       setHealth(await loadKey("mi-health", {}));
       setAdminCode(await loadKey("mi-admin", ""));
+      setQuests(await loadKey("mi-quests", {}));
+      setWallAct(await loadKey("mi-wallact", ""));
+      setNotif(await loadKey("mi-notif", { enabled: false, overtake: true, streak: true }));
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+      const standalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+      if (isIOS && !standalone && !(await loadKey("mi-a2hs", false))) setA2hs(true);
       setLoaded(true);
     })();
   }, []);
@@ -782,6 +810,47 @@ function MaxIntensityApp() {
   useEffect(() => { if (loaded) saveKey("mi-mealprep", mealPrep); }, [mealPrep, loaded]);
   useEffect(() => { if (loaded) saveKey("mi-health", health); }, [health, loaded]);
   useEffect(() => { if (loaded) saveKey("mi-admin", adminCode); }, [adminCode, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-quests", quests); }, [quests, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-wallact", wallAct); }, [wallAct, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-notif", notif); }, [notif, loaded]);
+  // PWA: service worker for notifications. Push needs the worker to hold a VAPID key
+  // (MI_PUSH_PUBLIC_KEY) — until it does, alerts fire locally from the app via the SW.
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }, []);
+  const notify = async (title, body, tag) => {
+    try {
+      if (!notif.enabled || typeof Notification === "undefined" || Notification.permission !== "granted") return;
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(title, { body, tag, icon: "apple-touch-icon.png", badge: "apple-touch-icon.png", data: { url: "./" } });
+    } catch {}
+  };
+  const enableNotifications = async () => {
+    try {
+      if (typeof Notification === "undefined") { setVoiceMsg("Notifications aren't available in this browser. On iPhone, add the app to your Home Screen first."); return; }
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") { setNotif((n) => ({ ...n, enabled: false })); setVoiceMsg("Notifications stay off until you allow them."); return; }
+      setNotif((n) => ({ ...n, enabled: true }));
+      // web push subscription, when the worker has a key
+      if (window.MI_PUSH_PUBLIC_KEY && "PushManager" in window) {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: window.MI_PUSH_PUBLIC_KEY });
+        try { await boardCall("POST", { handle: (handle || "").replace(/^@/, ""), push: sub.toJSON() }); } catch {}
+      }
+      const reg = await navigator.serviceWorker.ready;
+      reg.showNotification("Alerts on", { body: "You'll hear when someone overtakes you, and when your streak is at risk.", icon: "apple-touch-icon.png" });
+    } catch (e) { setVoiceMsg("Couldn't turn alerts on: " + (e.message || e)); }
+  };
+  // streak at risk: 7 pm local, nothing logged today
+  useEffect(() => {
+    if (!loaded || !notif.enabled || !notif.streak) return;
+    const now = new Date(); const at = new Date(); at.setHours(19, 0, 0, 0);
+    const ms = at.getTime() - now.getTime();
+    if (ms <= 0) return;
+    const t = setTimeout(() => { if (!loggedToday()) notify("Streak at risk", `${game.streak}-day streak. Log anything before midnight — a set, a meal, a weigh-in.`, "mi-streak"); }, ms);
+    return () => clearTimeout(t);
+  }, [loaded, notif.enabled, notif.streak, history, foodLog, weights]); // eslint-disable-line
   // iOS wrapper hook: HealthKit is not available on the web. A native shell can
   // call window.MI_HEALTH.import({ "YYYY-MM-DD": { steps, sleep, restingHr, weightKg } }).
   useEffect(() => {
@@ -1022,6 +1091,9 @@ function MaxIntensityApp() {
         const v = Number((logs[`w${w2}-d${activeDay}`]?.[session.ex]?.sets?.[2] || {}).weight) || 0;
         if (v > bestPrev) bestPrev = v;
       }
+      if (bestPrev > 0 && wNow > 0 && wNow < bestPrev) {
+        setUnderPr({ name: exr.name, w: wNow, best: bestPrev, deload: isDeload });
+      } else setUnderPr(null);
       if (wNow > bestPrev && bestPrev > 0) {
         setPrHit({ name: exr.name, w: wNow });
         const pr = { date: todayKey(), name: exr.name, w: wNow, prev: bestPrev };
@@ -1151,7 +1223,24 @@ function MaxIntensityApp() {
   const boardCall = workerCall("/board");
   const wallCall = workerCall("/wall");
   const loadBoard = async () => {
-    try { const r = await boardCall("GET"); setBoard(r.rows || []); } catch {}
+    try {
+      const r = await boardCall("GET"); const rows = r.rows || [];
+      setBoard(rows);
+      // overtaken? compare my position with the last one we saw
+      const me = (handle || "").toLowerCase().replace(/^@/, "");
+      if (me) {
+        const sorted = [...rows].sort((a, b) => ((b.rankIndex || 0) - (a.rankIndex || 0)) || ((b.points || 0) - (a.points || 0)));
+        const pos = sorted.findIndex((x) => (x.handle || "").toLowerCase() === me);
+        const prev = Number(localStorage.getItem("mi:mi-boardpos") || -1);
+        if (pos >= 0) {
+          if (prev >= 0 && pos > prev && notif.overtake) {
+            const by = sorted[pos - 1];
+            notify("You've been overtaken", `@${by.handle} moved past you on the league. You're #${pos + 1} now — one session takes it back.`, "mi-overtake");
+          }
+          localStorage.setItem("mi:mi-boardpos", String(pos));
+        }
+      }
+    } catch {}
   };
   const submitBoard = async (silent) => {
     const hd = (handle || "").replace(/^@/, "").trim();
@@ -1292,7 +1381,7 @@ function MaxIntensityApp() {
   // Deterministic short-on-time rebuild: no coach call needed, works offline.
   const runShortOnTime = () => {
     const out = window.MI_PROJ.shortOnTime(baseDay, shortMins, shortPri);
-    setOverride({ date: todayKey(), dayIdx: activeDay, exercises: out.exercises, reply: out.reply, short: true });
+    setOverride({ date: todayKey(), dayIdx: activeDay, exercises: out.exercises, reply: out.reply + " Undo any time to get the full session back.", short: true });
     setShortSheet(false);
   };
   // Voice logging for the session: transcript → coach parse → sets filled in.
@@ -1480,7 +1569,7 @@ function MaxIntensityApp() {
           <img src={BICEP} alt="" className="relative h-14 w-auto" />
           <p className="dp relative mt-6 text-3xl uppercase text-[#F2EFE8]">Building your<br /><span className="text-[#FF2B2B]">{pn.name}</span></p>
           <div className="mono relative mt-6 space-y-2 text-xs text-neutral-500">
-            <p>✓ 6-week block · 10/6/6/6 · tempo 3-1-3-1</p>
+            <p>✓ 6-week block · add reps → add weight → repeat</p>
             <p>✓ {(ob.priorities || []).length ? "Priority muscles moved first" : "Balanced split"}</p>
             <p>✓ {ob.daysPerWeek || 4} sessions a week, planned for you</p>
           </div>
@@ -1508,7 +1597,7 @@ function MaxIntensityApp() {
   // ---- tutorial (first open after setup) ----
   const TUT = [
     ["Train", "Your session, in order", "Exercises are numbered because order matters — priority muscles get your best energy. Hit START SESSION and the app walks you set by set."],
-    ["The work set", "One set is the session", "Two warm-ups get you there. The red set is the one that counts — 1 rep in reserve. Clear 6 and the app tells you to add ~2.5% next time."],
+    ["The stimulus", "Two sets do the work", "Two warm-ups get you there. The red working set at 1 in reserve and the back-off straight after are the stimulus. Clear 6 on both and the app tells you to add ~2.5% next time."],
     ["Eat", "One big meal does the heavy lifting", "Targets are set from your answers. Log with a tap, build meals from your foods, time carbs around training."],
     ["Log", "Watch the block fill up", "Red days are trained days. Progress shows your strength line, your points, your streak — proof it's working."],
     ["Coach", "Max in your pocket", "Ask anything. Stalled lift, food plan, short on time — it answers in the Max Intensity method and can rebuild your program on the spot."],
@@ -1676,6 +1765,22 @@ function MaxIntensityApp() {
             </div>
           )}
         </div>
+        <p className={eyebrow + " mt-6"}>Notifications</p>
+        <div className={card + " mt-2 p-4"}>
+          <p className="text-xs leading-relaxed text-neutral-400">Two alerts, nothing else: when someone overtakes you on the league, and when your streak is at risk in the evening.{/iphone|ipad|ipod/i.test(navigator.userAgent) && !(window.navigator.standalone === true) ? " On iPhone, add the app to your Home Screen first (Share → Add to Home Screen) — Safari only allows alerts from there." : ""}</p>
+          {!notif.enabled ? <button onClick={enableNotifications} className={cta + " mt-3 w-full py-3 text-xs"}>Turn alerts on</button> : (
+            <div className="mt-3 space-y-2">
+              {[["overtake", "Someone overtakes me on the league"], ["streak", "Streak at risk (7 pm, nothing logged)"]].map(([k, l]) => (
+                <button key={k} onClick={() => setNotif((n) => ({ ...n, [k]: !n[k] }))} className="flex w-full items-center gap-3 text-left">
+                  <span className={"flex h-5 w-5 items-center justify-center rounded border " + (notif[k] ? "border-[#FF2B2B] bg-[#FF2B2B] text-white" : "border-neutral-700")}>{notif[k] && <MI.Ic d={MI.PATHS.CHECK} className="h-3 w-3" />}</span>
+                  <span className="text-xs text-neutral-300">{l}</span>
+                </button>
+              ))}
+              <button onClick={() => setNotif((n) => ({ ...n, enabled: false }))} className="mono text-[10px] text-neutral-500 underline">Turn alerts off</button>
+            </div>
+          )}
+          {voiceMsg && /alerts|Notifications/.test(voiceMsg) && <p className="mono mt-2 text-[10px] text-[#FF2B2B]">{voiceMsg}</p>}
+        </div>
         <p className={eyebrow + " mt-6"}>Community admin</p>
         <div className={card + " mt-2 p-3.5"}>
           <input value={adminCode} onChange={(e) => setAdminCode(e.target.value)} placeholder="Admin code (Max only) — unlocks the verification queue" className="mono w-full rounded-lg bg-neutral-900 px-3 py-2.5 text-xs placeholder-neutral-700" />
@@ -1741,7 +1846,10 @@ function MaxIntensityApp() {
           <div className="flex items-center justify-between">
             <button onClick={goBackSet} className="mono text-xs text-neutral-500" aria-label="Back one set">‹ Back</button>
             <span className="mono text-[10px] uppercase tracking-widest text-neutral-500">Ex {session.ex + 1}/{day.exercises.length} · Set {session.set + 1}/{n}</span>
-            <button onClick={endSessionEarly} className="mono rounded-md border border-neutral-800 px-2.5 py-1 text-xs text-neutral-400" aria-label="Exit and save">✕ Exit</button>
+            <div className="flex items-center gap-2">
+              {ovActive && <button onClick={() => { setOverride(null); setSession({ ex: 0, set: 0, resting: false }); setRestLeft(null); }} className="mono rounded-md border border-[#7f1d1d] px-2.5 py-1 text-[10px] text-[#FF2B2B]" aria-label="Undo short-on-time, restore the full session">Undo · full session</button>}
+              <button onClick={endSessionEarly} className="mono rounded-md border border-neutral-800 px-2.5 py-1 text-xs text-neutral-400" aria-label="Exit and save">✕ Exit</button>
+            </div>
           </div>
           {/* segmented progress: one segment per set */}
           <div className="mt-3 flex gap-1">
@@ -1757,6 +1865,14 @@ function MaxIntensityApp() {
 
         {session.resting ? (
           <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+            {underPr && (
+              <div className={card + " mb-4 w-full max-w-xs p-4 text-left"}>
+                <p className={eyebrow}>Coach · under your best</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-neutral-200">{wOut(String(underPr.w))} {unit} on {underPr.name}, best {wOut(String(underPr.best))} {unit}. Normal. {week === 5 ? "It's the deload — lighter is the plan." : "Fatigue, sleep, stress and the volume you've already banked this block all show up on the bar before they show up anywhere else."}</p>
+                <p className="mono mt-2 text-[10px] text-neutral-400">Next: finish the back-off at −10%, eat and sleep like it matters tonight, and hold this load next session until it's one in reserve again. The best isn't gone.</p>
+                <button onClick={() => setUnderPr(null)} className="mono mt-2 text-[10px] uppercase tracking-widest text-neutral-500">Got it</button>
+              </div>
+            )}
             {rirAsk ? (
               <div className={card + " mb-6 w-full max-w-xs border-[#7f1d1d] p-4 text-left"}>
                 <p className={eyebrow}>{rirAsk.set === 2 ? "How was the work set?" : "How's the weight feeling?"}</p>
@@ -1843,7 +1959,7 @@ function MaxIntensityApp() {
                 )}
               </div>
             </div>
-            {isWork && <p className="mono mt-2 text-[10px] uppercase tracking-widest text-[#FF2B2B]">This set is the session. 1 in reserve.</p>}
+            {isWork && <p className="mono mt-2 text-[10px] uppercase tracking-widest text-[#FF2B2B]">Working set — 1 in reserve. This and the back-off are the stimulus.</p>}
             {rirNote && rirNote.ex === session.ex && rirNote.set === session.set && (
               <div className={card + " mt-3 flex items-center gap-3 border-[#7f1d1d] px-3.5 py-2.5"}>
                 <p className="min-w-0 flex-1 text-xs text-neutral-200"><span className="mono text-[#FF2B2B]">Coach · </span>{rirNote.line}</p>
@@ -1872,13 +1988,58 @@ function MaxIntensityApp() {
 
   // ---- nav ----
   const NAV = [
+    ["today", "Today", MI.PATHS.BOLT],
     ["program", "Train", "M4 10h2m12 0h2M8 6v8M16 6v8M8 10h8"],
-    ["nutrition", "Eat", "M12 3c-4 3-6 6-6 9a6 6 0 0012 0c0-3-2-6-6-9zM12 8v4"],
-    ["calendar", "Log", "M5 5h14v14H5zM5 9h14M9 3v4M15 3v4"],
-    ["community", "Wall", MI.PATHS.USERS],
-    ["rules", "Learn", "M6 4h9a3 3 0 013 3v13H9a3 3 0 00-3 3V4zM6 17h12"],
+    ["nutrition", "Meals", "M12 3c-4 3-6 6-6 9a6 6 0 0012 0c0-3-2-6-6-9zM12 8v4"],
     ["coach", "Coach", "M4 6h16v9H9l-5 4V6z"],
+    ["calendar", "Progress", MI.PATHS.CHART],
   ];
+  // Learn lives inside Coach; the community (league + feed) lives under Progress and the Today league card.
+  const navActive = (id) => tab === id || (id === "coach" && tab === "rules") || (id === "calendar" && tab === "community");
+
+  // ---- today: the plan for today, this week's numbers, quests ----
+  const weekRhythm = () => {
+    const names = program.days.map((d) => d.name);
+    return window.MI_PROJ ? window.MI_PROJ.scheduleWeek(names, settings?.daysPerWeek || names.length) : rhythmFor(settings?.split);
+  };
+  const dowIdx = (d) => ((d || new Date()).getDay() + 6) % 7;
+  const dateKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const mondayKey = () => { const n = new Date(); const m = new Date(n); m.setDate(n.getDate() - dowIdx(n)); return dateKey(m); };
+  const thisWeekKeys = () => { const n = new Date(); const m = new Date(n); m.setDate(n.getDate() - dowIdx(n)); return Array.from({ length: 7 }, (_, i) => { const d = new Date(m); d.setDate(m.getDate() + i); return dateKey(d); }); };
+  const todayPlanName = () => dayPlan[todayKey()] || weekRhythm()[dowIdx()];
+  const todayDayIdx = () => {
+    const nm = todayPlanName();
+    let i = program.days.findIndex((d) => d.name === nm);
+    if (i === -1) { // rest day or unknown: the first session not yet logged this week
+      i = program.days.findIndex((d, di) => !Object.values(logs[key(week, di)] || {}).some((e) => (e.sets || []).some((x) => x && (x.weight || x.reps))));
+      if (i === -1) i = 0;
+    }
+    return i;
+  };
+  const dayMuscles = (d) => Array.from(new Set((d.exercises || []).flatMap((e) => MI.musclesFor(e.name)))).map((k) => (MI.MUSCLES.find((m) => m[0] === k) || [])[1]).filter(Boolean);
+  const daySets = (d) => (d.exercises || []).reduce((t, e) => t + (isDeload ? 2 : (e.scheme || []).length), 0);
+  const loggedToday = () => !!history[todayKey()] || (foodLog[todayKey()] || []).length > 0 || weights[todayKey()] != null;
+  const sessionsThisWeek = () => thisWeekKeys().filter((k) => history[k]).length;
+  const QUESTS = () => {
+    const wk = thisWeekKeys();
+    return [
+      { id: "sessions", label: `Log ${settings?.daysPerWeek || 4} sessions`, xp: 150, cur: sessionsThisWeek(), goal: settings?.daysPerWeek || 4 },
+      { id: "pr", label: "Set a new best", xp: 100, cur: prs.filter((p) => wk.includes(p.date)).length, goal: 1 },
+      { id: "meals", label: "Log food on 5 days", xp: 60, cur: wk.filter((k) => (foodLog[k] || []).length).length, goal: 5 },
+      { id: "photo", label: "Weekly photo check-in", xp: 50, cur: checkins.some((c) => wk.includes(c.date)) ? 1 : 0, goal: 1 },
+      { id: "weigh", label: "Weigh in 3 mornings", xp: 40, cur: wk.filter((k) => weights[k] != null).length, goal: 3 },
+      { id: "wall", label: "Post or respect on the feed", xp: 30, cur: wallAct === mondayKey() ? 1 : 0, goal: 1 },
+    ];
+  };
+  // award quest XP once, the week it completes
+  useEffect(() => {
+    if (!loaded) return;
+    const wkKey = mondayKey();
+    const claimed = quests[wkKey] || {};
+    let gained = 0; const next = { ...claimed };
+    QUESTS().forEach((q) => { if (q.cur >= q.goal && !claimed[q.id]) { next[q.id] = true; gained += q.xp; } });
+    if (gained > 0) { setQuests((Q) => ({ ...Q, [wkKey]: next })); addPoints(gained); }
+  }, [loaded, history, prs, foodLog, checkins, weights, wallAct]); // eslint-disable-line
 
   return (
     <div className="min-h-screen bg-[#050505] text-[#F2EFE8]" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
@@ -1936,8 +2097,8 @@ function MaxIntensityApp() {
             </button>
           </div>
         </div>
-        {/* Week strip */}
-        <div className="mt-2.5 flex gap-1">
+        {/* Week strip — the block, on Train and Progress */}
+        {(tab === "program" || tab === "calendar") && <div className="mt-2.5 flex gap-1">
           {WEEK_PLAN.map((w, i) => (
             <button
               key={w.label}
@@ -1964,18 +2125,160 @@ function MaxIntensityApp() {
               })()}
             </button>
           ))}
-        </div>
+        </div>}
       </header>
+
+      {/* ---------- TODAY ---------- */}
+      {tab === "today" && (() => {
+        const di = todayDayIdx();
+        const d = program.days[di] || { name: "", exercises: [] };
+        const planNm = todayPlanName();
+        const rest = planNm === "REST" || planNm === "Rest";
+        const lit = loggedToday();
+        const L = window.MI_PROJ ? window.MI_PROJ.levelFor(game.points) : { level: 1, title: "Recruit", pct: 0 };
+        const entries = foodLog[todayKey()] || [];
+        const tot = entries.reduce((t, e) => ({ kcal: t.kcal + (Number(e.kcal) || 0), protein: t.protein + (Number(e.protein) || 0) }), { kcal: 0, protein: 0 });
+        const R = 40, C = 2 * Math.PI * R;
+        const ringPct = Math.min(1, (game.streak % 7 || (game.streak ? 7 : 0)) / 7);
+        const shields = game.shields == null ? 2 : game.shields;
+        const league = rank ? rank.name : "Bronze";
+        const rows = [...(board || [])].sort((a, b) => ((b.rankIndex || 0) - (a.rankIndex || 0)) || ((b.points || 0) - (a.points || 0)));
+        const me = (handle || "").toLowerCase();
+        const myPos = rows.findIndex((r) => (r.handle || "").toLowerCase() === me);
+        return (
+          <main className="px-4 pb-32 pt-3">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className={eyebrow}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}</p>
+                <h2 className="dp mt-1 text-[52px] uppercase leading-[0.9]">Let's <span className="text-[#FF2B2B]">work.</span></h2>
+              </div>
+              <button onClick={() => setShowSettings(true)} className={card + " mt-1 flex flex-col items-end px-3 py-2"} aria-label="Level and XP">
+                <span className="dp text-lg leading-none text-[#FF2B2B]">L{L.level}</span>
+                <span className="mono text-[9px] uppercase tracking-wider text-neutral-400">{L.title} · {game.points} XP</span>
+                <span className="mt-1 h-1 w-20 rounded-full bg-neutral-800"><span className="block h-1 rounded-full bg-[#FF2B2B]" style={{ width: L.pct + "%" }} /></span>
+              </button>
+            </div>
+
+            {/* streak ring */}
+            <div className={card + " mt-4 flex items-center gap-4 p-4"}>
+              <div className="relative h-24 w-24 shrink-0">
+                <svg viewBox="0 0 100 100" className="h-24 w-24 -rotate-90">
+                  <circle cx="50" cy="50" r={R} fill="none" stroke="#1f1f1f" strokeWidth="7" />
+                  <circle cx="50" cy="50" r={R} fill="none" stroke="#FF2B2B" strokeWidth="7" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - ringPct)} className={lit ? "" : "opacity-40"} />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <Ic d={P_FLAME} fill className={"h-5 w-5 " + (lit ? "text-[#FF2B2B]" : "text-neutral-600")} />
+                  <span className="dp text-2xl leading-none text-[#F2EFE8]">{game.streak}</span>
+                </div>
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="dp text-xl uppercase leading-none text-[#F2EFE8]">{game.streak} day{game.streak === 1 ? "" : "s"}</p>
+                <p className="mt-1 text-xs text-neutral-400">{lit ? "Lit for today. Same again tomorrow." : "Log anything today to light it up — a set, a meal, a weigh-in."}</p>
+                <div className="mt-2 flex items-center gap-1.5">
+                  {[0, 1].map((i) => <MI.Ic key={i} d={MI.PATHS.SHIELD} className={"h-4 w-4 " + (i < shields ? "text-[#F2EFE8]" : "text-neutral-700")} fill={i < shields} />)}
+                  <span className="mono text-[9px] uppercase tracking-wider text-neutral-500">{shields} rest-day shield{shields === 1 ? "" : "s"} this week</span>
+                </div>
+              </div>
+            </div>
+
+            {/* today's session */}
+            <p className={eyebrow + " mt-6"}>Today's session</p>
+            <MI.PlateCard plate={MI.plateFor("session", d.name)} opacity={0.16} className="mt-2" innerClassName="p-4">
+              {rest && <p className="mono text-[10px] uppercase tracking-widest text-neutral-500">Rest day on the plan — growth day. Next up:</p>}
+              <p className="dp mt-0.5 text-[34px] uppercase leading-[0.95] text-[#F2EFE8]">{d.name}</p>
+              <p className="mono mt-1 text-[11px] text-[#FF2B2B]">{dayMuscles(d).join(" · ")}</p>
+              <p className="mono mt-1 text-[10px] text-neutral-500">{d.exercises.length} exercises · {daySets(d)} sets · Week {week + 1} {wk.tag}</p>
+              <button onClick={() => { setActiveDay(di); setTab("program"); startSession(); }} className={cta + " mt-4 w-full py-4 text-base"}>{rest ? "Train anyway" : "Start session"}</button>
+              <button onClick={() => { setActiveDay(di); setTab("program"); }} className="mono mt-2 w-full py-1 text-[10px] uppercase tracking-widest text-neutral-500">See the whole block →</button>
+            </MI.PlateCard>
+
+            {/* weekly quests */}
+            <p className={eyebrow + " mt-6"}>Weekly quests</p>
+            <div className={card + " mt-2 divide-y divide-neutral-800"}>
+              {QUESTS().map((q) => {
+                const done = q.cur >= q.goal;
+                return (
+                  <div key={q.id} className="flex items-center gap-3 px-4 py-3">
+                    <span className={"flex h-6 w-6 shrink-0 items-center justify-center rounded border " + (done ? "border-[#FF2B2B] bg-[#FF2B2B] text-white" : "border-neutral-700")}>{done && <MI.Ic d={MI.PATHS.CHECK} className="h-3.5 w-3.5" />}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className={"text-sm " + (done ? "text-neutral-500 line-through" : "text-neutral-200")}>{q.label}</p>
+                      <div className="mt-1 h-1 w-full rounded-full bg-neutral-800"><div className="h-1 rounded-full bg-[#FF2B2B]" style={{ width: Math.min(100, (q.cur / q.goal) * 100) + "%" }} /></div>
+                    </div>
+                    <span className="mono shrink-0 text-[10px] text-neutral-400">{Math.min(q.cur, q.goal)}/{q.goal} · <span className="text-[#FF2B2B]">+{q.xp} XP</span></span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* fuel */}
+            <p className={eyebrow + " mt-6"}>Fuel</p>
+            <MI.PlateCard plate="torso" opacity={0.12} className="mt-2" innerClassName="p-4">
+              <div className="flex items-center justify-between"><p className="dp text-sm uppercase text-neutral-200">Today's intake</p><span className="mono text-[10px] text-neutral-500">{entries.length} logged</span></div>
+              {targets ? (
+                <div className="mt-3 space-y-2.5">
+                  {[["kcal", "Calories", tot.kcal, targets.kcal, ""], ["protein", "Protein", tot.protein, targets.protein, "g"]].map(([k, label, v, t, u2]) => (
+                    <div key={k}>
+                      <div className="flex items-baseline justify-between"><span className="text-xs text-neutral-400">{label}</span><span className="mono text-xs text-neutral-300">{Math.round(v)} / {t}{u2}</span></div>
+                      <div className="mt-1 h-1.5 rounded-full bg-neutral-800"><div className={"h-1.5 rounded-full " + (k === "protein" ? "bg-[#FF2B2B]" : "bg-neutral-400")} style={{ width: Math.min(100, (v / (t || 1)) * 100) + "%" }} /></div>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="mt-2 text-xs text-neutral-500">Set your targets on Meals and the bars fill in here.</p>}
+              <button onClick={() => setTab("nutrition")} className="mono mt-3 text-[10px] uppercase tracking-widest text-[#FF2B2B]">Log a meal →</button>
+            </MI.PlateCard>
+
+            {/* community */}
+            <p className={eyebrow + " mt-6"}>Community</p>
+            <button onClick={() => { setTab("community"); if (!board) loadBoard(); }} className={card + " mt-2 flex w-full items-center gap-4 p-4 text-left"}>
+              <MI.RankBadge name={league} size={44} />
+              <div className="min-w-0 flex-1">
+                <p className="dp text-lg uppercase leading-none text-[#F2EFE8]">Your league · {league}</p>
+                <p className="mono mt-1 text-[10px] text-neutral-500">{board === null ? "Tap to load the league" : myPos >= 0 ? `You're #${myPos + 1} of ${rows.length}` + (rows[0] && myPos > 0 ? ` · ${rows[0].handle} leads` : " · you lead") : rows.length ? `${rows.length} on the ladder — put your name up` : "Be the first on the ladder"}</p>
+              </div>
+              <MI.Ic d={MI.PATHS.ARROW} className="h-4 w-4 text-neutral-600" />
+            </button>
+            {a2hs && (
+              <div className={card + " mt-3 p-4"}>
+                <div className="flex items-center justify-between"><p className="dp text-sm uppercase text-neutral-200">Add to Home Screen</p><button onClick={() => { setA2hs(false); saveKey("mi-a2hs", true); }} className="mono text-[10px] text-neutral-500">Dismiss</button></div>
+                <p className="mt-1 text-xs leading-relaxed text-neutral-400">On iPhone, notifications only work from the Home Screen app. Tap <span className="text-neutral-200">Share</span> in Safari, then <span className="text-neutral-200">Add to Home Screen</span>. Open it from there and turn alerts on in Settings.</p>
+              </div>
+            )}
+          </main>
+        );
+      })()}
 
       {/* ---------- TRAIN ---------- */}
       {tab === "program" && (
         <main className="px-4 pb-32">
           <div className="pt-1">
+            {/* block header */}
             <MI.PlateHeader plate={MI.plateFor("session", day.name)}
-              eyebrow={(settings?.plan ? settings.plan + " · " : "") + "Week " + (week + 1) + " · " + wk.tag + ((settings?.priorities || []).length ? " · " + settings.priorities.map((k) => (MI.MUSCLES.find((m) => m[0] === k) || [])[1]).filter(Boolean).join(", ") + " first" : "")}
-              title={day.name}
-              right={<span className="mono pb-1 text-xs text-neutral-500">{doneCount}/{day.exercises.length} done</span>} />
+              eyebrow={"Week " + (week + 1) + " · " + (settings?.daysPerWeek || program.days.length) + " days / week · " + wk.tag}
+              title={settings?.plan || "The block"}
+              right={<span className="mono pb-1 text-xs text-neutral-500">{sessionsThisWeek()}/{settings?.daysPerWeek || 4} this week</span>} />
             <p className="mt-2 text-sm text-neutral-500">{wk.cue}</p>
+            {/* session cards, in order — UP NEXT highlighted */}
+            <div className="mt-3 space-y-2">
+              {program.days.map((d, i) => {
+                const upNext = i === todayDayIdx();
+                const doneN = Object.values(logs[key(week, i)] || {}).filter((e) => (e.sets || []).some((x) => x && (x.weight || x.reps))).length;
+                const sel = i === activeDay;
+                return (
+                  <button key={i} onClick={() => { setActiveDay(i); setOpen(null); }} className={"relative block w-full overflow-hidden rounded-xl border p-4 text-left " + (upNext ? "border-[#FF2B2B] bg-[#1c0808]" : sel ? "border-neutral-600 bg-[#171717]" : "border-neutral-800 bg-[#141414]")}>
+                    {upNext && <span className="mono absolute right-3 top-3 rounded bg-[#FF2B2B] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white">Up next</span>}
+                    {!upNext && doneN > 0 && <span className="mono absolute right-3 top-3 text-[9px] uppercase tracking-wider text-neutral-500">{doneN}/{d.exercises.length} logged</span>}
+                    <p className="dp text-[22px] uppercase leading-none text-[#F2EFE8]">{d.name}</p>
+                    <p className="mono mt-1 text-[10px] text-[#FF2B2B]">{dayMuscles(d).join(" · ")}</p>
+                    <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-400">{d.exercises.map((e) => e.name).join(" · ")}</p>
+                    <p className="mono mt-1 text-[9px] uppercase tracking-wider text-neutral-600">{d.exercises.length} exercises · {daySets(d)} sets{sel ? " · selected below" : ""}</p>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-6 flex items-end justify-between">
+              <h3 className="dp text-[34px] uppercase leading-[0.9] text-[#F2EFE8]">{day.name}</h3>
+              <span className="mono pb-1 text-xs text-neutral-500">{doneCount}/{day.exercises.length} done</span>
+            </div>
             {/* Day 5 reminder promised on the trial timeline: two days before the trial ends */}
             {trialStart && !pro && trialLeft > 0 && trialLeft <= 2 && (
               <button onClick={() => setShowPaywall(true)} className={card + " mt-3 flex w-full items-center gap-3 border-[#7f1d1d] px-3.5 py-2.5 text-left"}>
@@ -1997,13 +2300,13 @@ function MaxIntensityApp() {
               ) : null;
             })()}
             {(() => {
-              const plan = dayPlan[todayKey()] || rhythmFor(settings?.split)[(new Date().getDay() + 6) % 7];
+              const plan = todayPlanName();
               return <p className="mono mt-1.5 text-[10px] uppercase tracking-widest text-neutral-500">Today on the plan: <span className={plan === "REST" ? "text-neutral-400" : "text-[#FF2B2B]"}>{plan === "REST" ? "Rest — part of the plan" : plan}</span></p>;
             })()}
             <button onClick={startSession} className={cta + " mt-4 w-full py-4 text-lg"}>Start session</button>
             <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
-              {rhythmFor(settings?.split).map((r, i) => (
-                <span key={i} className={"mono text-[9px] uppercase " + (r === "REST" ? "text-neutral-700" : "text-neutral-500")}>{r}{i < rhythmFor(settings?.split).length - 1 ? " ·" : ""}</span>
+              {weekRhythm().map((r, i) => (
+                <span key={i} className={"mono text-[9px] uppercase " + (r === "REST" ? "text-neutral-700" : "text-neutral-500")}>{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]} {r === "REST" ? "rest" : r}{i < 6 ? " ·" : ""}</span>
               ))}
             </div>
             {(() => {
@@ -2014,28 +2317,13 @@ function MaxIntensityApp() {
               const plan = settings?.daysPerWeek || 4;
               return <p className="mono mt-1.5 text-[10px] text-neutral-500">This week: <span className={cnt >= plan ? "text-[#FF2B2B]" : "text-neutral-300"}>{cnt}/{plan}</span> sessions</p>;
             })()}
-            {/* Day selector */}
-            <div className="mt-3 flex gap-1.5 overflow-x-auto">
-              {program.days.map((d, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setActiveDay(i); setOpen(null); }}
-                  className={
-                    "dp shrink-0 rounded-md px-4 py-2 text-xs uppercase tracking-wide " +
-                    (i === activeDay ? "bg-[#F2EFE8] text-neutral-950" : "bg-[#141414] text-neutral-500 border border-neutral-800")
-                  }
-                >
-                  {d.name}
-                </button>
-              ))}
-            </div>
           </div>
 
           {ovActive && (
             <div className={card + " mt-4 border-[#7f1d1d] p-3"}>
               <div className="flex items-center gap-3">
                 <p className="min-w-0 flex-1 text-xs text-neutral-300"><span className="mono text-[#FF2B2B]">{override.short ? "Short on time · " : "Adjusted · "}</span>{override.reply}</p>
-                <button onClick={() => setOverride(null)} className="mono shrink-0 rounded-md border border-neutral-700 px-2.5 py-1 text-[10px] text-neutral-400">Revert</button>
+                <button onClick={() => setOverride(null)} className="mono shrink-0 rounded-md border border-neutral-700 px-2.5 py-1 text-[10px] text-neutral-300">Undo — full session</button>
               </div>
               {((override.added || []).length > 0 || (override.removed || []).length > 0) && (
                 <p className="mono mt-1.5 text-[10px] text-neutral-500">
@@ -2276,9 +2564,10 @@ function MaxIntensityApp() {
 
                 <div className={card + " mt-3 p-4"}>
                   <p className="dp text-sm uppercase text-neutral-200">Approved foods</p>
-                  <p className="mt-0.5 text-[10px] text-neutral-500">The greenlist — build 90% of your week from these.</p>
+                  <p className="mt-0.5 text-[10px] text-neutral-500">The core greenlist first, then the wider list. It's broad on purpose — the coach cares about WHEN you eat, not a menu. Build 90% of your week from these.</p>
                   <div className="mono mt-2 flex flex-wrap gap-1.5 text-[10px]">
-                    {["Beef mince", "Eggs", "Whole milk", "Sardines", "Mackerel", "Chicken thighs", "Liver (mixed in)", "Greek yoghurt", "Cottage cheese", "White rice", "Potatoes", "Oats", "Sourdough", "Bananas", "Berries", "Honey", "Butter", "Olive oil", "Avocado", "Nuts", "Dark chocolate", "Gelatin"].map((f2) => (
+                    {["Beef mince", "Eggs", "Whole milk", "Sardines", "Mackerel", "Chicken thighs", "Liver (mixed in)", "Greek yoghurt", "Cottage cheese", "White rice", "Potatoes", "Oats", "Sourdough", "Bananas", "Berries", "Honey", "Butter", "Olive oil", "Avocado", "Nuts", "Dark chocolate", "Gelatin",
+                      "Steak", "Lamb", "Pork shoulder", "Bacon", "Chicken breast", "Turkey", "Salmon", "Tuna", "Prawns", "White fish", "Cheese", "Kefir", "Skyr", "Milk (any colour top)", "Protein powder", "Basmati", "Sweet potato", "Pasta", "Couscous", "Quinoa", "Bagels", "Wraps", "Rice cakes", "Apples", "Oranges", "Mango", "Grapes", "Dates", "Dried fruit", "Jam", "Maple syrup", "Peanut butter", "Hummus", "Olives", "Coconut milk", "Beans", "Lentils", "Chickpeas", "Tofu", "Edamame", "Frozen veg", "Salad bags", "Spinach", "Broccoli", "Carrots", "Onions", "Garlic", "Tomatoes (tinned)", "Peppers", "Mushrooms", "Pickles", "Sauerkraut", "Stock cubes", "Spices", "Hot sauce", "Soy sauce", "Mustard", "Popcorn", "Beef jerky", "Zero-sugar drinks", "Coffee", "Tea", "Sparkling water"].map((f2) => (
                       <span key={f2} className="rounded-md border border-neutral-800 px-2 py-1 text-neutral-300">{f2}</span>
                     ))}
                   </div>
@@ -2528,7 +2817,7 @@ function MaxIntensityApp() {
         const sel = history[selDate];
         const selBw = weights[selDate];
         const selFoods = foodLog[selDate] || [];
-        const selPlan = WEEK_RHYTHM[(new Date(selDate + "T12:00:00").getDay() + 6) % 7];
+        const selPlan = weekRhythm()[(new Date(selDate + "T12:00:00").getDay() + 6) % 7];
         const bwEntries = Object.entries(weights).sort((a, b) => a[0].localeCompare(b[0])).slice(-30);
         const bwVals = bwEntries.map(([, v]) => v);
         const bwMin = Math.min(...bwVals), bwMax = Math.max(...bwVals);
@@ -2538,7 +2827,15 @@ function MaxIntensityApp() {
         const totalSessions = Object.keys(history).length;
         const monthSessions = Object.keys(history).filter((k) => k.startsWith(`${y}-${String(m + 1).padStart(2, "0")}`)).length;
         return (
-          <main className="px-4 pb-32 pt-3">
+          <main className="px-4 pb-32 pt-1">
+            <div className="relative -mx-4 mb-3 overflow-hidden px-4 pb-4 pt-3" style={{ minHeight: 190 }}>
+              <MI.Hero plate="musclesBack" opacity={0.85} h={215} x={-12} y={-18} />
+              <div className="relative">
+                <p className={eyebrow}>{settings?.plan || "The block"} · Week {week + 1}</p>
+                <h2 className="dp mt-1 text-[52px] uppercase leading-[0.9]">Progress</h2>
+                <p className="mono mt-1 text-[10px] uppercase tracking-widest text-neutral-400">{rank ? rank.name + " · " : ""}{Object.keys(history).length} sessions · {prs.length} bests</p>
+              </div>
+            </div>
             {/* view toggle */}
             <div className="flex rounded-lg border border-neutral-800 p-0.5">
               {[["cal", "Calendar"], ["progress", "Progress"]].map(([v, l]) => (
@@ -2625,11 +2922,21 @@ function MaxIntensityApp() {
                   {selDate >= todayKey() && (
                     <div className="mt-3 border-t border-neutral-800 pt-2">
                       <p className="mono text-[10px] uppercase tracking-widest text-neutral-500">Plan this day</p>
+                      {voiceMsg && /leg day/.test(voiceMsg) && <p className="mono mt-1 text-[10px] text-[#FF2B2B]">{voiceMsg}</p>}
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {[...program.days.map((d2) => d2.name), "Rest"].map((nm) => (
                           <button
                             key={nm}
-                            onClick={() => setDayPlan((p2) => { const q = { ...p2 }; if (q[selDate] === nm) delete q[selDate]; else q[selDate] = nm; return q; })}
+                            onClick={() => {
+                              if (dayPlan[selDate] !== nm && window.MI_PROJ && window.MI_PROJ.isLower(nm)) {
+                                const d0 = new Date(selDate + "T12:00:00");
+                                const nb = [-1, 1].map((k) => { const d = new Date(d0); d.setDate(d0.getDate() + k); return dateKey(d); });
+                                const clash = nb.find((k) => { const planned = dayPlan[k] || (history[k] ? history[k].day : weekRhythm()[(new Date(k + "T12:00:00").getDay() + 6) % 7]); return planned && planned !== "REST" && planned !== "Rest" && window.MI_PROJ.isLower(planned); });
+                                if (clash) { setVoiceMsg("Lower-body days need a day between them — " + MI.fmtDate(clash) + " is already a leg day. Pick another day."); return; }
+                              }
+                              setVoiceMsg("");
+                              setDayPlan((p2) => { const q = { ...p2 }; if (q[selDate] === nm) delete q[selDate]; else q[selDate] = nm; return q; });
+                            }}
                             className={chip + " " + ((dayPlan[selDate] === nm) ? "bg-[#FF2B2B] text-white" : "border border-neutral-800 text-neutral-400")}
                           >{nm}</button>
                         ))}
@@ -2819,7 +3126,14 @@ function MaxIntensityApp() {
         );
       })()}
 
-      {/* ---------- LEARN ---------- */}
+      {/* ---------- LEARN (inside Coach) ---------- */}
+      {(tab === "coach" || tab === "rules") && (
+        <div className="px-4 pt-3">
+          <div className="flex rounded-lg border border-neutral-800 p-0.5">
+            {[["coach", "Coach"], ["rules", "Learn"]].map(([v, l]) => <button key={v} onClick={() => setTab(v)} className={"dp flex-1 rounded-md py-2 text-xs uppercase tracking-wide " + (tab === v ? "bg-[#FF2B2B] text-white" : "text-neutral-500")}>{l}</button>)}
+          </div>
+        </div>
+      )}
       {tab === "rules" && (
         <main className="space-y-6 px-4 pb-32 pt-3">
           <div className={card + " overflow-hidden"}>
@@ -2930,7 +3244,8 @@ function MaxIntensityApp() {
       {tab === "community" && (
         <MI.Community handle={handle} setHandle={(h) => { setHandle(h); setTimeout(() => submitBoard(true), 300); }} game={game} rank={rank ? rank.name : null}
           history={history} bestLift={bestLift()} boardCall={boardCall} wallCall={wallCall} unit={unit} wOut={wOut} prs={prs}
-          projection={projectionNow()} planName={settings?.plan} adminCode={adminCode} setAdminCode={setAdminCode} checkins={checkins} beforePhoto={ob.beforePhoto} />
+          projection={projectionNow()} planName={settings?.plan} adminCode={adminCode} setAdminCode={setAdminCode} checkins={checkins} beforePhoto={ob.beforePhoto}
+          onActivity={() => setWallAct(mondayKey())} logo={BICEP} onBoard={(rows) => setBoard(rows)} name={settings?.name} />
       )}
 
       {/* ---------- NEXT FIELD BAR ---------- */}
@@ -2963,11 +3278,11 @@ function MaxIntensityApp() {
         <div className="flex">
           {NAV.map(([id, label, path]) => (
             <button key={id} onClick={() => setTab(id)} className="relative flex flex-1 flex-col items-center gap-0.5 py-2.5" aria-label={label}>
-              {tab === id && <span className="absolute top-0 h-[2px] w-8 bg-[#FF2B2B]" />}
-              <svg viewBox="0 0 24 24" className={"h-5 w-5 " + (tab === id ? "stroke-[#FF2B2B]" : "stroke-neutral-600")} fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              {navActive(id) && <span className="absolute top-0 h-[2px] w-8 bg-[#FF2B2B]" />}
+              <svg viewBox="0 0 24 24" className={"h-5 w-5 " + (navActive(id) ? "stroke-[#FF2B2B]" : "stroke-neutral-600")} fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d={path} />
               </svg>
-              <span className={"dp text-[9px] uppercase tracking-wider " + (tab === id ? "text-[#FF2B2B]" : "text-neutral-600")}>{label}</span>
+              <span className={"dp text-[9px] uppercase tracking-wider " + (navActive(id) ? "text-[#FF2B2B]" : "text-neutral-600")}>{label}</span>
             </button>
           ))}
         </div>

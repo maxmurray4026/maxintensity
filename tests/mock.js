@@ -11,6 +11,9 @@ function worker(route) {
       { handle: 'maxmurray', points: 4820, streak: 41, gymDays: 62, bestName: 'Leg Press', bestKg: 260, rank: 'Diamond', rankIndex: 3, level: 7, verified: true },
       { handle: 'jess.lifts', points: 1910, streak: 12, gymDays: 20, bestName: 'Hip Thrust', bestKg: 120, rank: 'Gold', rankIndex: 2, level: 4 },
       { handle: 'tomk', points: 640, streak: 5, gymDays: 8, bestName: 'Incline Dumbbell Press', bestKg: 30, rank: 'Silver', rankIndex: 1, level: 3 },
+      { handle: 'ryan.b', points: 1210, streak: 9, gymDays: 14, bestName: 'Leg Press', bestKg: 140, rank: 'Silver', rankIndex: 1, level: 4 },
+      { handle: 'amira', points: 980, streak: 7, gymDays: 11, bestName: 'Hip Thrust', bestKg: 90, rank: 'Silver', rankIndex: 1, level: 3 },
+      { handle: 'dev_k', points: 410, streak: 2, gymDays: 5, bestName: 'Smith Shoulder Press', bestKg: 40, rank: 'Silver', rankIndex: 1, level: 2 },
     ] });
     return json({ ok: true });
   }

@@ -155,24 +155,37 @@ window.MI = window.MI || {};
     );
   };
 
-  /* ---- image downscale (photos stay on the phone, small) ---- */
-  MI.downscale = (file, max = 900, q = 0.72) => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = reject;
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = reject;
-      img.onload = () => {
-        const scale = Math.min(1, max / Math.max(img.width, img.height));
-        const c = document.createElement("canvas");
-        c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
-        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-        resolve(c.toDataURL("image/jpeg", q));
-      };
-      img.src = reader.result;
+  /* ---- image downscale (photos stay on the phone, small) ----
+     Robust to what phones actually hand over: tries createImageBitmap (handles
+     HEIC on iOS Safari and EXIF orientation), then an <img> decode, and if the
+     browser cannot decode the file at all it falls back to the original bytes
+     when they are small enough, so the user always sees their photo. */
+  MI.downscale = async (file, max = 900, q = 0.72) => {
+    const draw = (w, h, paint) => {
+      const scale = Math.min(1, max / Math.max(w, h));
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(w * scale)); c.height = Math.max(1, Math.round(h * scale));
+      paint(c.getContext("2d"), c.width, c.height);
+      return c.toDataURL("image/jpeg", q);
     };
-    reader.readAsDataURL(file);
-  });
+    try {
+      if (window.createImageBitmap) {
+        const bmp = await createImageBitmap(file, { imageOrientation: "from-image" }).catch(() => createImageBitmap(file));
+        const out = draw(bmp.width, bmp.height, (g, w, h) => g.drawImage(bmp, 0, 0, w, h));
+        bmp.close && bmp.close();
+        return out;
+      }
+    } catch (e) { /* fall through */ }
+    const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onerror = rej; r.onload = () => res(r.result); r.readAsDataURL(file); });
+    try {
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl; });
+      return draw(img.naturalWidth || img.width, img.naturalHeight || img.height, (g, w, h) => g.drawImage(img, 0, 0, w, h));
+    } catch (e) {
+      if (file.size <= 2.5 * 1024 * 1024) return dataUrl; // undecodable here (e.g. HEIC on desktop) — keep the original, the phone will show it
+      throw new Error("That photo couldn't be read. Try a JPEG or take it with the camera.");
+    }
+  };
+  MI.previewUrl = (file) => { try { return URL.createObjectURL(file); } catch (e) { return null; } };
 
   /* ---- share a canvas as an image (Web Share with files → download → copy text) ---- */
   MI.shareCanvas = async (canvas, filename, text) => {

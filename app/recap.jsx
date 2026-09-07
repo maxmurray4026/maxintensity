@@ -50,11 +50,11 @@ try {
     };
     return (
       <div className="fixed inset-0 z-[60] flex flex-col overflow-y-auto bg-[#050505] px-5 pb-8" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 18px)" }}>
-        <div className="relative -mx-5 overflow-hidden px-5 pb-4 pt-2">
-          <MI.Plate plate={MI.plateFor("session", day)} opacity={0.18} position="right -20%" size="auto 220%" />
+        <div className="relative -mx-5 overflow-hidden px-5 pb-6 pt-2" style={{ minHeight: 210 }}>
+          <MI.Hero plate="arm" opacity={0.85} h={205} x={-22} y={-12} />
           <p className={eyebrow + " relative"}>Session complete · wrapped</p>
           <p className="dp relative mt-1 text-[52px] uppercase leading-[0.9] text-[#F2EFE8]">{day}<br /><span className="text-[#FF2B2B]">Week {week}</span></p>
-          <p className="mono relative mt-2 text-xs text-neutral-400">{plan} · {setsLogged} sets · {name}</p>
+          <p className="mono relative mt-2 text-xs text-neutral-300">{plan} · {setsLogged} sets · {name}</p>
         </div>
         <div className={"grid grid-cols-2 gap-2 " + show(1)}>
           <div className={card + " relative overflow-hidden p-4"}>

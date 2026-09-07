@@ -1,0 +1,14 @@
+{
+  "name": "Max Intensity",
+  "short_name": "Max Intensity",
+  "description": "Six-week blocks, one heavy working set, a rank to climb.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "icons": [
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "apple-touch-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

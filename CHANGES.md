@@ -1,4 +1,79 @@
-# CHANGES — full build pass
+# CHANGES
+
+## Round 2 — fix pass (docs/max-intensity-round2-fixes.md)
+
+Housekeeping: stray files removed from `assets/anatomy` (contact sheet, the
+Deltoideus PNG, the Wellcome Vesalius scan, the two duplicate JPGs); the round-2
+brief is saved at `docs/max-intensity-round2-fixes.md`.
+
+**§0 Shell.** Bottom bar is TODAY · TRAIN · MEALS · COACH · PROGRESS. TODAY:
+"LET'S WORK." with the level + XP badge, streak ring with two weekly rest-day
+shields (a shield covers one missed day), TODAY'S SESSION card (muscle groups,
+exercise and set counts, START SESSION), WEEKLY QUESTS with XP that is awarded
+once on completion, FUEL intake bars, and the YOUR LEAGUE card. TRAIN: block
+header (week, days/week, plan name) and session cards in order with UP NEXT
+highlighted; tapping a card selects it and the full session detail sits below.
+Learn lives inside Coach as a segment; the community (League with promotion
+line + Feed) opens from the Today league card and from Progress. Everything
+that existed is still reachable.
+
+**§1 + §7 Enrollment visuals.** Every enrollment screen has a plate behind it
+at 16–20% via `MI.Crossfade` (fade + slight pan, keyed per screen): muscles on
+screens 1–11, skeleton 12–16, classroom 17–25. HERO tier (`MI.Hero`): hero
+(torso-arm) on the three openers, skeleton on the rank reveal, muscles-front
+bleeding off the bottom of the projection, muscles-back on the Progress header,
+arm on the recap. Hero plates are `<img>` layers clipped 3.5% so the paper
+frame never shows, 85% opacity, red via inverted luminance, with a gradient
+behind the type. Grain sits over the funnel.
+
+**§2 Content.** Goal screen leads with "Lose fat + build muscle" (plan name
+RECOMP, projection uses the lift curve with a flat-bodyweight caption).
+Projection labels are chips off the line; the in-app projection graph got the
+same treatment. Method screen: rep numbers replaced by ADD REPS → ADD WEIGHT →
+ADD REPS → REPEAT. One-set framing removed everywhere (demo screen, session
+UI, tutorial, the lesson, the coach prompts): the stimulus is the working set
+and the back-off. Motivation answer adds friends' scores. Openers 4 and 5 cut;
+25 screens.
+
+**§3 Bugs.** Photo upload shows an instant preview (object URL), decodes via
+`createImageBitmap` (HEIC-safe on iOS) with an `<img>` fallback and a plain
+error message; a Library button joins the camera button. Feed posts keep a
+local echo with the image so the member sees their photo immediately even when
+the worker strips or refuses images (text is retried without the image).
+Short-on-time has "Undo — full session" in the banner and inside the session.
+Priority ordering rewritten: the session follows the stated order exactly, abs
+is a 10-minute block placed where "abs" sits in the list (first if first) on the
+lower-body days — `tests/logic.js` covers glutes→abs, abs→glutes and
+chest→arms. Week scheduling now comes from `MI_PROJ.scheduleWeek`, which never
+puts two lower-body days adjacent (including Sun→Mon); the calendar planner
+refuses an adjacent lower day with a message. Tested for 3, 4 and 5 days.
+
+**§4 Features.** Feed: upvotes on posts and on comments, comments per post,
+Top/Recent sort. Before/after composer: two photos → one 1080×1080 image with
+the arm mark, BEFORE/NOW labels and dates → share or post. Push: `sw.js` +
+`manifest.webmanifest`, "Turn alerts on" in Settings, overtaken-on-the-league
+and 7 pm streak-at-risk alerts fired through the service worker, iPhone
+Add-to-Home-Screen card on Today. True web push subscribes when
+`MI_PUSH_PUBLIC_KEY` is set to the worker's VAPID key and posts the
+subscription to `/board`; until then alerts are local.
+
+**§5 Coach.** Interim rules in the coach knowledge and the relay prompts: ask
+one specific question when information is missing; coach eating TIMING not
+foods; explain under-PR sessions (also shown in-app during the rest after a
+set logged below a previous best, with what to do next); follow priority
+requests literally and in order. Approved foods list widened well beyond the
+core greenlist.
+
+**§6 Verified** at 390×844 with the offline suite (`tests/`): new shell and
+tabs, plates changing through the funnel, recomposition option, chip labels,
+loop screen, two-set copy, 25 screens, photo → preview → feed post with image,
+short-on-time undo, priority ordering and scheduler (logic test), upvotes and
+comments, before/after composer, league promotion line. Push permission cannot
+be granted in headless Chromium; the flow is wired and degrades to a message.
+
+---
+
+# Round 1 — full build pass
 
 Everything in the brief is implemented. This file records the decisions that
 were mine to make, the assumptions behind them, and what could not be verified

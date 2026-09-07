@@ -14,7 +14,7 @@ try {
   const { card, cta, ghost, eyebrow } = MI.ui;
 
   const OBSTACLES = [
-    ["motivation", "Lost motivation after a couple of weeks", "Every session moves your rank and your streak. You see the number you have to beat before you walk in, and the flame you lose if you don't."],
+    ["motivation", "Lost motivation after a couple of weeks", "Every session moves your rank and your streak, and your friends' scores sit next to yours on the league — you see who's climbing and stay competitive. The number to beat is on the screen before you walk in, the coach is in your pocket, and the flame is yours to lose."],
     ["direction", "Didn't know what to do next", "Six weeks, four sessions, every set written down. You never decide the session at the gym again."],
     ["time", "No time", "Short-on-time mode cuts warm-ups and rests, pairs a circuit and keeps the work set. Thirty minutes still counts."],
     ["injury", "A niggle turned into a stop", "Tempo 3-1-3-1 at one rep in reserve. Nothing bounced, nothing maxed. Tell the coach and it swaps the exercise, not the session."],
@@ -23,13 +23,6 @@ try {
     ["burnout", "Went too hard and burned out", "Low volume, high intensity, full rest between sets. Week 6 is a deload written into the block, not a sign you failed."],
     ["alone", "Nobody noticed", "A rank, a leaderboard and a wall where people post real results. Here, progress is status."],
   ];
-
-  const BLOCKER_ANSWER = {
-    direction: "You'll know the exact weight before you walk in.",
-    momentum: "Every session moves the rank. That's what keeps you in it.",
-    time: "Two sessions a week, upper and legs. That's the floor that still works.",
-    ceiling: "+2.5% a session, every session. That's the ceiling moving.",
-  };
 
   const PRICES = { monthly: 30, yearly: 240, human: 200 };
 
@@ -59,12 +52,8 @@ try {
         opts: [["once", "Yes"], ["multiple", "More than once"], ["never", "No"]], out: "A block with an end date is a block you can finish." },
       { k: "trainingStatus", kind: "choice", q: "Where is your training right now?", sub: "It only changes where you start.",
         opts: [["none", "Not training", "Starting from zero"], ["intermittent", "On and off", "Some weeks yes, some no"], ["consistent", "In every week", "Already showing up"]], out: "Wherever you start, the first two weeks set your loads. Nothing is assumed." },
-      { k: "sessionUnplanned", kind: "choice", q: "Do you decide the session when you get there?", sub: "You turn up. Your program should already know the number you have to beat.",
-        opts: [["yes", "Yes"], ["sometimes", "Sometimes"], ["no", "No"]], out: "Every set is written before you walk in. You just beat last week." },
-      { k: "mainBlocker", kind: "choice", q: "What actually gets in the way?", sub: "Whichever one it actually is.",
-        opts: [["direction", "Not knowing what to do next"], ["momentum", "Losing momentum"], ["time", "Time"], ["ceiling", "Nothing — I want more out of what I already do"]], out: "The system is built to handle exactly this. You'll see how before you're done." },
       { k: "goal", kind: "choice", q: "What do you want out of the next six weeks?", sub: "Say it plainly. The block gets built around this.",
-        opts: [["Lose fat", "Lose fat", "Keep your strength, drop the weight"], ["Build muscle", "Build muscle", "Add size where you want it"], ["More athletic", "More athletic", "Fitter, faster, harder to tire out"]], out: "This names your plan. Never 'general' — yours." },
+        opts: [["Lose fat + build muscle", "Lose fat + build muscle", "Recomposition — the scale barely moves, the mirror does"], ["Lose fat", "Lose fat", "Keep your strength, drop the weight"], ["Build muscle", "Build muscle", "Add size where you want it"], ["More athletic", "More athletic", "Fitter, faster, harder to tire out"]], out: "This names your plan. Never 'general' — yours." },
       { k: "bodyOutcome", kind: "choice", q: "What do you want to see in the mirror?", sub: "Six weeks from now, same light, same photo.",
         opts: [["lean", "Lean and defined", "Less around the middle, shape you can see"], ["big", "Bigger and heavier", "More size on your arms, chest and back"], ["capable", "Strong and capable", "Lift heavy, move well, stay hard to break"]], out: "Your before photo and your rank measure this. Not a feeling — a number and a picture." },
       { k: "sex", kind: "choice", q: "Strength standards are set by sex.", sub: "It sets your rank thresholds and your food targets. Nothing else.",
@@ -282,7 +271,6 @@ try {
 
     const Armed = () => (
       <div className="relative flex h-full flex-col justify-end overflow-hidden">
-        <MI.Plate plate="skeleton" opacity={0.2} position="center 20%" size="auto 120%" />
         <div className="relative mb-6 flex flex-wrap gap-1.5">
           {(window.MI_RANK ? window.MI_RANK.TIERS : []).map((t, i) => (
             <span key={t} className="mono rounded border border-neutral-800 bg-[#050505]/70 px-2 py-1 text-[10px] uppercase tracking-wider" style={{ color: MI.RANK_COLORS[t] === "url(#mi-irid)" ? "#F2EFE8" : MI.RANK_COLORS[t] }}>{i + 1} · {t}</span>
@@ -294,18 +282,15 @@ try {
     const Reveal = () => {
       const r = ob.rank;
       if (!r) return null;
-      const blocker = BLOCKER_ANSWER[ob.mainBlocker];
       return (
         <div className="flex h-full flex-col justify-center">
           <div className="mi-card3d mx-auto w-full max-w-[320px]">
             <div className={"mi-card3d-inner " + (flipped ? "flipped" : "")}>
-              <div className="mi-face relative flex h-[380px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-neutral-800 bg-[#121212]">
-                <MI.Plate plate="skeleton" opacity={0.2} position="center 30%" size="auto 140%" />
+              <div className="mi-face relative flex h-[380px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-neutral-800 bg-[#121212]/80">
                 <p className="dp relative text-[120px] leading-none text-neutral-800">?</p>
                 <p className={eyebrow + " relative"}>Calibrating</p>
               </div>
-              <div className="mi-face back absolute inset-0 flex h-[380px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-[#FF2B2B] bg-[#121212]">
-                <MI.Plate plate="skeleton" opacity={0.16} position="center 30%" size="auto 140%" red={0.8} />
+              <div className="mi-face back absolute inset-0 flex h-[380px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-[#FF2B2B] bg-[#0d0d0d]/85">
                 <div className="absolute inset-x-0 top-0 h-1 bg-[#FF2B2B]" />
                 <MI.RankBadge name={r.name} index={r.index} size={96} className="relative" />
                 <p className={eyebrow + " relative mt-4"}>Your rank</p>
@@ -314,17 +299,29 @@ try {
               </div>
             </div>
           </div>
-          <div className={card + " mt-5 px-5 py-4 transition-opacity duration-500 " + (flipped ? "opacity-100" : "opacity-0")}>
+          <div className={card + " mt-5 bg-[#141414]/90 px-5 py-4 transition-opacity duration-500 " + (flipped ? "opacity-100" : "opacity-0")}>
             <p className="text-sm leading-relaxed text-neutral-300">
               {r.next ? <>Climbing ranks is how you get stronger — <span className="text-[#F2EFE8]">{r.next.name}</span> takes {r.next.phrase}. Competing on rank will get you there.</>
                 : <>Climbing ranks is how you get stronger — you're at the top, so all that's left is holding it at +2.5% a block.</>}
             </p>
-            {blocker && <p className="mono mt-3 text-[11px] leading-relaxed text-neutral-500">{blocker}</p>}
+            <p className="mono mt-3 text-[11px] leading-relaxed text-neutral-500">Every session moves the rank. That's what keeps you in it.</p>
           </div>
         </div>
       );
     };
 
+    /* Data label as a chip: bone text on a dark rounded rect, floated above the point so it never sits on the line. */
+    const Chip = ({ x, y, text, anchor = "middle", cls, strong, muted }) => {
+      const w = text.length * 6.6 + 12, h = 17;
+      const cx = Math.max(2, Math.min(318 - w, anchor === "start" ? x : anchor === "end" ? x - w : x - w / 2));
+      const cy = y - 12 - h < 2 ? y + 12 : y - 12 - h; // above the point, or below it when there is no room
+      return (
+        <g className={cls}>
+          <rect x={cx} y={cy} width={w} height={h} rx="4" fill="#0b0b0b" stroke={strong ? "#FF2B2B" : "#2a2a2a"} strokeWidth="1" />
+          <text x={cx + w / 2} y={cy + 12} textAnchor="middle" fontFamily="IBM Plex Mono, monospace" fontSize="10.5" fontWeight={strong ? "600" : "400"} fill={muted ? "#b5b5b5" : "#F2EFE8"}>{text}</text>
+        </g>
+      );
+    };
     const Projection = () => {
       const P = window.MI_PROJ ? window.MI_PROJ.projection(projOb()) : null;
       if (!P) return null;
@@ -342,8 +339,7 @@ try {
         <div className="flex h-full flex-col">
           <p className={eyebrow}>Your projection</p>
           <p className="dp mt-2 text-[30px] uppercase leading-[0.95] text-[#F2EFE8]">Following this protocol, {P.label.toLowerCase()} <span className="text-[#FF2B2B]">here at 3 weeks, here at 6.</span></p>
-          <div className="relative mt-5 overflow-hidden rounded-2xl border border-neutral-800 bg-[#0f0f0f]">
-            <MI.Plate plate="skeleton" opacity={0.14} position="right 40%" size="auto 190%" />
+          <div className="relative mt-5 overflow-hidden rounded-2xl border border-neutral-800 bg-[#0f0f0f]/88">
             <div className="relative p-4">
               <div className="flex items-baseline justify-between">
                 <p className="mono text-[10px] uppercase tracking-widest text-neutral-500">{P.label}</p>
@@ -359,9 +355,9 @@ try {
                   <circle cx="12" cy="26" r="6" fill="#FF2B2B" />
                   <path d={MI.PATHS.TROPHY} transform="translate(0,-4) scale(1)" fill="none" stroke="#F2EFE8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </g>
-                <text x={X(0)} y={Y(P.points[0].v) + (up ? -10 : 18)} textAnchor="start" fontFamily="IBM Plex Mono, monospace" fontSize="10" fill="#9a9a9a">{fmt(P.start)}</text>
-                <text x={X(3)} y={Y(P.points[3].v) + (up ? 20 : -12)} textAnchor="middle" fontFamily="IBM Plex Mono, monospace" fontSize="11" fill="#F2EFE8" className="mi-pop1">{fmt(P.at3)}</text>
-                <text x={X(6) + 2} y={Y(P.points[6].v) + (up ? 24 : -16)} textAnchor="end" fontFamily="IBM Plex Mono, monospace" fontSize="12" fontWeight="600" fill="#FF2B2B" className="mi-pop2">{fmt(P.at6)}</text>
+                <Chip x={X(0)} y={Y(P.points[0].v)} text={fmt(P.start)} anchor="start" muted />
+                <Chip x={X(3)} y={Y(P.points[3].v)} text={fmt(P.at3)} anchor="middle" cls="mi-pop1" />
+                <Chip x={X(6)} y={Y(P.points[6].v) + 14} text={fmt(P.at6)} anchor="end" cls="mi-pop2" strong />
                 <text x={X(0)} y={H - 6} fontFamily="IBM Plex Mono, monospace" fontSize="9" fill="#666">TODAY</text>
                 <text x={X(3)} y={H - 6} textAnchor="middle" fontFamily="IBM Plex Mono, monospace" fontSize="9" fill="#666">3 WKS</text>
                 <text x={X(6)} y={H - 6} textAnchor="end" fontFamily="IBM Plex Mono, monospace" fontSize="9" fill="#666">6 WKS</text>
@@ -411,7 +407,7 @@ try {
           {demo.phase === "proposed" && (
             <>
               <p className="dp mt-2 text-[30px] uppercase leading-[0.95] text-[#F2EFE8]">Your coach proposes week 1, <span className="text-[#FF2B2B]">{day.name}</span></p>
-              <p className="mt-2 text-sm text-neutral-500">10/6/6/6, tempo 3-1-3-1, the third set is the work set. Now tell it you're short on time and watch it rebuild.</p>
+              <p className="mt-2 text-sm text-neutral-500">Two warm-ups take you there. Then the two sets that build the muscle: the working set at one in reserve, and the back-off straight after it. Now tell it you're short on time and watch it rebuild around those two.</p>
               <div className="mt-4"><SessionList exercises={day.exercises} /></div>
             </>
           )}
@@ -431,6 +427,7 @@ try {
               <p className="dp mt-2 text-[30px] uppercase leading-[0.95] text-[#F2EFE8]">Rebuilt for <span className="text-[#FF2B2B]">40 minutes</span></p>
               <div className={card + " mt-3 border-[#7f1d1d] px-4 py-3"}>
                 <p className="text-sm leading-relaxed text-neutral-200">{demo.result.reply}</p>
+                <p className="mono mt-2 text-[10px] text-neutral-500">The working set and the back-off stay in every rebuild. They're the stimulus — everything else is negotiable.</p>
                 {demo.offline && <p className="mono mt-2 text-[10px] text-neutral-500">{demo.err || "Coach unreachable right now — this is the method's rule-based rebuild. The live coach does this in plain language once you're in."}</p>}
               </div>
               <div className="mt-3"><SessionList exercises={demo.result.exercises} removed={demo.result.removed || day.exercises.filter((e) => !demo.result.exercises.some((x) => x.name === e.name)).map((e) => e.name)} /></div>
@@ -445,7 +442,6 @@ try {
       const pri = (ob.priorities || []).map((k) => (MI.MUSCLES.find((m) => m[0] === k) || [])[1]).filter(Boolean);
       return (
         <div className="relative flex h-full flex-col justify-center overflow-hidden">
-          <MI.Plate plate={pri[0] === "Legs" || pri[0] === "Glutes" ? "legs" : pri[0] === "Arms" ? "arm" : "back"} opacity={0.18} position="center 40%" size="auto 130%" />
           <div className="relative">
             <p className={eyebrow}>Your plan</p>
             <p className="dp stamp mt-2 text-[64px] uppercase leading-[0.9] text-[#FF2B2B]">{p.name}</p>
@@ -453,7 +449,18 @@ try {
             <div className={card + " mt-6 space-y-2 bg-[#0f0f0f]/90 p-4"}>
               <p className="mono text-[11px] text-neutral-400"><span className="text-[#F2EFE8]">6-week block</span> · W1 Establish → W6 Deload</p>
               <p className="mono text-[11px] text-neutral-400"><span className="text-[#F2EFE8]">4-day split</span> · Upper / Legs{pri.includes("Glutes") ? " + Glute Focus" : ""}</p>
-              <p className="mono text-[11px] text-neutral-400"><span className="text-[#F2EFE8]">10 / 6 / 6 / 6</span> · tempo 3-1-3-1 · ~1 in reserve</p>
+              <div className="py-1">
+                <p className="mono text-[9px] uppercase tracking-widest text-neutral-500">The progression loop</p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  {["Add reps", "Add weight", "Add reps", "Repeat"].map((w, i) => (
+                    <React.Fragment key={i}>
+                      <span className={"dp rounded-md px-2.5 py-1.5 text-[12px] uppercase tracking-wide " + (w === "Repeat" ? "border border-[#FF2B2B] text-[#FF2B2B]" : "bg-[#FF2B2B] text-white")}>{w}</span>
+                      {i < 3 && <MI.Ic d={MI.PATHS.ARROW} className="h-3.5 w-3.5 text-neutral-500" />}
+                    </React.Fragment>
+                  ))}
+                </div>
+                <p className="mono mt-1.5 text-[10px] text-neutral-500">Clear the reps on the working set and the back-off → the weight goes up → chase the reps again.</p>
+              </div>
               <p className="mono text-[11px] text-neutral-400"><span className="text-[#F2EFE8]">Leads with</span> · {pri.length ? pri.join(", ") : "a balanced order"}</p>
               {ob.rank && <p className="mono text-[11px] text-neutral-400"><span className="text-[#F2EFE8]">Starts at</span> · {ob.rank.name}{ob.rank.next ? " — " + ob.rank.next.name + " takes " + ob.rank.next.phrase : ""}</p>}
             </div>
@@ -672,15 +679,23 @@ try {
     };
 
     const noHeader = ["reveal", "projection", "demo", "plan", "proof", "timeline", "paywall"].includes(st.kind);
-    /* Background plate progression: the body (muscles) while we talk about them,
-       the skeleton through rank and projection, the classroom once the plan exists. */
-    const phase = step < 13 ? "muscles" : step < 18 ? "skeleton" : "classroom";
-    const phaseIndex = step < 13 ? step : step < 18 ? step - 13 : step - 18;
-    const quiet = ["reveal", "projection", "demo", "plan", "hold"].includes(st.kind); // these screens carry their own plate
+    /* Background plate progression: muscles while we talk about the body, the
+       skeleton through rank and projection, the classroom once the plan exists.
+       Crossfades with a slight pan between screens — never a hard jump. The
+       HERO tier goes large on the openers, the rank reveal and the projection. */
+    const phase = step < 11 ? "muscles" : step < 16 ? "skeleton" : "classroom";
+    const phaseIndex = step < 11 ? step : step < 16 ? step - 11 : step - 16;
+    const heroPlate = step <= 2 ? "hero" : st.kind === "reveal" ? "skeleton" : st.kind === "projection" ? "musclesFront" : null;
+    const bgPlate = MI.libraryPlate(phase, phaseIndex);
 
     return (
       <div className="fixed inset-0 z-[90] flex flex-col overflow-y-auto bg-[#050505] px-6 pb-8" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 20px)" }}>
-        {!quiet && <MI.Plate key={phase + phaseIndex} plate={MI.libraryPlate(phase, phaseIndex)} opacity={phase === "classroom" ? 0.08 : 0.14} position={phase === "classroom" ? undefined : "right -10%"} size={phase === "classroom" ? undefined : "auto 78%"} className="!fixed" red={0.6} />}
+        {heroPlate
+          ? (step <= 2 ? <MI.Hero plate="hero" h={112} x={-34} y={4} className="!fixed" />
+            : st.kind === "reveal" ? <MI.Hero plate="skeleton" h={108} x={-40} y={-2} className="!fixed" />
+            : <MI.Hero plate="musclesFront" side="bottom" h={80} y={-30} className="!fixed" />)
+          : <MI.Crossfade plate={bgPlate} opacity={phase === "classroom" ? 0.16 : 0.2} position={phase === "classroom" ? "center 30%" : "right -12%"} size={phase === "classroom" ? "cover" : "auto 80%"} red={0.6} className="!fixed" />}
+        <div aria-hidden className="pointer-events-none fixed inset-0 z-[1] opacity-[0.05]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E\")" }} />
         <style>{`
           .mi-card3d { perspective: 1100px; }
           .mi-card3d-inner { position: relative; transform-style: preserve-3d; transition: transform .85s cubic-bezier(.2,.8,.2,1); }
@@ -699,22 +714,22 @@ try {
           @media (prefers-reduced-motion: reduce) { .mi-card3d-inner { transition: none; } .mi-draw, .mi-pop1, .mi-pop2 { animation: none; opacity: 1; stroke-dashoffset: 0; } }
         `}</style>
         {downsell && <Downsell />}
-        <div className="h-[3px] w-full shrink-0 rounded-full bg-neutral-900">
+        <div className="relative z-[2] h-[3px] w-full shrink-0 rounded-full bg-neutral-900">
           <div className="h-[3px] rounded-full bg-[#FF2B2B] transition-all duration-300" style={{ width: `${((step + 1) / N) * 100}%` }} />
         </div>
-        <div className="mt-4 flex shrink-0 items-center justify-between">
+        <div className="relative z-[2] mt-4 flex shrink-0 items-center justify-between">
           {step > 0 && st.kind !== "reveal" && st.kind !== "hold" ? <button onClick={back} className="mono py-2 pr-4 text-sm text-neutral-500" aria-label="Back">‹ Back</button> : <span />}
           <span className="mono text-[10px] text-neutral-600">{step + 1} / {N}</span>
         </div>
 
         {!noHeader && (
-          <>
+          <div className="relative z-[2]">
             <p className="dp mt-7 text-[34px] uppercase leading-[0.95] text-[#F2EFE8]">{st.q}</p>
-            {st.sub && <p className="mt-3 text-sm leading-relaxed text-neutral-500">{st.sub}</p>}
-          </>
+            {st.sub && <p className="mt-3 text-sm leading-relaxed text-neutral-400">{st.sub}</p>}
+          </div>
         )}
 
-        <div className={"flex-1 " + (noHeader ? "mt-6" : "mt-7")}>
+        <div className={"relative z-[2] flex-1 " + (noHeader ? "mt-6" : "mt-7")}>
           {st.kind === "choice" && <Choice />}
           {st.kind === "weight" && <Weight />}
           {st.kind === "numbers" && <Numbers />}
@@ -734,8 +749,7 @@ try {
           {st.kind === "paywall" && <Paywall />}
         </div>
 
-        <Continue />
-        <Outcome text={st.out} />
+        <div className="relative z-[2]"><Continue /><Outcome text={st.out} /></div>
       </div>
     );
   };

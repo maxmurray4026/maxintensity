@@ -5,7 +5,7 @@
    #141414 or darker. Exposes MI.Plate, MI.PlateCard, MI.MuscleMap. */
 try {
 (function (MI) {
-  const { useState } = React;
+  const { useState, useEffect } = React;
 
   /* Canonical plates. `lum: true` = raster engraving, red ink on cream paper:
      rendered by luminance — inverted so the paper falls to black and vanishes
@@ -51,11 +51,23 @@ try {
   };
 
   /* Absolutely positioned backdrop. Parent needs `relative overflow-hidden`. */
-  /* `plate` is a key of MI.PLATES or a plate object (see MI.libraryPlate). */
-  MI.Plate = ({ plate = "skeleton", opacity = 0.18, position, size, flip, red = 0.55, className, style }) => {
+  /* `plate` is a key of MI.PLATES or a plate object (see MI.libraryPlate).
+     `hero` = the HERO tier: one plate large, 60–90% opacity, full red, filling
+     50–70% of the screen and bleeding off an edge; the text sits beside it. */
+  MI.Plate = ({ plate = "skeleton", opacity = 0.18, position, size, flip, red = 0.55, className, style, hero }) => {
     const p = typeof plate === "object" && plate ? plate : (MI.PLATES[plate] || MI.PLATES.skeleton);
     const url = `url(${p.file})`;
     const pos = position || p.pos, sz = size || p.size;
+    if (p.lum && hero) {
+      const bg = { backgroundImage: url, backgroundRepeat: "no-repeat", backgroundPosition: pos, backgroundSize: sz, transform: flip ? "scaleX(-1)" : undefined };
+      const base = "invert(1) grayscale(1) brightness(.7) contrast(2.2) ";
+      return (
+        <div aria-hidden className={"pointer-events-none absolute inset-0 overflow-hidden " + (className || "")} style={style}>
+          <div className="absolute inset-0" style={{ ...bg, opacity: Math.min(1, opacity * 0.45), filter: base + "sepia(.4) saturate(.6) brightness(1.2)", mixBlendMode: "screen" }} />
+          <div className="absolute inset-0" style={{ ...bg, opacity, filter: base + "sepia(1) saturate(10) hue-rotate(-42deg) brightness(1.3) contrast(1.1)", mixBlendMode: "screen" }} />
+        </div>
+      );
+    }
     if (p.lum) {
       /* Raster engraving. Two screen-blended layers: a bone-tinted base and a
          red-tinted layer faded in along the duotone gradient. Invert + contrast
@@ -78,6 +90,61 @@ try {
     return (
       <div aria-hidden className={"pointer-events-none absolute inset-0 z-0 " + (className || "")}
         style={{ opacity, transform: flip ? "scaleX(-1)" : undefined, ...mask, background: `linear-gradient(155deg, #F2EFE8 ${Math.round((1 - red) * 100)}%, #FF2B2B 100%)`, ...(style || {}) }} />
+    );
+  };
+
+  /* Hero plate with the clear-space gradient the type sits in. `side` = where
+     the plate bleeds off: "right" (text left) or "bottom" (text top). */
+  /* The plate is an <img> so its paper frame can be clipped away (inset 3.5%),
+     sized as a % of the container height (h), bled off the right (x, negative =
+     past the edge) or the bottom (side="bottom", y negative = past the edge). */
+  MI.Hero = ({ plate, opacity = 0.85, side = "right", h = 110, x = -30, y = 4, flip, className }) => {
+    const p = typeof plate === "object" && plate ? plate : (MI.PLATES[plate] || MI.PLATES.hero);
+    const base = "invert(1) grayscale(1) brightness(.6) contrast(2.5) ";
+    const geo = side === "bottom"
+      ? { height: h + "%", left: "50%", bottom: y + "%", transform: "translateX(-50%)" + (flip ? " scaleX(-1)" : "") }
+      : { height: h + "%", right: x + "%", top: y + "%", transform: flip ? "scaleX(-1)" : undefined };
+    const layer = (extra, op, key) => (
+      <img key={key} src={p.file} alt="" aria-hidden style={{ position: "absolute", width: "auto", maxWidth: "none", ...geo, clipPath: "inset(3.5%)", WebkitClipPath: "inset(3.5%)", opacity: op, filter: base + extra, mixBlendMode: "screen" }} />
+    );
+    const grad = side === "bottom"
+      ? "linear-gradient(180deg, rgba(5,5,5,.94) 0%, rgba(5,5,5,.7) 32%, rgba(5,5,5,0) 58%)"
+      : "linear-gradient(90deg, rgba(5,5,5,.96) 0%, rgba(5,5,5,.78) 36%, rgba(5,5,5,0) 66%)";
+    return (
+      <div aria-hidden className={"pointer-events-none absolute inset-0 overflow-hidden " + (className || "")}>
+        {layer("sepia(.4) saturate(.5) brightness(1.0)", Math.min(1, opacity * 0.12), "bone")}
+        {layer("sepia(1) saturate(9) hue-rotate(-44deg) contrast(1.25) brightness(.86)", opacity, "red")}
+        <div className="absolute inset-0" style={{ background: grad }} />
+      </div>
+    );
+  };
+
+  /* Crossfading plate: when `plate` changes the old one fades out while the new
+     one fades in with a slight pan, so the funnel never hard-jumps. */
+  MI.Crossfade = ({ plate, opacity, position, size, red, className }) => {
+    const [layers, setLayers] = useState([{ plate, id: 0 }]);
+    useEffect(() => {
+      setLayers((L) => {
+        const last = L[L.length - 1];
+        if (last && last.plate && plate && last.plate.file === plate.file) return L;
+        return [...L.slice(-1), { plate, id: (last ? last.id : 0) + 1 }];
+      });
+    }, [plate && plate.file]); // eslint-disable-line
+    return (
+      <div aria-hidden className={"pointer-events-none absolute inset-0 overflow-hidden " + (className || "")}>
+        <style>{`
+          @keyframes mi-plate-in { from { opacity: 0; transform: translateX(14px) scale(1.02); } to { opacity: 1; transform: none; } }
+          @keyframes mi-plate-out { from { opacity: 1; } to { opacity: 0; } }
+          .mi-plate-in { animation: mi-plate-in 1.1s cubic-bezier(.2,.7,.2,1) both; }
+          .mi-plate-out { animation: mi-plate-out .9s ease-out both; }
+          @media (prefers-reduced-motion: reduce) { .mi-plate-in, .mi-plate-out { animation: none; } .mi-plate-out { opacity: 0; } }
+        `}</style>
+        {layers.map((L, i) => (
+          <div key={L.id} className={"absolute inset-0 " + (i === layers.length - 1 ? "mi-plate-in" : "mi-plate-out")}>
+            {L.plate && <MI.Plate plate={L.plate} opacity={opacity} position={position} size={size} red={red} />}
+          </div>
+        ))}
+      </div>
     );
   };
 

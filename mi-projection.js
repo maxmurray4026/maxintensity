@@ -13,12 +13,50 @@
 
   /* ---- plan naming by outcome. Never "General". ---- */
   var PLAN_NAMES = {
+    "Lose fat + build muscle": { name: "RECOMP", line: "Built to swap fat for muscle — the scale barely moves, the mirror does.", short: "Recomp" },
     "Build muscle": { name: "MASS GAINER", line: "Built to add size where you want it.", short: "Mass" },
     "Lose fat": { name: "SHREDDER", line: "Built to drop the weight and keep the strength.", short: "Shred" },
     "More athletic": { name: "ATHLETE", line: "Built to make you faster, fitter and harder to tire out.", short: "Athlete" },
   };
   function planName(goal) {
     return PLAN_NAMES[goal] || PLAN_NAMES["Build muscle"];
+  }
+
+  /* ---- Week scheduler. Places session days across Mon..Sun so that no two
+     lower-body days (Legs, Glute Focus, any leg-focus day) sit next to each
+     other — including the Sunday→Monday wrap. Upper days go between them. ---- */
+  function isLower(name) { return /leg|glute|lower/i.test(name || ""); }
+  function scheduleWeek(dayNames, daysPerWeek) {
+    var days = (dayNames || []).slice();
+    var n = Math.max(2, Math.min(7, Number(daysPerWeek) || days.length || 4));
+    if (days.length > n) days = days.slice(0, n);
+    var lower = days.filter(isLower), upper = days.filter(function (d) { return !isLower(d); });
+    var week = ["REST", "REST", "REST", "REST", "REST", "REST", "REST"];
+    // lower days on even slots (Mon, Wed, Fri) — never adjacent; a 4th lower day would have to break the rule, so it is dropped
+    var lowerSlots = [0, 2, 4];
+    lower.slice(0, 3).forEach(function (d, i) { week[lowerSlots[i]] = d; });
+    // upper days fill the gaps between, then the remaining free slots
+    var upperSlots = [1, 3, 5, 6].concat([0, 2, 4].filter(function (s) { return week[s] === "REST"; }));
+    upper.forEach(function (d) {
+      var s = upperSlots.find(function (x) { return week[x] === "REST"; });
+      if (s !== undefined) week[s] = d;
+    });
+    // when only two lower days exist, prefer the classic U/L/REST/U/L/REST/REST rhythm (upper first)
+    if (lower.length <= 2 && upper.length >= 2 && lower.length >= 2) {
+      var classic = ["REST", "REST", "REST", "REST", "REST", "REST", "REST"];
+      classic[0] = upper[0]; classic[1] = lower[0]; classic[3] = upper[1]; classic[4] = lower[1];
+      if (upper[2]) classic[5] = upper[2];
+      if (upper[3]) classic[6] = upper[3];
+      if (lower.length === 2) week = classic;
+    }
+    return week;
+  }
+  function scheduleValid(week) {
+    for (var i = 0; i < week.length; i++) {
+      var a = week[i], b = week[(i + 1) % week.length];
+      if (a !== "REST" && b !== "REST" && isLower(a) && isLower(b)) return false;
+    }
+    return true;
   }
 
   /* ---- XP levels. Points already exist (+10 a set, +5 a day, streak bonuses).
@@ -60,7 +98,7 @@
   function round2p5(v, on) { return on ? Math.round(v / 1.25) * 1.25 : Math.round(v * 10) / 10; }
 
   /* ---- Bodyweight curve. Rates are per week, as a share of bodyweight. ---- */
-  var BW_RATE = { "Lose fat": -0.006, "Build muscle": 0.0025, "More athletic": -0.002 };
+  var BW_RATE = { "Lose fat": -0.006, "Build muscle": 0.0025, "More athletic": -0.002, "Lose fat + build muscle": -0.0015 };
   function bodyweightCurve(startKg, goal, weeks) {
     var s = Number(startKg) || 0, r = BW_RATE[goal] != null ? BW_RATE[goal] : 0;
     var n = weeks || 6, pts = [];
@@ -108,7 +146,9 @@
     return {
       metric: "lift", key: "bench", label: "Bench press", unit: "kg", points: lc,
       start: lc[0].v, at3: lc[3].v, at6: lc[6].v,
-      caption: "+2.5% every session the work set clears 6. Two weeks to set the loads, three to move them, one to deload. Realistic, not a fantasy.",
+      caption: goal === "Lose fat + build muscle"
+        ? "Recomp: the bar goes up while the scale barely moves. +2.5% every session the working set clears 6. Realistic, not a fantasy."
+        : "+2.5% every session the working set clears 6. Two weeks to set the loads, three to move them, one to deload. Realistic, not a fantasy.",
     };
   }
 
@@ -243,5 +283,8 @@
     volume: volume,
     shortOnTime: shortOnTime,
     rirAdvice: rirAdvice,
+    scheduleWeek: scheduleWeek,
+    scheduleValid: scheduleValid,
+    isLower: isLower,
   };
 })(window);
