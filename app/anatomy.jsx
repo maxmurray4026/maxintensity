@@ -162,7 +162,7 @@ try {
     <div className="relative -mx-4 overflow-hidden px-4 py-3">
       <MI.Plate plate={plate} opacity={opacity} position="right 22%" size="auto 300%" />
       <div className="relative z-10">
-        {eyebrow && <p className={MI.ui.eyebrow}>{eyebrow}</p>}
+        {eyebrow && <div className={MI.ui.eyebrow}>{eyebrow}</div>}
         <div className="mt-1 flex items-end justify-between">
           <h2 className="dp text-[46px] uppercase leading-[0.9] text-[#F2EFE8]">{title}</h2>
           {right && <span className="rounded-md bg-[#050505]/75 px-1.5 py-0.5">{right}</span>}

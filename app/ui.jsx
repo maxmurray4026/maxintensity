@@ -221,6 +221,54 @@ window.MI = window.MI || {};
     return { supported: !!SR, listening, transcript, start, stop, setTranscript };
   };
 
+  /* ---- horizontal swipe with momentum. Touch and pointer. Vertical scrolling
+     is left to the browser (touch-action: pan-y); a gesture that starts within
+     24px of a screen edge is ignored so iOS Safari's back/forward edge swipe is
+     never fought. Commit on distance (>70px) or velocity (>0.45 px/ms). ---- */
+  MI.Swipe = ({ onPrev, onNext, children, className, style, edge = 24 }) => {
+    const [dx, setDx] = useState(0);
+    const [phase, setPhase] = useState("idle"); // idle | drag | out-left | out-right | in
+    const st = useRef(null);
+    const block = useRef(false); // a horizontal drag must never land as a click on what's under the finger
+    const pt = (e) => (e.touches ? e.touches[0] : e.changedTouches ? e.changedTouches[0] : e);
+    const begin = (e) => {
+      if (phase !== "idle" && phase !== "drag") return;
+      const p = pt(e);
+      if (p.clientX < edge || p.clientX > window.innerWidth - edge) { st.current = null; return; }
+      st.current = { x: p.clientX, y: p.clientY, t: performance.now(), axis: null, last: p.clientX, lastT: performance.now() };
+    };
+    const move = (e) => {
+      const s = st.current; if (!s) return;
+      const p = pt(e);
+      const ddx = p.clientX - s.x, ddy = p.clientY - s.y;
+      if (!s.axis) { if (Math.abs(ddx) < 8 && Math.abs(ddy) < 8) return; s.axis = Math.abs(ddx) > Math.abs(ddy) * 1.2 ? "x" : "y"; if (s.axis === "x") setPhase("drag"); }
+      if (s.axis !== "x") return;
+      s.last = p.clientX; s.lastT = performance.now();
+      setDx(ddx);
+    };
+    const end = () => {
+      const s = st.current; st.current = null;
+      if (!s || s.axis !== "x") { setDx(0); setPhase("idle"); return; }
+      block.current = true; setTimeout(() => { block.current = false; }, 400);
+      const v = (s.last - s.x) / Math.max(1, s.lastT - s.t);
+      const d = s.last - s.x;
+      const commit = Math.abs(d) > 70 || Math.abs(v) > 0.45;
+      if (commit && d < 0 && onNext) { setPhase("out-left"); setTimeout(() => { onNext(); setDx(0); setPhase("in"); setTimeout(() => setPhase("idle"), 220); }, 160); }
+      else if (commit && d > 0 && onPrev) { setPhase("out-right"); setTimeout(() => { onPrev(); setDx(0); setPhase("in"); setTimeout(() => setPhase("idle"), 220); }, 160); }
+      else { setDx(0); setPhase("idle"); }
+    };
+    const tf = phase === "out-left" ? "translateX(-110%)" : phase === "out-right" ? "translateX(110%)" : phase === "drag" ? `translateX(${dx}px)` : "translateX(0)";
+    const trans = phase === "drag" ? "none" : phase === "in" ? "transform .22s cubic-bezier(.2,.8,.2,1), opacity .22s" : "transform .16s ease-in, opacity .16s";
+    return (
+      <div className={className} style={{ touchAction: "pan-y", overscrollBehaviorX: "none", ...(style || {}) }}
+        onClickCapture={(e) => { if (block.current) { e.stopPropagation(); e.preventDefault(); } }}
+        onTouchStart={begin} onTouchMove={move} onTouchEnd={end} onTouchCancel={end}
+        onPointerDown={(e) => { if (e.pointerType === "mouse") begin(e); }} onPointerMove={(e) => { if (e.pointerType === "mouse" && st.current) move(e); }} onPointerUp={(e) => { if (e.pointerType === "mouse") end(); }} onPointerLeave={(e) => { if (e.pointerType === "mouse" && st.current) end(); }}>
+        <div style={{ transform: tf, transition: trans, opacity: phase.startsWith("out") ? 0.4 : 1, willChange: "transform" }}>{children}</div>
+      </div>
+    );
+  };
+
   /* ---- muscle keyword mapping shared by picker, recap and coach ---- */
   MI.MUSCLES = [
     ["chest", "Chest"], ["back", "Back"], ["shoulders", "Shoulders"], ["arms", "Arms"], ["legs", "Legs"], ["glutes", "Glutes"], ["abs", "Abs"],

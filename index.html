@@ -18,7 +18,7 @@
 <script src="rank-standards.js"></script>
 <script src="mi-projection.js"></script>
 <script src="mi-ai.js"></script>
-<style>html,body{background:#0a0a0a;margin:0}</style>
+<style>html,body{background:#0a0a0a;margin:0;overscroll-behavior-x:none}</style>
 </head>
 <body>
 <div id="root">
@@ -65,6 +65,8 @@ window.fetch = function(url, opts){
 <script type="text/babel" data-presets="env,react" src="app/recap.jsx"></script>
 <script type="text/babel" data-presets="env,react" src="app/community.jsx"></script>
 <script type="text/babel" data-presets="env,react" src="app/progress.jsx"></script>
+<script type="text/babel" data-presets="env,react" src="app/muscles.jsx"></script>
+<script type="text/babel" data-presets="env,react" src="app/calendar.jsx"></script>
 <script type="text/babel" data-presets="env,react">
 try {
 const { useState, useEffect, useRef } = React;
@@ -718,6 +720,10 @@ function MaxIntensityApp() {
   const [notif, setNotif] = useState({ enabled: false, overtake: true, streak: true });
   const [coachView, setCoachView] = useState("chat"); // 'chat' | 'learn'
   const [underPr, setUnderPr] = useState(null);       // { name, w, best } — logged under a previous best
+  const [dayOffset, setDayOffset] = useState(0);      // Today carousel: days from today (swipe)
+  const [calOpen, setCalOpen] = useState(false);      // the block-at-a-glance calendar
+  const [muscleEx, setMuscleEx] = useState(null);     // exercise name for the muscle sheet
+  const [formEx, setFormEx] = useState(null);         // exercise name for the form sheet
   const speech = MI.useSpeech();
 
 
@@ -1469,10 +1475,13 @@ function MaxIntensityApp() {
   const DEMOS = {
     // "Incline Dumbbell Press": "https://youtube.com/shorts/XXXX",
   };
-  const openDemo = (name) => {
+  const demoUrl = (name) => {
     const own = DEMOS[name] || DEMOS[Object.keys(DEMOS).find((k) => name.toLowerCase().includes(k.toLowerCase())) || ""];
-    window.open(own || "https://www.youtube.com/results?search_query=" + encodeURIComponent(name + " exercise proper form"), "_blank");
+    return own || "https://www.youtube.com/results?search_query=" + encodeURIComponent(name + " exercise proper form");
   };
+  // the Form button: Max's reference video from assets/form/<slug>.mp4, placeholder until it lands
+  const openDemo = (name) => setFormEx(name);
+  const blockStart = () => { const h = Object.keys(history).sort(); return h[0] || todayKey(); };
 
   const send = async () => {
     const q = input.trim();
@@ -1781,6 +1790,8 @@ function MaxIntensityApp() {
           )}
           {voiceMsg && /alerts|Notifications/.test(voiceMsg) && <p className="mono mt-2 text-[10px] text-[#FF2B2B]">{voiceMsg}</p>}
         </div>
+        <p className={eyebrow + " mt-6"}>Form videos</p>
+        <MI.FormAdmin names={Array.from(new Set(program.days.flatMap((d) => d.exercises.map((e) => e.name))))} />
         <p className={eyebrow + " mt-6"}>Community admin</p>
         <div className={card + " mt-2 p-3.5"}>
           <input value={adminCode} onChange={(e) => setAdminCode(e.target.value)} placeholder="Admin code (Max only) — unlocks the verification queue" className="mono w-full rounded-lg bg-neutral-900 px-3 py-2.5 text-xs placeholder-neutral-700" />
@@ -1900,7 +1911,10 @@ function MaxIntensityApp() {
         ) : (
           <div className="flex flex-1 flex-col px-6 pt-7">
             <p className={eyebrow}>{label}</p>
-            <p className="dp mt-1 text-[34px] uppercase leading-[0.95] text-[#F2EFE8]">{exr.name}</p>
+            <div className="mt-1 flex items-start gap-3">
+              <p className="dp min-w-0 flex-1 text-[34px] uppercase leading-[0.95] text-[#F2EFE8]">{exr.name}</p>
+              <MI.ExerciseInfographic name={exr.name} size={44} onOpen={setMuscleEx} />
+            </div>
             {exr.note ? <p className="mt-1.5 text-sm text-neutral-500">{exr.note}</p> : null}
             <div className="mt-3 flex flex-wrap gap-2">
               <span className={chip + " border border-neutral-800 bg-[#141414] text-neutral-400"}>tempo {exr.tempo}</span>
@@ -2130,10 +2144,16 @@ function MaxIntensityApp() {
 
       {/* ---------- TODAY ---------- */}
       {tab === "today" && (() => {
-        const di = todayDayIdx();
+        const selD = new Date(); selD.setDate(selD.getDate() + dayOffset);
+        const selK = dateKey(selD);
+        const isToday = dayOffset === 0;
+        const planNm = isToday ? todayPlanName() : (dayPlan[selK] || weekRhythm()[dowIdx(selD)]);
+        const done = history[selK];
+        let di = program.days.findIndex((x) => x.name === (done ? done.day : planNm));
+        if (di === -1) di = isToday ? todayDayIdx() : 0;
         const d = program.days[di] || { name: "", exercises: [] };
-        const planNm = todayPlanName();
-        const rest = planNm === "REST" || planNm === "Rest";
+        const rest = !done && (planNm === "REST" || planNm === "Rest");
+        const dayLabel = isToday ? "Today" : dayOffset === 1 ? "Tomorrow" : dayOffset === -1 ? "Yesterday" : selD.toLocaleDateString("en-GB", { weekday: "long" });
         const lit = loggedToday();
         const L = window.MI_PROJ ? window.MI_PROJ.levelFor(game.points) : { level: 1, title: "Recruit", pct: 0 };
         const entries = foodLog[todayKey()] || [];
@@ -2146,13 +2166,21 @@ function MaxIntensityApp() {
         const me = (handle || "").toLowerCase();
         const myPos = rows.findIndex((r) => (r.handle || "").toLowerCase() === me);
         return (
+          <MI.Swipe onPrev={() => setDayOffset((o) => Math.max(-60, o - 1))} onNext={() => setDayOffset((o) => Math.min(60, o + 1))}>
           <main className="px-4 pb-32 pt-3">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className={eyebrow}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}</p>
-                <h2 className="dp mt-1 text-[52px] uppercase leading-[0.9]">Let's <span className="text-[#FF2B2B]">work.</span></h2>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1">
+                  <button onClick={() => setDayOffset((o) => o - 1)} className="mono shrink-0 px-1 text-sm text-neutral-600" aria-label="Previous day">‹</button>
+                  <button onClick={() => setCalOpen(true)} className={eyebrow + " flex min-w-0 items-center gap-1.5 truncate py-1"} aria-label="Open calendar">
+                    <MI.Ic d="M5 5h14v14H5zM5 9h14M9 3v4M15 3v4" className="h-3.5 w-3.5" />
+                    {selD.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}{!isToday ? " · " + dayLabel : ""}
+                  </button>
+                  <button onClick={() => setDayOffset((o) => o + 1)} className="mono shrink-0 px-1 text-sm text-neutral-600" aria-label="Next day">›</button>
+                </div>
+                <h2 className="dp mt-1 text-[46px] uppercase leading-[0.9]">{isToday ? <>Let's <span className="text-[#FF2B2B]">work.</span></> : <>{dayLabel.split(" ")[0]}<span className="text-[#FF2B2B]">.</span></>}</h2>
               </div>
-              <button onClick={() => setShowSettings(true)} className={card + " mt-1 flex flex-col items-end px-3 py-2"} aria-label="Level and XP">
+              <button onClick={() => setShowSettings(true)} className={card + " mt-1 flex shrink-0 flex-col items-end px-3 py-2"} aria-label="Level and XP">
                 <span className="dp text-lg leading-none text-[#FF2B2B]">L{L.level}</span>
                 <span className="mono text-[9px] uppercase tracking-wider text-neutral-400">{L.title} · {game.points} XP</span>
                 <span className="mt-1 h-1 w-20 rounded-full bg-neutral-800"><span className="block h-1 rounded-full bg-[#FF2B2B]" style={{ width: L.pct + "%" }} /></span>
@@ -2181,15 +2209,20 @@ function MaxIntensityApp() {
               </div>
             </div>
 
-            {/* today's session */}
-            <p className={eyebrow + " mt-6"}>Today's session</p>
+            {/* the selected day's session — swipe for other days */}
+            <p className={eyebrow + " mt-6"}>{isToday ? "Today's session" : dayLabel + "'s session"}</p>
             <MI.PlateCard plate={MI.plateFor("session", d.name)} opacity={0.16} className="mt-2" innerClassName="p-4">
-              {rest && <p className="mono text-[10px] uppercase tracking-widest text-neutral-500">Rest day on the plan — growth day. Next up:</p>}
+              <p className="mono text-[10px] uppercase tracking-widest text-neutral-500">{done ? "Completed" : rest ? "Rest day on the plan — growth day. Next up:" : isToday ? "Scheduled · not started" : dayOffset > 0 ? "Scheduled" : "Scheduled · missed"}</p>
               <p className="dp mt-0.5 text-[34px] uppercase leading-[0.95] text-[#F2EFE8]">{d.name}</p>
               <p className="mono mt-1 text-[11px] text-[#FF2B2B]">{dayMuscles(d).join(" · ")}</p>
               <p className="mono mt-1 text-[10px] text-neutral-500">{d.exercises.length} exercises · {daySets(d)} sets · Week {week + 1} {wk.tag}</p>
-              <button onClick={() => { setActiveDay(di); setTab("program"); startSession(); }} className={cta + " mt-4 w-full py-4 text-base"}>{rest ? "Train anyway" : "Start session"}</button>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {d.exercises.map((e, i) => <MI.ExerciseInfographic key={i} name={e.name} size={26} onOpen={setMuscleEx} />)}
+              </div>
+              {!done && <button onClick={() => { setActiveDay(di); setTab("program"); startSession(); }} className={cta + " mt-4 w-full py-4 text-base"}>{rest ? "Train anyway" : isToday ? "Start session" : dayOffset > 0 ? "Start early" : "Log this session"}</button>}
+              {done && <p className="mono mt-3 text-[10px] text-neutral-400">{(done.items || []).filter((it) => (it.sets || []).some((x) => x.w || x.r)).length} exercises logged · saved to your calendar</p>}
               <button onClick={() => { setActiveDay(di); setTab("program"); }} className="mono mt-2 w-full py-1 text-[10px] uppercase tracking-widest text-neutral-500">See the whole block →</button>
+              <p className="mono mt-1 text-center text-[9px] text-neutral-700">swipe for other days</p>
             </MI.PlateCard>
 
             {/* weekly quests */}
@@ -2244,16 +2277,18 @@ function MaxIntensityApp() {
               </div>
             )}
           </main>
+          </MI.Swipe>
         );
       })()}
 
       {/* ---------- TRAIN ---------- */}
       {tab === "program" && (
+        <MI.Swipe onPrev={() => setWeek((w) => Math.max(0, w - 1))} onNext={() => setWeek((w) => Math.min(WEEK_PLAN.length - 1, w + 1))}>
         <main className="px-4 pb-32">
           <div className="pt-1">
-            {/* block header */}
+            {/* block header — swipe for the week, tap the date line for the calendar */}
             <MI.PlateHeader plate={MI.plateFor("session", day.name)}
-              eyebrow={"Week " + (week + 1) + " · " + (settings?.daysPerWeek || program.days.length) + " days / week · " + wk.tag}
+              eyebrow={<button onClick={() => setCalOpen(true)} className="flex items-center gap-1.5 text-left" aria-label="Open calendar"><button onClick={(e) => { e.stopPropagation(); setWeek((w) => Math.max(0, w - 1)); }} className="px-0.5 text-neutral-600" aria-label="Previous week">‹</button>{"Week " + (week + 1) + " · " + (settings?.daysPerWeek || program.days.length) + " days / week · " + wk.tag}<button onClick={(e) => { e.stopPropagation(); setWeek((w) => Math.min(WEEK_PLAN.length - 1, w + 1)); }} className="px-0.5 text-neutral-600" aria-label="Next week">›</button></button>}
               title={settings?.plan || "The block"}
               right={<span className="mono pb-1 text-xs text-neutral-500">{sessionsThisWeek()}/{settings?.daysPerWeek || 4} this week</span>} />
             <p className="mt-2 text-sm text-neutral-500">{wk.cue}</p>
@@ -2402,7 +2437,9 @@ function MaxIntensityApp() {
                     >
                       {log.done ? "✓" : <span className="dp text-lg">{String(i + 1).padStart(2, "0")}</span>}
                     </button>
-                    <button onClick={() => setOpen(expanded ? null : i)} className="min-w-0 flex-1 p-3.5 text-left">
+                    <button onClick={() => setOpen(expanded ? null : i)} className="flex min-w-0 flex-1 items-center gap-3 p-3.5 text-left">
+                      <MI.ExerciseInfographic name={exr.name} size={40} onOpen={setMuscleEx} />
+                      <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p className="dp text-[15px] uppercase tracking-wide text-neutral-100">{exr.name}</p>
                         {cleared && !isDeload && (
@@ -2413,7 +2450,9 @@ function MaxIntensityApp() {
                         {isDeload ? "2 sets · ~60%" : exr.scheme.join(" / ")} · {exr.tempo} · {exr.rest}
                       </p>
                       {exr.note ? <p className="mt-0.5 text-[11px] text-neutral-600">{exr.note}</p> : null}
+                      </div>
                     </button>
+                    <button onClick={() => setFormEx(exr.name)} className="mono flex items-center pr-2 text-[10px] uppercase tracking-wider text-neutral-400" aria-label={"Form video for " + exr.name}>▶ Form</button>
                     <span className="mono flex items-center pr-3.5 text-xs text-neutral-600">{expanded ? "−" : "+"}</span>
                   </div>
                   )}
@@ -2484,6 +2523,7 @@ function MaxIntensityApp() {
             </div>
           )}
         </main>
+        </MI.Swipe>
       )}
 
       {/* ---------- EAT ---------- */}
@@ -3376,6 +3416,12 @@ function MaxIntensityApp() {
         projection12={window.MI_PROJ ? window.MI_PROJ.projection12({ goal: settings?.goal, bwKg: Number(settings?.bw) || 0, exp: settings?.exp, knowsLiftNumbers: settings?.knowsLiftNumbers, strength: settings?.strength || {} }) : null} />
 
       {rankUp && <MI.RankUp from={rankUp.from} to={rankUp.to} onClose={() => setRankUp(null)} />}
+      <MI.MuscleSheet name={muscleEx} onClose={() => setMuscleEx(null)} onForm={setFormEx} />
+      <MI.FormSheet name={formEx} onClose={() => setFormEx(null)} fallbackUrl={formEx ? demoUrl(formEx) : null} />
+      <MI.CalendarView open={calOpen} onClose={() => setCalOpen(false)} program={program} weekPlan={WEEK_PLAN} week={week} setWeek={setWeek}
+        blockStart={blockStart()} history={history} dayPlan={dayPlan} rhythm={weekRhythm()} logs={logs}
+        initialDate={(() => { const d = new Date(); d.setDate(d.getDate() + dayOffset); return dateKey(d); })()}
+        onStart={(di) => { setActiveDay(di); setCalOpen(false); setTab("program"); startSession(); }} onOpenDay={setMuscleEx} />
 
       {renderSettings()}
       {renderTutorial()}

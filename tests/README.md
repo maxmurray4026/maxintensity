@@ -20,7 +20,8 @@ npm test            # syntax → logic → full funnel → in-app walkthrough
   short-on-time, recommended swaps, a session with RIR coaching and a PR, the
   recap, rank-up, progress page, photo check-in, photo assessment, wall post,
   leaderboard, verification, meal prep with a food file, photo and voice meal
-  logging, the usage cap.
+  logging, the usage cap, swipe navigation on Today and Train, the calendar
+  view, muscle infographics and the form sheet.
 
 Screenshots land in `tests/shots/`. Set `CHROME=/path/to/chrome` to use a
 specific Chromium build.

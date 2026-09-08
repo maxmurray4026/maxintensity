@@ -53,7 +53,7 @@ const S = process.env.S || __dirname; require('fs').mkdirSync(S + '/shots', { re
   await root().getByRole('button', { name: 'Try it monthly' }).click(); await page.waitForTimeout(600); await shot('building');
   await page.waitForTimeout(1600);
   // tutorial
-  for (let i = 0; i < 5; i++) { const b = page.getByRole('button', { name: /Next|Let's train/ }).first(); if (await b.count()) { await b.click(); await page.waitForTimeout(200); } }
+  for (let i = 0; i < 5; i++) { const b = page.locator('div.fixed.inset-0.z-\\[88\\]').getByRole('button', { name: /^Next$|Let's train/ }).first(); if (await b.count()) { await b.click(); await page.waitForTimeout(200); } }
   await page.waitForTimeout(500); await shot('train');
   console.log('errors:', page.errors.filter((e) => !/ERR_FAILED/.test(e)));
   console.log('errbox:', await page.$eval('#errbox', (e) => e.textContent));

@@ -1,5 +1,51 @@
 # CHANGES
 
+## Round 3 — swipe, calendar, muscle infographics, form library
+
+**1 Navigation.** Today is a day carousel: swipe left/right (touch or mouse,
+momentum on distance or velocity) moves a day; Train swipes the block week.
+`MI.Swipe` in `app/ui.jsx` uses `touch-action: pan-y` so vertical scrolling
+stays native, ignores gestures that start within 24px of either screen edge
+so iOS Safari's back/forward edge swipe is never fought, and swallows the
+click that would otherwise land under the finger after a drag. Small ‹ ›
+arrows remain as the fallback on both screens. The date header on Today and
+the week line on Train are buttons that open the calendar.
+
+**2 Calendar view** (`app/calendar.jsx`). Full-screen month grid, black/bone
+/red with the skeleton plate behind. Dots: red scheduled, bone completed, dim
+rest; the current block week is tinted. Week strip across the top uses the
+block's real names from `WEEK_PLAN` (WEEK 1 ESTABLISH … WEEK 6 DELOAD),
+tapping jumps the app week and scrolls the grid to it. Tapping a day shows
+"Scheduled — Upper 1 — Not started" (or Completed with the logged sets, or
+Rest) with the exercise list in order and START SESSION. Block start = first
+logged session (today until then).
+
+**3 Per-exercise muscle infographic** (`app/muscles.jsx`). Muscle regions are
+polygons in each plate's pixel space over muscles-front, muscles-back, legs
+and arm; the plate renders as texture and the worked regions fill `#FF2B2B`
+(primary solid, secondary at 40%). Every exercise card, the session screen,
+the Today session card and the calendar day list carry a 2:3 thumbnail with
+the same crop; tapping opens the full plate with muscle names. Exercise →
+plate/muscles is a keyword table (`MI.EXERCISES`) with a muscle-group
+fallback for unknown names. Glute-dominant moves (hip thrust, RDL) use the
+posterior plate because glutes are not visible on the anterior legs plate.
+`MI.MuscleMap` is overridden so the priority picker (funnel and Settings) and
+the recap use the same plates and fills.
+
+**4 Form library.** Every exercise has a Form button (cards, session chips,
+the muscle sheet) opening a player for `assets/form/<slug>.mp4` with 2–3 cues
+from the exercise table. Missing files show the "Form video coming" card and
+a link to a reference demo. Settings → Form videos lists every slot with a
+live ready/missing check; `assets/form/README.md` documents the convention.
+Dropping a file in is the whole admin step.
+
+Verified at 390×844 (`tests/app.js`): swipe changes the day and the week and
+swipes back, the date header opens the calendar, week names and dots render,
+the day detail reads "Scheduled — … — Not started", infographics appear on
+every card, the muscle sheet lists primaries and secondaries, the form sheet
+shows the placeholder, three cues and the slot path, the admin list is in
+Settings. The 404s in the console are the expected probes of empty slots.
+
 ## Round 2 — fix pass (docs/max-intensity-round2-fixes.md)
 
 Housekeeping: stray files removed from `assets/anatomy` (contact sheet, the
