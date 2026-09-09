@@ -724,6 +724,7 @@ function MaxIntensityApp() {
   const [calOpen, setCalOpen] = useState(false);      // the block-at-a-glance calendar
   const [muscleEx, setMuscleEx] = useState(null);     // exercise name for the muscle sheet
   const [formEx, setFormEx] = useState(null);         // exercise name for the form sheet
+  const [trainOpen, setTrainOpen] = useState(null);   // Train: which session card is expanded in place
   const speech = MI.useSpeech();
 
 
@@ -2034,6 +2035,62 @@ function MaxIntensityApp() {
   const daySets = (d) => (d.exercises || []).reduce((t, e) => t + (isDeload ? 2 : (e.scheme || []).length), 0);
   const loggedToday = () => !!history[todayKey()] || (foodLog[todayKey()] || []).length > 0 || weights[todayKey()] != null;
   const sessionsThisWeek = () => thisWeekKeys().filter((k) => history[k]).length;
+
+  // ---- the selected day (Today and Train share it — swipe or tap the strip) ----
+  const DOW3 = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const MON3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const selectedDay = () => {
+    const selD = new Date(); selD.setHours(12, 0, 0, 0); selD.setDate(selD.getDate() + dayOffset);
+    const selK = dateKey(selD);
+    const isToday = dayOffset === 0;
+    const planNm = isToday ? todayPlanName() : (dayPlan[selK] || weekRhythm()[dowIdx(selD)]);
+    const done = history[selK];
+    let di = program.days.findIndex((x) => x.name === (done ? done.day : planNm));
+    if (di === -1) di = isToday ? todayDayIdx() : 0;
+    const d = program.days[di] || { name: "", exercises: [] };
+    const rest = !done && /^rest$/i.test(planNm || "");
+    const dayLabel = isToday ? "Today" : dayOffset === 1 ? "Tomorrow" : dayOffset === -1 ? "Yesterday" : selD.toLocaleDateString("en-GB", { weekday: "long" });
+    const short = DOW3[dowIdx(selD)] + " " + selD.getDate() + " " + MON3[selD.getMonth()];
+    return { selD, selK, isToday, planNm, done, di, d, rest, dayLabel, short };
+  };
+  /* Mon–Sun strip for the selected day's week, plus the labelled CALENDAR button. */
+  const dayStrip = () => {
+    const sel = selectedDay();
+    const dow = dowIdx(sel.selD);
+    const mon = new Date(sel.selD); mon.setDate(sel.selD.getDate() - dow);
+    const rhythm = weekRhythm();
+    return (
+      <div className="flex items-stretch gap-1" role="group" aria-label="Days this week">
+        {Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(mon); d.setDate(mon.getDate() + i);
+          const k = dateKey(d);
+          const off = dayOffset - dow + i;
+          const isSel = i === dow, isTd = off === 0;
+          const doneD = !!history[k];
+          const plan = doneD ? history[k].day : (dayPlan[k] || rhythm[i]);
+          const restD = !doneD && /^rest$/i.test(plan || "");
+          return (
+            <button key={k} onClick={() => setDayOffset(off)} aria-label={DOW3[i] + " " + d.getDate()} aria-pressed={isSel}
+              className={"flex min-w-0 flex-1 flex-col items-center rounded-lg border py-1.5 transition-colors " + (isSel ? "border-[#FF2B2B] bg-[#FF2B2B] text-white" : isTd ? "border-neutral-500 bg-[#141414] text-neutral-200" : "border-neutral-800 bg-[#141414] text-neutral-400")}>
+              <span className="mono text-[9px] uppercase tracking-wider">{DOW3[i]}</span>
+              <span className="dp text-[15px] leading-none">{d.getDate()}</span>
+              <span className={"mt-1 h-1 w-1 rounded-full " + (doneD ? (isSel ? "bg-white" : "bg-[#F2EFE8]") : restD ? "bg-transparent" : isSel ? "bg-white/70" : "bg-[#FF2B2B]")} />
+            </button>
+          );
+        })}
+        <button onClick={() => setCalOpen(true)} aria-label="Calendar" className="ml-1 flex shrink-0 flex-col items-center justify-center rounded-lg border border-neutral-500 bg-[#141414] px-2 text-[#F2EFE8]">
+          <MI.Ic d="M5 5h14v14H5zM5 9h14M9 3v4M15 3v4" className="h-4 w-4" />
+          <span className="mono mt-0.5 text-[8px] uppercase tracking-widest">Calendar</span>
+        </button>
+      </div>
+    );
+  };
+  // Train follows the selected day: its session card opens in place, the rest collapse.
+  useEffect(() => {
+    if (tab !== "program" || session) return;
+    const s = selectedDay();
+    setActiveDay(s.di); setTrainOpen(s.di); setOpen(null);
+  }, [tab, dayOffset]); // eslint-disable-line
   const QUESTS = () => {
     const wk = thisWeekKeys();
     return [
@@ -2111,8 +2168,8 @@ function MaxIntensityApp() {
             </button>
           </div>
         </div>
-        {/* Week strip — the block, on Train and Progress */}
-        {(tab === "program" || tab === "calendar") && <div className="mt-2.5 flex gap-1">
+        {/* Week strip — the block, on Progress (Train has the day strip + calendar) */}
+        {tab === "calendar" && <div className="mt-2.5 flex gap-1">
           {WEEK_PLAN.map((w, i) => (
             <button
               key={w.label}
@@ -2144,16 +2201,8 @@ function MaxIntensityApp() {
 
       {/* ---------- TODAY ---------- */}
       {tab === "today" && (() => {
-        const selD = new Date(); selD.setDate(selD.getDate() + dayOffset);
-        const selK = dateKey(selD);
-        const isToday = dayOffset === 0;
-        const planNm = isToday ? todayPlanName() : (dayPlan[selK] || weekRhythm()[dowIdx(selD)]);
-        const done = history[selK];
-        let di = program.days.findIndex((x) => x.name === (done ? done.day : planNm));
-        if (di === -1) di = isToday ? todayDayIdx() : 0;
-        const d = program.days[di] || { name: "", exercises: [] };
-        const rest = !done && (planNm === "REST" || planNm === "Rest");
-        const dayLabel = isToday ? "Today" : dayOffset === 1 ? "Tomorrow" : dayOffset === -1 ? "Yesterday" : selD.toLocaleDateString("en-GB", { weekday: "long" });
+        const sel = selectedDay();
+        const { isToday, done, di, d, rest, dayLabel } = sel;
         const lit = loggedToday();
         const L = window.MI_PROJ ? window.MI_PROJ.levelFor(game.points) : { level: 1, title: "Recruit", pct: 0 };
         const entries = foodLog[todayKey()] || [];
@@ -2168,16 +2217,14 @@ function MaxIntensityApp() {
         return (
           <MI.Swipe onPrev={() => setDayOffset((o) => Math.max(-60, o - 1))} onNext={() => setDayOffset((o) => Math.min(60, o + 1))}>
           <main className="px-4 pb-32 pt-3">
-            <div className="flex items-start justify-between gap-2">
+            {dayStrip()}
+            <div className="mt-3 flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1">
-                  <button onClick={() => setDayOffset((o) => o - 1)} className="mono shrink-0 px-1 text-sm text-neutral-600" aria-label="Previous day">‹</button>
-                  <button onClick={() => setCalOpen(true)} className={eyebrow + " flex min-w-0 items-center gap-1.5 truncate py-1"} aria-label="Open calendar">
-                    <MI.Ic d="M5 5h14v14H5zM5 9h14M9 3v4M15 3v4" className="h-3.5 w-3.5" />
-                    {selD.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}{!isToday ? " · " + dayLabel : ""}
-                  </button>
-                  <button onClick={() => setDayOffset((o) => o + 1)} className="mono shrink-0 px-1 text-sm text-neutral-600" aria-label="Next day">›</button>
-                </div>
+                {/* short date so it never clips: "MON 7 SEP · YESTERDAY" — wraps if it must */}
+                <button onClick={() => setCalOpen(true)} className={eyebrow + " flex items-start gap-1.5 whitespace-normal py-1 text-left"} aria-label="Open calendar">
+                  <MI.Ic d="M5 5h14v14H5zM5 9h14M9 3v4M15 3v4" className="mt-px h-3.5 w-3.5 shrink-0" />
+                  <span>{sel.short} · {dayLabel}</span>
+                </button>
                 <h2 className="dp mt-1 text-[46px] uppercase leading-[0.9]">{isToday ? <>Let's <span className="text-[#FF2B2B]">work.</span></> : <>{dayLabel.split(" ")[0]}<span className="text-[#FF2B2B]">.</span></>}</h2>
               </div>
               <button onClick={() => setShowSettings(true)} className={card + " mt-1 flex shrink-0 flex-col items-end px-3 py-2"} aria-label="Level and XP">
@@ -2211,7 +2258,9 @@ function MaxIntensityApp() {
 
             {/* the selected day's session — swipe for other days */}
             <p className={eyebrow + " mt-6"}>{isToday ? "Today's session" : dayLabel + "'s session"}</p>
-            <MI.PlateCard plate={MI.plateFor("session", d.name)} opacity={0.16} className="mt-2" innerClassName="p-4">
+            <div className={card + " relative mt-2 overflow-hidden"}>
+              <MI.Hero {...MI.sessionPlate(d.name)} opacity={0.8} />
+              <div className="relative z-10 p-4">
               <p className="mono text-[10px] uppercase tracking-widest text-neutral-500">{done ? "Completed" : rest ? "Rest day on the plan — growth day. Next up:" : isToday ? "Scheduled · not started" : dayOffset > 0 ? "Scheduled" : "Scheduled · missed"}</p>
               <p className="dp mt-0.5 text-[34px] uppercase leading-[0.95] text-[#F2EFE8]">{d.name}</p>
               <p className="mono mt-1 text-[11px] text-[#FF2B2B]">{dayMuscles(d).join(" · ")}</p>
@@ -2221,9 +2270,10 @@ function MaxIntensityApp() {
               </div>
               {!done && <button onClick={() => { setActiveDay(di); setTab("program"); startSession(); }} className={cta + " mt-4 w-full py-4 text-base"}>{rest ? "Train anyway" : isToday ? "Start session" : dayOffset > 0 ? "Start early" : "Log this session"}</button>}
               {done && <p className="mono mt-3 text-[10px] text-neutral-400">{(done.items || []).filter((it) => (it.sets || []).some((x) => x.w || x.r)).length} exercises logged · saved to your calendar</p>}
-              <button onClick={() => { setActiveDay(di); setTab("program"); }} className="mono mt-2 w-full py-1 text-[10px] uppercase tracking-widest text-neutral-500">See the whole block →</button>
+              <button onClick={() => setCalOpen(true)} className="mono mt-2 w-full py-1 text-[10px] uppercase tracking-widest text-neutral-500">See the whole block →</button>
               <p className="mono mt-1 text-center text-[9px] text-neutral-700">swipe for other days</p>
-            </MI.PlateCard>
+              </div>
+            </div>
 
             {/* weekly quests */}
             <p className={eyebrow + " mt-6"}>Weekly quests</p>
@@ -2282,38 +2332,19 @@ function MaxIntensityApp() {
       })()}
 
       {/* ---------- TRAIN ---------- */}
-      {tab === "program" && (
-        <MI.Swipe onPrev={() => setWeek((w) => Math.max(0, w - 1))} onNext={() => setWeek((w) => Math.min(WEEK_PLAN.length - 1, w + 1))}>
-        <main className="px-4 pb-32">
-          <div className="pt-1">
-            {/* block header — swipe for the week, tap the date line for the calendar */}
-            <MI.PlateHeader plate={MI.plateFor("session", day.name)}
-              eyebrow={<button onClick={() => setCalOpen(true)} className="flex items-center gap-1.5 text-left" aria-label="Open calendar"><button onClick={(e) => { e.stopPropagation(); setWeek((w) => Math.max(0, w - 1)); }} className="px-0.5 text-neutral-600" aria-label="Previous week">‹</button>{"Week " + (week + 1) + " · " + (settings?.daysPerWeek || program.days.length) + " days / week · " + wk.tag}<button onClick={(e) => { e.stopPropagation(); setWeek((w) => Math.min(WEEK_PLAN.length - 1, w + 1)); }} className="px-0.5 text-neutral-600" aria-label="Next week">›</button></button>}
+      {tab === "program" && (() => {
+        const sel = selectedDay();
+        return (
+        <MI.Swipe onPrev={() => setDayOffset((o) => Math.max(-60, o - 1))} onNext={() => setDayOffset((o) => Math.min(60, o + 1))}>
+        <main className="px-4 pb-32 pt-3">
+          {/* the same day strip as Today, with the CALENDAR button */}
+          {dayStrip()}
+          <div className="mt-3">
+            <MI.PlateHeader plate={MI.plateFor("session", sel.d.name)} opacity={0.16}
+              eyebrow={<button onClick={() => setCalOpen(true)} className="text-left" aria-label="Open block calendar">{"Week " + (week + 1) + " of " + WEEK_PLAN.length + " · " + wk.tag + " · " + (settings?.daysPerWeek || program.days.length) + " days / week"}</button>}
               title={settings?.plan || "The block"}
               right={<span className="mono pb-1 text-xs text-neutral-500">{sessionsThisWeek()}/{settings?.daysPerWeek || 4} this week</span>} />
             <p className="mt-2 text-sm text-neutral-500">{wk.cue}</p>
-            {/* session cards, in order — UP NEXT highlighted */}
-            <div className="mt-3 space-y-2">
-              {program.days.map((d, i) => {
-                const upNext = i === todayDayIdx();
-                const doneN = Object.values(logs[key(week, i)] || {}).filter((e) => (e.sets || []).some((x) => x && (x.weight || x.reps))).length;
-                const sel = i === activeDay;
-                return (
-                  <button key={i} onClick={() => { setActiveDay(i); setOpen(null); }} className={"relative block w-full overflow-hidden rounded-xl border p-4 text-left " + (upNext ? "border-[#FF2B2B] bg-[#1c0808]" : sel ? "border-neutral-600 bg-[#171717]" : "border-neutral-800 bg-[#141414]")}>
-                    {upNext && <span className="mono absolute right-3 top-3 rounded bg-[#FF2B2B] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white">Up next</span>}
-                    {!upNext && doneN > 0 && <span className="mono absolute right-3 top-3 text-[9px] uppercase tracking-wider text-neutral-500">{doneN}/{d.exercises.length} logged</span>}
-                    <p className="dp text-[22px] uppercase leading-none text-[#F2EFE8]">{d.name}</p>
-                    <p className="mono mt-1 text-[10px] text-[#FF2B2B]">{dayMuscles(d).join(" · ")}</p>
-                    <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-400">{d.exercises.map((e) => e.name).join(" · ")}</p>
-                    <p className="mono mt-1 text-[9px] uppercase tracking-wider text-neutral-600">{d.exercises.length} exercises · {daySets(d)} sets{sel ? " · selected below" : ""}</p>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-6 flex items-end justify-between">
-              <h3 className="dp text-[34px] uppercase leading-[0.9] text-[#F2EFE8]">{day.name}</h3>
-              <span className="mono pb-1 text-xs text-neutral-500">{doneCount}/{day.exercises.length} done</span>
-            </div>
             {/* Day 5 reminder promised on the trial timeline: two days before the trial ends */}
             {trialStart && !pro && trialLeft > 0 && trialLeft <= 2 && (
               <button onClick={() => setShowPaywall(true)} className={card + " mt-3 flex w-full items-center gap-3 border-[#7f1d1d] px-3.5 py-2.5 text-left"}>
@@ -2334,26 +2365,47 @@ function MaxIntensityApp() {
                 </button>
               ) : null;
             })()}
-            {(() => {
-              const plan = todayPlanName();
-              return <p className="mono mt-1.5 text-[10px] uppercase tracking-widest text-neutral-500">Today on the plan: <span className={plan === "REST" ? "text-neutral-400" : "text-[#FF2B2B]"}>{plan === "REST" ? "Rest — part of the plan" : plan}</span></p>;
-            })()}
-            <button onClick={startSession} className={cta + " mt-4 w-full py-4 text-lg"}>Start session</button>
-            <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
-              {weekRhythm().map((r, i) => (
-                <span key={i} className={"mono text-[9px] uppercase " + (r === "REST" ? "text-neutral-700" : "text-neutral-500")}>{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]} {r === "REST" ? "rest" : r}{i < 6 ? " ·" : ""}</span>
-              ))}
-            </div>
-            {(() => {
-              const nw = new Date(); const dow = (nw.getDay() + 6) % 7;
-              const mon = new Date(nw); mon.setDate(nw.getDate() - dow);
-              let cnt = 0;
-              for (let i = 0; i <= dow; i++) { const d = new Date(mon); d.setDate(mon.getDate() + i); const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; if (history[k]) cnt++; }
-              const plan = settings?.daysPerWeek || 4;
-              return <p className="mono mt-1.5 text-[10px] text-neutral-500">This week: <span className={cnt >= plan ? "text-[#FF2B2B]" : "text-neutral-300"}>{cnt}/{plan}</span> sessions</p>;
-            })()}
-          </div>
-
+            <p className={eyebrow + " mt-6"}>{sel.isToday ? "Today's session" : sel.dayLabel + "'s session"}{sel.rest ? " · rest day on the plan" : ""}</p>
+            {/* the block's sessions in order — tap one to expand it in place; the rest collapse to a line */}
+            <div className="mt-2 space-y-2">
+              {program.days.map((d, i) => {
+                const exp = trainOpen === i && activeDay === i;
+                const onPlan = i === sel.di && !sel.rest;
+                const nextUp = i === sel.di && sel.rest;
+                const doneN = Object.values(logs[key(week, i)] || {}).filter((e) => (e.sets || []).some((x) => x && (x.weight || x.reps))).length;
+                const dd = exp ? day : d;
+                const status = onPlan
+                  ? (sel.done ? "Completed" : sel.isToday ? "Today on the plan · not started" : dayOffset > 0 ? "Scheduled · " + sel.dayLabel : "Scheduled · missed")
+                  : nextUp ? "Rest day on the plan — growth day. Next up:" : "In the block · not on " + (sel.isToday ? "today's" : sel.dayLabel + "'s") + " plan";
+                const startLbl = onPlan ? (sel.done ? null : sel.isToday ? "Start session" : dayOffset > 0 ? "Start early" : "Log this session") : nextUp ? "Train anyway" : "Start session";
+                return (
+                  <div key={i} className={"relative overflow-hidden rounded-xl border " + (exp ? "border-[#7f1d1d] bg-[#121212]" : onPlan ? "border-[#FF2B2B] bg-[#1c0808]" : "border-neutral-800 bg-[#141414]")} data-session={d.name} data-expanded={exp ? "true" : "false"}>
+                    {/* the mapped plate is the card's hero — scoped to the header so it frames the figure whatever the list's height */}
+                    <div className="absolute inset-x-0 top-0 overflow-hidden" style={{ height: exp ? 300 : "100%" }}>
+                      <MI.Hero {...MI.sessionPlate(d.name)} opacity={exp ? 0.8 : 0.4} />
+                    </div>
+                    <button onClick={() => { setTrainOpen(exp ? null : i); setActiveDay(i); setOpen(null); }} aria-expanded={exp} aria-label={(exp ? "Collapse " : "Expand ") + d.name} className="relative z-10 block w-full p-4 text-left">
+                      {exp ? (
+                        <>
+                          <p className="mono text-[10px] uppercase tracking-widest text-neutral-500">{status}</p>
+                          <p className="dp mt-0.5 text-[34px] uppercase leading-[0.95] text-[#F2EFE8]">{d.name}</p>
+                          <p className="mono mt-1 text-[11px] text-[#FF2B2B]">{dayMuscles(dd).join(" · ")}</p>
+                          <p className="mono mt-1 text-[10px] text-neutral-500">{dd.exercises.length} exercises · {daySets(dd)} sets · Week {week + 1} {wk.tag} · {doneCount}/{dd.exercises.length} done</p>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <p className="dp shrink-0 text-[20px] uppercase leading-none text-[#F2EFE8]">{d.name}</p>
+                          <p className="mono min-w-0 flex-1 truncate text-[10px] text-neutral-500">{dayMuscles(d).join(" · ")}</p>
+                          {onPlan && <span className="mono shrink-0 rounded bg-[#FF2B2B] px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white">{sel.isToday ? "Today" : sel.dayLabel}</span>}
+                          {!onPlan && doneN > 0 && <span className="mono shrink-0 text-[9px] uppercase tracking-wider text-neutral-500">{doneN}/{d.exercises.length}</span>}
+                          <span className="mono shrink-0 text-xs text-neutral-600">+</span>
+                        </div>
+                      )}
+                    </button>
+                    {exp && (
+                      <div className="relative z-10 px-4 pb-4">
+                        {startLbl && <button onClick={() => { setActiveDay(i); startSession(); }} className={cta + " w-full py-4 text-lg"}>{startLbl}</button>}
+                        {onPlan && sel.done && <p className="mono text-[10px] text-neutral-400">{(sel.done.items || []).filter((it) => (it.sets || []).some((x) => x.w || x.r)).length} exercises logged · saved to your calendar</p>}
           {ovActive && (
             <div className={card + " mt-4 border-[#7f1d1d] p-3"}>
               <div className="flex items-center gap-3">
@@ -2369,24 +2421,6 @@ function MaxIntensityApp() {
               )}
             </div>
           )}
-          {!ovActive && (
-            <div className={card + " mt-4 p-3.5"}>
-              <p className="dp text-sm uppercase text-neutral-200">Anything you want to change about today?</p>
-              <p className="mono mt-0.5 text-[10px] text-neutral-500">Plain language. The coach inserts it, removes the overlap, and tells you why in one line.</p>
-              <div className="mt-2.5 flex gap-2">
-                <input value={editReq} onChange={(e) => setEditReq(e.target.value)} onKeyDown={(e) => e.key === "Enter" && runEditSession()} placeholder='e.g. "add bench" · "swap dips for flys" · "no cables today"' className="min-w-0 flex-1 rounded-lg border border-neutral-800 bg-[#0d0d0d] px-3.5 py-3 text-sm placeholder-neutral-600" />
-                <button onClick={() => (hasAI ? runEditSession() : setShowPaywall(true))} disabled={editingSession} className={cta + " px-4 text-xs disabled:opacity-50"}>{editingSession ? "…" : hasAI ? "Go" : <Ic d={P_LOCK} className="h-3.5 w-3.5" />}</button>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                <button onClick={() => { setShortPri(""); setShortSheet(true); }} className="mono rounded-md border border-neutral-800 bg-[#141414] px-3 py-2 text-[10px] uppercase tracking-widest text-neutral-300">Short on time</button>
-                <button onClick={() => (hasAI ? runEditSession("Add bench press") : setShowPaywall(true))} className="mono rounded-md border border-neutral-800 bg-[#141414] px-3 py-2 text-[10px] uppercase tracking-widest text-neutral-400">Add bench</button>
-                <button onClick={() => { setEditing(true); }} className="mono rounded-md border border-neutral-800 bg-[#141414] px-3 py-2 text-[10px] uppercase tracking-widest text-neutral-400">Swap an exercise</button>
-              </div>
-              {!hasAI && <p className="mono mt-2 text-[9px] text-neutral-600">Short-on-time works free. Plain-language edits are Max AI — {aiLeft()} free call{aiLeft() === 1 ? "" : "s"} left today.</p>}
-              {voiceMsg && !session && <p className="mono mt-2 text-[10px] text-neutral-400">{voiceMsg}</p>}
-            </div>
-          )}
-
           {/* Exercise list — numbered: order IS the program */}
           <div className="mt-6 mb-2 flex items-center justify-between">
             <p className={eyebrow}>The work — in order</p>
@@ -2401,7 +2435,7 @@ function MaxIntensityApp() {
               const expanded = open === i;
               const n = setsFor(exr);
               return (
-                <li key={i} className={card + (log.done ? " opacity-50" : "")}>
+                <li key={i} className={"rounded-lg border border-neutral-800 bg-[#0f0f0f]" + (log.done ? " opacity-50" : "")}>
                   {editing ? (
                     <div className="space-y-2 p-3.5">
                       <input
@@ -2522,9 +2556,36 @@ function MaxIntensityApp() {
               <button onClick={() => setEditing(false)} className={cta + " w-full py-3.5 text-sm shadow-2xl"}>✓ Done editing — saved</button>
             </div>
           )}
+          {!ovActive && (
+            <div className={card + " mt-4 p-3.5"}>
+              <p className="dp text-sm uppercase text-neutral-200">Anything you want to change about today?</p>
+              <p className="mono mt-0.5 text-[10px] text-neutral-500">Plain language. The coach inserts it, removes the overlap, and tells you why in one line.</p>
+              <div className="mt-2.5 flex gap-2">
+                <input value={editReq} onChange={(e) => setEditReq(e.target.value)} onKeyDown={(e) => e.key === "Enter" && runEditSession()} placeholder='e.g. "add bench" · "swap dips for flys" · "no cables today"' className="min-w-0 flex-1 rounded-lg border border-neutral-800 bg-[#0d0d0d] px-3.5 py-3 text-sm placeholder-neutral-600" />
+                <button onClick={() => (hasAI ? runEditSession() : setShowPaywall(true))} disabled={editingSession} className={cta + " px-4 text-xs disabled:opacity-50"}>{editingSession ? "…" : hasAI ? "Go" : <Ic d={P_LOCK} className="h-3.5 w-3.5" />}</button>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <button onClick={() => { setShortPri(""); setShortSheet(true); }} className="mono rounded-md border border-neutral-800 bg-[#141414] px-3 py-2 text-[10px] uppercase tracking-widest text-neutral-300">Short on time</button>
+                <button onClick={() => (hasAI ? runEditSession("Add bench press") : setShowPaywall(true))} className="mono rounded-md border border-neutral-800 bg-[#141414] px-3 py-2 text-[10px] uppercase tracking-widest text-neutral-400">Add bench</button>
+                <button onClick={() => { setEditing(true); }} className="mono rounded-md border border-neutral-800 bg-[#141414] px-3 py-2 text-[10px] uppercase tracking-widest text-neutral-400">Swap an exercise</button>
+              </div>
+              {!hasAI && <p className="mono mt-2 text-[9px] text-neutral-600">Short-on-time works free. Plain-language edits are Max AI — {aiLeft()} free call{aiLeft() === 1 ? "" : "s"} left today.</p>}
+              {voiceMsg && !session && <p className="mono mt-2 text-[10px] text-neutral-400">{voiceMsg}</p>}
+            </div>
+          )}
+
+                        <button onClick={() => setCalOpen(true)} className="mono mt-3 w-full py-1 text-[10px] uppercase tracking-widest text-neutral-500">See the whole block →</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </main>
         </MI.Swipe>
-      )}
+        );
+      })()}
 
       {/* ---------- EAT ---------- */}
       {tab === "nutrition" && (() => {

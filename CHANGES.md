@@ -1,5 +1,53 @@
 # CHANGES
 
+## Round 3b — deep-red plates, plate-per-session, Train tab layout
+
+**1 Plate colour.** Every raster plate now renders in the deep-red treatment
+(`MI.TONES` in `app/anatomy.jsx`): the engraving is inverted to a grey figure
+on black, multiplied into a colour fill and the group is screened onto the
+card, so the paper disappears, the muscle mass sits around #7A1414–#A11B1B,
+the dense line-work lifts toward #FF2B2B, and skeleton plates come out as a
+dim warm grey. No sepia/hue-rotate stages, so nothing goes gold or pink. The
+faint texture tier behind headers and cards is the same red, faded. The small
+per-exercise muscle figures (`MI.MuscleFigure`) use the same layers under
+their red region fills. Hero plates clip their paper frame (7% for the hero
+plate, 3.5% otherwise); cover-mode plates scale 6% to push the edge out.
+
+**2 Plate per session.** `MI.sessionPlate(name)` is a fixed map with hero
+geometry: Legs 1 → `legs` (front of the legs, quads); Legs 2 → the lower half
+of `muscles-back` (glutes, hamstrings, calves — there is no separate posterior
+legs plate); Upper 1 → `hero` (the back-and-arm torso); Upper 2 → the upper
+half of `muscles-front` (chest and shoulders); Glute Focus → `muscles-back`
+framed on the glutes. `MI.plateFor("session", …)` delegates to it. The Today
+session card and every Train session card use the mapped plate as an
+`MI.Hero` bleeding off the right, collapsed cards at 40%, expanded at 80%.
+
+**3 Train tab.** The Week 1–6 tabs are gone from Train (they remain on
+Progress). Today and Train both open with the same Mon–Sun day strip (date,
+scheduled/done dot, tap a day, swipe moves a day) and a labelled CALENDAR
+button beside it; the Train header line ("Week 2 of 6 · Groove · 4 days /
+week") also opens the block calendar. Under "TODAY'S SESSION" the block's
+sessions are listed in order; the selected day's session opens in place with
+START SESSION on top (Start early / Log this session / Train anyway on other
+days), the full exercise list in order with sets, tempo, rest and its muscle
+figure, then the coach edit box and "See the whole block →". Tapping a card
+expands it and collapses the rest to one line; tapping again collapses it.
+The separate "Today on the plan" block with Start session at the bottom is
+removed. Cards carry `data-session` / `data-expanded` for tests.
+
+**4 From the screenshots.** The Today date line is the short form
+("WED 9 SEP · TODAY", "MON 7 SEP · YESTERDAY") and wraps rather than clips.
+"See the whole block →" opens the block calendar from both tabs.
+
+**Verify.** `tests/app.js` now checks: no week tabs on Train, 7 day chips and
+the Calendar button, the on-plan card expanded with its button first and 6
+exercises listed, tapping Legs 1 swaps the expansion, tapping again collapses
+all, the plate per session (Upper 1 → hero.jpg, Legs 1 → legs.jpg, Upper 2 →
+muscles-front.jpg, Legs 2 → muscles-back.jpg), "See the whole block" opening
+the calendar, and Train swipes moving the day with the week untouched. Full
+suite: syntax, logic, 25-screen funnel and the in-app walkthrough, zero page
+errors.
+
 ## Round 3 — swipe, calendar, muscle infographics, form library
 
 **1 Navigation.** Today is a day carousel: swipe left/right (touch or mouse,

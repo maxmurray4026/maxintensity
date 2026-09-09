@@ -34,7 +34,23 @@ let page;
   console.log('today has:', ["LET'S", 'TODAY\'S SESSION', 'WEEKLY QUESTS', 'TODAY\'S INTAKE', 'YOUR LEAGUE', 'SHIELD'].map((k) => k + '=' + today.toUpperCase().includes(k)).join(' '));
   await page.getByRole('button', { name: 'Train', exact: true }).click(); await page.waitForTimeout(400); await shot('train');
   const train = await page.innerText('main');
-  console.log('train has:', ['UP NEXT', 'DAYS / WEEK', 'MASS GAINER'].map((k) => k + '=' + train.toUpperCase().includes(k)).join(' '));
+  console.log('train has:', ["TODAY'S SESSION", 'DAYS / WEEK', 'MASS GAINER', 'CALENDAR'].map((k) => k + '=' + train.toUpperCase().includes(k)).join(' '));
+  // --- round 3b: no week tabs, day strip + CALENDAR button, cards expand in place, fixed plate map ---
+  console.log('train week tabs:', await page.locator('header').getByRole('button', { name: /^W[1-6]/ }).count(), '(expect 0) | day chips:', await page.locator('main [aria-pressed]').count(), '(expect 7) | calendar btn:', await page.getByRole('button', { name: 'Calendar', exact: true }).count());
+  const expanded = async () => (await page.locator('[data-expanded="true"]').evaluateAll((els) => els.map((e) => e.dataset.session))).join(',') || '(none)';
+  const collapsed = async () => await page.locator('[data-expanded="false"]').count();
+  console.log('expanded:', await expanded(), '| collapsed:', await collapsed(), '| button on top:', (await page.locator('[data-expanded="true"] button').nth(1).innerText()).trim(), '| exercises listed:', await page.locator('[data-expanded="true"] ul li').count());
+  await page.getByRole('button', { name: 'Expand Legs 1' }).click(); await page.waitForTimeout(300);
+  console.log('tap Legs 1 → expanded:', await expanded(), '| collapsed:', await collapsed(), '| legs exercises:', await page.locator('[data-expanded="true"] ul li').count());
+  await shot('train-legs1');
+  await page.getByRole('button', { name: 'Collapse Legs 1' }).click(); await page.waitForTimeout(300);
+  console.log('tap again → expanded:', await expanded(), '| collapsed:', await collapsed());
+  const plates = await page.locator('[data-session]').evaluateAll((els) => els.map((e) => e.dataset.session + '→' + (e.querySelector('img')?.getAttribute('src') || '').replace(/.*\//, '')));
+  console.log('session plates:', plates.join(' '));
+  await page.getByRole('button', { name: 'Expand Upper 1' }).click(); await page.waitForTimeout(300);
+  await page.locator('[data-expanded="true"]').getByRole('button', { name: 'See the whole block' }).click(); await page.waitForTimeout(400);
+  console.log('whole block opens calendar:', (await page.innerText('body')).includes('ESTABLISH'));
+  await page.getByRole('button', { name: 'Done', exact: true }).click(); await page.waitForTimeout(300);
   // --- round 3: swipe, calendar, infographics, form ---
   const swipe = async (fromX, toX, y = 520) => { await page.mouse.move(fromX, y); await page.mouse.down(); for (let i = 1; i <= 8; i++) { await page.mouse.move(fromX + ((toX - fromX) * i) / 8, y); await page.waitForTimeout(12); } await page.mouse.up(); await page.waitForTimeout(600); };
   await page.getByRole('button', { name: 'Today', exact: true }).click(); await page.waitForTimeout(300);
@@ -58,13 +74,13 @@ let page;
   console.log('week jump ok:', await page.evaluate(() => JSON.parse(localStorage.getItem('mi:mi-week'))) === 2);
   await page.getByRole('button', { name: 'Week 2' }).click(); await page.waitForTimeout(200);
   await page.getByRole('button', { name: 'Done', exact: true }).click(); await page.waitForTimeout(300);
-  // train: swipe the week
+  // train: swipe moves the day (the same strip as Today); the week is untouched
   await page.getByRole('button', { name: 'Train', exact: true }).click(); await page.waitForTimeout(300);
-  await swipe(320, 60, 420);
-  const wk = await page.evaluate(() => JSON.parse(localStorage.getItem('mi:mi-week')));
-  console.log('train week after swipe:', wk, '(expect 2)');
+  const chip = async () => (await page.locator('main [aria-pressed="true"]').innerText()).replace(/\n/g, ' ');
+  const c0 = await chip(); await swipe(320, 60, 420);
+  const c1 = await chip(); console.log('train swipe day:', c0, '→', c1, '| changed:', c0 !== c1);
   await swipe(60, 320, 420);
-  console.log('train week after swipe back:', await page.evaluate(() => JSON.parse(localStorage.getItem('mi:mi-week'))), '(expect 1)');
+  console.log('train swipe back:', (await chip()) === c0, '| week unchanged:', await page.evaluate(() => JSON.parse(localStorage.getItem('mi:mi-week'))) === 1);
   const infos = await page.locator('button[aria-label^="Muscles worked"]').count();
   console.log('infographics on train:', infos);
   await page.locator('ul li button[aria-label^="Muscles worked"]').first().click(); await page.waitForTimeout(500); await shot('muscle-sheet');
@@ -99,7 +115,7 @@ let page;
   console.log('second exercise now:', (await page.locator('ul li').nth(1).innerText()).replace(/\n+/g,' | ').slice(0,80));
   // --- session with RIR + PR + recap ---
   await page.getByRole('button', { name: 'Train', exact: true }).click(); await page.waitForTimeout(300);
-  await page.getByRole('button', { name: 'Start session' }).click(); await page.waitForTimeout(400); await shot('session');
+  await page.getByRole('button', { name: /^(Start session|Train anyway|Start early)$/ }).first().click(); await page.waitForTimeout(400); await shot('session');
   const logSet = async (w, r) => { await page.fill('#sess-w', w); await page.fill('#sess-r', r); await page.getByRole('button', { name: 'Log set' }).first().click(); await page.waitForTimeout(400); };
   await logSet('20', '10');
   await page.getByRole('button', { name: 'Skip' }).click(); await page.waitForTimeout(300);

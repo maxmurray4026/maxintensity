@@ -118,14 +118,17 @@ try {
     return { plate, primary: regs.slice(0, 2), secondary: regs.slice(2), cues: ["Three seconds down, hold one, three up, hold one.", "Own the tempo before the load.", "Working set at one in reserve; back-off at −10%."], slug: MI.slug(name) };
   };
 
-  /* ---- the figure: plate texture + red-filled regions ---- */
-  const base = "invert(1) grayscale(1) brightness(.62) contrast(2.6) ";
+  /* ---- the figure: plate texture (deep red, see MI.TONES) + red-filled regions ---- */
   MI.MuscleFigure = ({ plate = "front", primary = [], secondary = [], className, style, labels, plateOpacity = 0.55 }) => {
     const R = MI.REGIONS[plate] || MI.REGIONS.front;
     const poly = (name, fill, op, k) => (R[name] || []).map((pts, i) => <polygon key={name + i + k} points={pts} fill={fill} fillOpacity={op} stroke="#FF2B2B" strokeOpacity={op + 0.1} strokeWidth="1.2" strokeLinejoin="round" />);
     return (
       <div className={"relative overflow-hidden bg-[#0d0d0d] " + (className || "")} style={{ aspectRatio: `${R.W} / ${R.H}`, ...(style || {}) }}>
-        <img src={R.file} alt="" aria-hidden className="absolute inset-0 h-full w-full" style={{ objectFit: "fill", opacity: plateOpacity, filter: base + "sepia(.5) saturate(.5) brightness(1.15)", mixBlendMode: "screen" }} />
+        {MI.TONES.red.map((L, i) => (
+          <div key={i} aria-hidden className="absolute inset-0" style={{ background: L.fill, mixBlendMode: "screen", opacity: Math.min(1, plateOpacity * L.op) }}>
+            <img src={R.file} alt="" aria-hidden className="h-full w-full" style={{ objectFit: "fill", filter: L.filter, mixBlendMode: "multiply" }} />
+          </div>
+        ))}
         <svg viewBox={`0 0 ${R.W} ${R.H}`} className="absolute inset-0 h-full w-full" preserveAspectRatio="none" aria-hidden>
           {secondary.map((n) => poly(n, "#FF2B2B", 0.38, "s"))}
           {primary.map((n) => poly(n, "#FF2B2B", 0.78, "p"))}

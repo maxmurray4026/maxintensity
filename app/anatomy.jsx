@@ -1,6 +1,7 @@
 /* MAX INTENSITY — vintage anatomy layer.
    Plates sit BEHIND stat cards, graphs, progress bars and section headers at
-   12–25% opacity, bone/red duotone on the black, the app's grain on top.
+   12–25% opacity, deep red on the black, the app's grain on top; the hero tier
+   is the same figure at full strength.
    Text stays AA-legible: the plate never exceeds 25% and the card ground is
    #141414 or darker. Exposes MI.Plate, MI.PlateCard, MI.MuscleMap. */
 try {
@@ -20,7 +21,7 @@ try {
     musclesFront: { file: A + "muscles-front.jpg", lum: true, pos: "right 10%", size: "auto 150%" },
     musclesBack: { file: A + "muscles-back.jpg", lum: true, pos: "right 10%", size: "auto 150%" },
     classroom: { file: A + "classroom.jpg", lum: true, pos: "center 40%", size: "cover" },
-    hero: { file: A + "hero.jpg", lum: true, pos: "center 20%", size: "cover" },
+    hero: { file: A + "hero.jpg", lum: true, pos: "center 20%", size: "cover", clip: "inset(7%)" },
   };
   /* Library plates for backgrounds. The enrollment funnel walks muscles →
      skeleton → classroom as the story moves from the body to the rank to the plan. */
@@ -36,53 +37,108 @@ try {
     return { file: A + name + ".jpg", lum: true, pos: wide ? "center 30%" : "right 15%", size: wide ? "cover" : "auto 120%" };
   };
 
-  /* Which plate a section gets. Legs behind lower-body, back/shoulder behind
-     upper, torso/heart behind nutrition, skeleton behind rank and progress. */
+    /* Deep-red treatment (round 3b). Every raster plate is rendered by its ink:
+     the engraving is inverted to a grey figure on black, multiplied into a
+     colour fill, and the whole group is screened onto the card — so the paper
+     vanishes, the muscle mass sits in deep blood-red (#7A1414–#A11B1B), the
+     dense line-work lifts toward brand red, and skeletons read as a dim warm
+     grey. Rich and moody, never white, never pink. */
+  MI.TONES = {
+    red: [
+      { fill: "#B01414", filter: "invert(1) grayscale(1) brightness(.8) contrast(1.9)", op: 1 },
+      { fill: "#FF2B2B", filter: "invert(1) grayscale(1) brightness(.62) contrast(3.2)", op: 0.3 },
+    ],
+    bone: [
+      { fill: "#8C8178", filter: "invert(1) grayscale(1) brightness(.8) contrast(1.9)", op: 0.9 },
+      { fill: "#C9BFB3", filter: "invert(1) grayscale(1) brightness(.62) contrast(3.2)", op: 0.3 },
+    ],
+  };
+  MI.toneFor = (p, tone) => tone || p.tone || (/skeleton/i.test(p.file || "") ? "bone" : "red");
+
+  /* One ink layer: a colour-filled box shrink-wrapped to the image, the image
+     multiplied into it, the box screened onto whatever is behind. `geo` is the
+     box's absolute geometry (or { cover: true } to fill the parent). */
+  const InkLayer = ({ file, geo, layer, opacity, clip, objectPosition }) => {
+    const box = geo.cover
+      ? { position: "absolute", inset: 0 }
+      : { position: "absolute", width: "max-content", display: "flex", justifyContent: geo.justify || "flex-end", height: geo.height, top: geo.top, bottom: geo.bottom, left: geo.left, right: geo.right, transform: geo.transform };
+    const img = geo.cover
+      ? { width: "100%", height: "100%", objectFit: "cover", objectPosition, transform: "scale(1.06)" }
+      : { height: "100%", width: "auto", maxWidth: "none", display: "block" };
+    return (
+      <div aria-hidden style={{ ...box, background: layer.fill, mixBlendMode: "screen", opacity: Math.min(1, opacity * layer.op), overflow: "hidden", clipPath: clip, WebkitClipPath: clip }}>
+        <img src={file} alt="" aria-hidden draggable={false} style={{ ...img, filter: layer.filter, mixBlendMode: "multiply" }} />
+      </div>
+    );
+  };
+  MI.InkLayer = InkLayer;
+
+  /* background-position / background-size → box geometry. size "auto N%" sets
+     the height; "cover" fills. pos "right|left|center V%" places the box. */
+  const geoFor = (pos, size, flip) => {
+    if (!size || size === "cover") return { cover: true };
+    const hm = /auto\s+([\d.]+)%/.exec(size);
+    const H = hm ? Number(hm[1]) : 100;
+    const [px = "right", py = "0%"] = String(pos || "right 0%").split(/\s+/);
+    const top = ((100 - H) * (parseFloat(py) || 0)) / 100;
+    const g = { height: H + "%", top: top + "%" };
+    const tf = [];
+    if (px === "left") { g.left = 0; g.justify = "flex-start"; }
+    else if (px === "center") { g.left = "50%"; tf.push("translateX(-50%)"); g.justify = "center"; }
+    else g.right = 0;
+    if (flip) tf.push("scaleX(-1)");
+    if (tf.length) g.transform = tf.join(" ");
+    return g;
+  };
+
+  /* Which plate a section gets. Sessions use the fixed map below; torso/heart
+     behind nutrition, skeleton behind rank and progress. */
   MI.plateFor = (section, dayName) => {
     const d = (dayName || "").toLowerCase();
-    if (section === "session" || section === "train") {
-      if (/leg|glute/.test(d)) return "legs";
-      if (/arm/.test(d)) return "arm";
-      return "back";
-    }
+    if (section === "session" || section === "train") return MI.sessionPlate(dayName).plate;
     if (section === "nutrition" || section === "eat") return "torso";
     if (section === "arms") return "arm";
     return "skeleton";
+  };
+
+  /* Fixed plate per session (round 3b §2) with the hero geometry that frames
+     the right part of the figure. Legs 1 → front of the legs (quads). Legs 2
+     and Glute Focus → the lower half of the back view (glutes, hamstrings,
+     calves). Upper 1 → the back-and-arm torso. Upper 2 → chest and shoulders. */
+  MI.SESSION_PLATES = {
+    "legs 1": { plate: "legs", h: 165, x: -14, y: -28 },
+    "legs 2": { plate: "musclesBack", h: 270, x: -10, y: -140 },
+    "glute focus": { plate: "musclesBack", h: 270, x: -10, y: -112 },
+    "upper 1": { plate: "hero", h: 175, x: -6, y: -34 },
+    "upper 2": { plate: "musclesFront", h: 255, x: -12, y: -4 },
+  };
+  MI.sessionPlate = (dayName) => {
+    const d = (dayName || "").toLowerCase().trim();
+    if (MI.SESSION_PLATES[d]) return MI.SESSION_PLATES[d];
+    if (/glute/.test(d)) return MI.SESSION_PLATES["glute focus"];
+    if (/leg/.test(d)) return MI.SESSION_PLATES[/2/.test(d) ? "legs 2" : "legs 1"];
+    if (/arm|back|pull/.test(d)) return MI.SESSION_PLATES["upper 1"];
+    if (/chest|push|shoulder/.test(d)) return MI.SESSION_PLATES["upper 2"];
+    return MI.SESSION_PLATES[/2/.test(d) ? "upper 2" : "upper 1"];
   };
 
   /* Absolutely positioned backdrop. Parent needs `relative overflow-hidden`. */
   /* `plate` is a key of MI.PLATES or a plate object (see MI.libraryPlate).
      `hero` = the HERO tier: one plate large, 60–90% opacity, full red, filling
      50–70% of the screen and bleeding off an edge; the text sits beside it. */
-  MI.Plate = ({ plate = "skeleton", opacity = 0.18, position, size, flip, red = 0.55, className, style, hero }) => {
+  MI.Plate = ({ plate = "skeleton", opacity = 0.18, position, size, flip, red = 0.55, className, style, hero, tone }) => {
     const p = typeof plate === "object" && plate ? plate : (MI.PLATES[plate] || MI.PLATES.skeleton);
     const url = `url(${p.file})`;
     const pos = position || p.pos, sz = size || p.size;
-    if (p.lum && hero) {
-      const bg = { backgroundImage: url, backgroundRepeat: "no-repeat", backgroundPosition: pos, backgroundSize: sz, transform: flip ? "scaleX(-1)" : undefined };
-      const base = "invert(1) grayscale(1) brightness(.7) contrast(2.2) ";
-      return (
-        <div aria-hidden className={"pointer-events-none absolute inset-0 overflow-hidden " + (className || "")} style={style}>
-          <div className="absolute inset-0" style={{ ...bg, opacity: Math.min(1, opacity * 0.45), filter: base + "sepia(.4) saturate(.6) brightness(1.2)", mixBlendMode: "screen" }} />
-          <div className="absolute inset-0" style={{ ...bg, opacity, filter: base + "sepia(1) saturate(10) hue-rotate(-42deg) brightness(1.3) contrast(1.1)", mixBlendMode: "screen" }} />
-        </div>
-      );
-    }
     if (p.lum) {
-      /* Raster engraving. Two screen-blended layers: a bone-tinted base and a
-         red-tinted layer faded in along the duotone gradient. Invert + contrast
-         sends the cream paper to black (invisible under `screen`) and lifts the
-         ink. No stacking context on the wrapper, so the blend reaches the card. */
-      const bg = { backgroundImage: url, backgroundRepeat: "no-repeat", backgroundPosition: pos, backgroundSize: sz, transform: flip ? "scaleX(-1)" : undefined };
-      /* brightness before contrast pulls the solid ink fills down to a murmur
-         and leaves the engraved line-work as the highlight — so the plate reads
-         as etched lines, not a bright negative, and never fights the numbers. */
-      const base = "invert(1) grayscale(1) brightness(.62) contrast(2.6) ";
-      const fade = `linear-gradient(155deg, transparent ${Math.max(0, Math.round((1 - red) * 100) - 15)}%, #000 100%)`;
+      /* Raster engraving in the deep-red treatment (see MI.TONES). The hero
+         tier is the same figure at full strength; the texture tier is the
+         same red, faded — never white. */
+      const geo = geoFor(pos, sz, flip);
+      const layers = MI.TONES[MI.toneFor(p, tone)] || MI.TONES.red;
       return (
         <div aria-hidden className={"pointer-events-none absolute inset-0 overflow-hidden " + (className || "")} style={style}>
-          <div className="absolute inset-0" style={{ ...bg, opacity, filter: base + "sepia(.5) saturate(.5) brightness(1.15)", mixBlendMode: "screen" }} />
-          <div className="absolute inset-0" style={{ ...bg, opacity: Math.min(1, opacity * 1.8), filter: base + "sepia(1) saturate(8) hue-rotate(-40deg) brightness(1.25)", mixBlendMode: "screen", WebkitMaskImage: fade, maskImage: fade }} />
+          {layers.map((L, i) => <InkLayer key={i} file={p.file} geo={geo} layer={L} opacity={opacity} objectPosition={pos} />)}
         </div>
       );
     }
@@ -98,23 +154,19 @@ try {
   /* The plate is an <img> so its paper frame can be clipped away (inset 3.5%),
      sized as a % of the container height (h), bled off the right (x, negative =
      past the edge) or the bottom (side="bottom", y negative = past the edge). */
-  MI.Hero = ({ plate, opacity = 0.85, side = "right", h = 110, x = -30, y = 4, flip, className }) => {
+  MI.Hero = ({ plate, opacity = 0.85, side = "right", h = 110, x = -30, y = 4, flip, className, tone, grad: gradOn = true }) => {
     const p = typeof plate === "object" && plate ? plate : (MI.PLATES[plate] || MI.PLATES.hero);
-    const base = "invert(1) grayscale(1) brightness(.6) contrast(2.5) ";
     const geo = side === "bottom"
-      ? { height: h + "%", left: "50%", bottom: y + "%", transform: "translateX(-50%)" + (flip ? " scaleX(-1)" : "") }
+      ? { height: h + "%", left: "50%", bottom: y + "%", transform: "translateX(-50%)" + (flip ? " scaleX(-1)" : ""), justify: "center" }
       : { height: h + "%", right: x + "%", top: y + "%", transform: flip ? "scaleX(-1)" : undefined };
-    const layer = (extra, op, key) => (
-      <img key={key} src={p.file} alt="" aria-hidden style={{ position: "absolute", width: "auto", maxWidth: "none", ...geo, clipPath: "inset(3.5%)", WebkitClipPath: "inset(3.5%)", opacity: op, filter: base + extra, mixBlendMode: "screen" }} />
-    );
+    const layers = MI.TONES[MI.toneFor(p, tone)] || MI.TONES.red;
     const grad = side === "bottom"
       ? "linear-gradient(180deg, rgba(5,5,5,.94) 0%, rgba(5,5,5,.7) 32%, rgba(5,5,5,0) 58%)"
       : "linear-gradient(90deg, rgba(5,5,5,.96) 0%, rgba(5,5,5,.78) 36%, rgba(5,5,5,0) 66%)";
     return (
       <div aria-hidden className={"pointer-events-none absolute inset-0 overflow-hidden " + (className || "")}>
-        {layer("sepia(.4) saturate(.5) brightness(1.0)", Math.min(1, opacity * 0.12), "bone")}
-        {layer("sepia(1) saturate(9) hue-rotate(-44deg) contrast(1.25) brightness(.86)", opacity, "red")}
-        <div className="absolute inset-0" style={{ background: grad }} />
+        {layers.map((L, i) => <InkLayer key={i} file={p.file} geo={geo} layer={L} opacity={opacity} clip={p.clip || "inset(3.5%)"} />)}
+        {gradOn && <div className="absolute inset-0" style={{ background: grad }} />}
       </div>
     );
   };
