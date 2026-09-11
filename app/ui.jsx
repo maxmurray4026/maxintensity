@@ -287,6 +287,284 @@ window.MI = window.MI || {};
     return Array.from(new Set(out));
   };
 
+  /* ---- voice recorder (round 4). One instance per take: start() acquires the
+     mic, records audio (MediaRecorder) for playback, meters it for the waveform
+     and runs speech recognition alongside for the transcript; stop() releases
+     everything (tracks, audio context, recogniser) and resolves the take, so the
+     next start() is a clean new recording. States: idle → recording →
+     processing → done (or error). ---- */
+  MI.useRecorder = () => {
+    const [state, setState] = useState("idle");
+    const [levels, setLevels] = useState([]);
+    const [secs, setSecs] = useState(0);
+    const [transcript, setTranscript] = useState("");
+    const [error, setError] = useState("");
+    const ref = useRef(null);
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const release = () => {
+      const r = ref.current; ref.current = null;
+      if (!r) return;
+      r.active = false;
+      try { r.sr && (r.sr.onend = null, r.sr.onresult = null, r.sr.abort()); } catch (e) {}
+      try { r.stream && r.stream.getTracks().forEach((t) => t.stop()); } catch (e) {}
+      try { r.ac && r.ac.close(); } catch (e) {}
+      clearInterval(r.timer); cancelAnimationFrame(r.raf);
+    };
+    const start = async () => {
+      release();
+      setTranscript(""); setLevels([]); setSecs(0); setError("");
+      const r = { chunks: [], t0: Date.now(), active: true, base: "" };
+      ref.current = r;
+      try { r.stream = navigator.mediaDevices ? await navigator.mediaDevices.getUserMedia({ audio: true }) : null; } catch (e) { r.stream = null; }
+      if (ref.current !== r) return; // stopped while waiting for permission
+      if (r.stream && window.MediaRecorder) {
+        try { const mr = new MediaRecorder(r.stream); mr.ondataavailable = (e) => { if (e.data && e.data.size) r.chunks.push(e.data); }; r.mr = mr; mr.start(250); } catch (e) {}
+        try {
+          const AC = window.AudioContext || window.webkitAudioContext; const ac = new AC(); const an = ac.createAnalyser(); an.fftSize = 256;
+          ac.createMediaStreamSource(r.stream).connect(an); r.ac = ac;
+          const buf = new Uint8Array(an.fftSize);
+          const tick = () => { if (!r.active) return; an.getByteTimeDomainData(buf); let sum = 0; for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; } const rms = Math.sqrt(sum / buf.length); setLevels((L) => [...L.slice(-47), Math.min(1, rms * 4)]); r.raf = requestAnimationFrame(tick); };
+          tick();
+        } catch (e) {}
+      }
+      if (SR) {
+        try {
+          const sr = new SR(); sr.lang = "en-GB"; sr.interimResults = true; sr.continuous = true;
+          sr.onresult = (e) => { let t = ""; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; setTranscript((r.base + " " + t).trim()); };
+          sr.onerror = () => {};
+          sr.onend = () => { if (r.active) { setTranscript((cur) => { r.base = cur; return cur; }); try { sr.start(); } catch (e) {} } };
+          r.sr = sr; sr.start();
+        } catch (e) {}
+      }
+      if (!r.stream && !SR) { setError("No microphone here — type it instead."); setState("error"); release(); return; }
+      r.timer = setInterval(() => setSecs(Math.round((Date.now() - r.t0) / 1000)), 500);
+      setState("recording");
+    };
+    const stop = () => new Promise((resolve) => {
+      const r = ref.current;
+      if (!r) { setState("idle"); return resolve(null); }
+      setState("processing");
+      r.active = false;
+      clearInterval(r.timer); cancelAnimationFrame(r.raf);
+      try { r.sr && (r.sr.onend = null, r.sr.stop()); } catch (e) {}
+      const finish = () => {
+        const dur = Math.round((Date.now() - r.t0) / 1000);
+        const blob = r.chunks.length ? new Blob(r.chunks, { type: (r.mr && r.mr.mimeType) || "audio/webm" }) : null;
+        release();
+        if (!blob) { setState("done"); return resolve({ audio: null, duration: dur }); }
+        const fr = new FileReader();
+        fr.onload = () => { setState("done"); resolve({ audio: fr.result, duration: dur }); };
+        fr.onerror = () => { setState("done"); resolve({ audio: null, duration: dur }); };
+        fr.readAsDataURL(blob);
+      };
+      if (r.mr && r.mr.state !== "inactive") { r.mr.onstop = finish; try { r.mr.stop(); } catch (e) { finish(); } }
+      else finish();
+    });
+    const reset = () => { release(); setState("idle"); setLevels([]); setSecs(0); setTranscript(""); setError(""); };
+    useEffect(() => release, []); // eslint-disable-line
+    return { state, setState, levels, secs, transcript, setTranscript, error, start, stop, reset, supported: !!((navigator.mediaDevices && navigator.mediaDevices.getUserMedia) || SR) };
+  };
+
+  /* Live waveform: the last ~48 level samples as bars; idle shows a flat line. */
+  MI.Waveform = ({ levels = [], active, className }) => (
+    <div className={"flex h-12 items-center gap-[2px] " + (className || "")} aria-hidden>
+      {Array.from({ length: 48 }, (_, i) => {
+        const v = levels[levels.length - 48 + i] || 0;
+        return <span key={i} className={"w-[3px] flex-1 rounded-full " + (active ? "bg-[#FF2B2B]" : "bg-neutral-700")} style={{ height: Math.max(2, Math.round(v * 44)) + "px", transition: "height .08s" }} />;
+      })}
+    </div>
+  );
+
+  /* Voice take with a visible state line. onResult({ transcript, audio, duration }). */
+  MI.VoiceTake = ({ onResult, hint = "Say what you ate — “300 grams of mince, rice and a glass of milk”", busy, saved, onAgain }) => {
+    const rec = MI.useRecorder();
+    const fmt = (n) => Math.floor(n / 60) + ":" + String(n % 60).padStart(2, "0");
+    const label = saved ? "Saved" : busy ? "Processing" : rec.state === "recording" ? "Recording · " + fmt(rec.secs) : rec.state === "processing" ? "Processing" : rec.state === "done" ? "Ready to log" : rec.state === "error" ? "Microphone unavailable" : "Ready";
+    const take = useRef(null);
+    const stop = async () => { take.current = await rec.stop(); };
+    const use = () => { const t = take.current || {}; onResult({ transcript: rec.transcript.trim(), audio: t.audio || null, duration: t.duration || 0 }); };
+    return (
+      <div>
+        <div className="flex items-center justify-between">
+          <span className={"mono text-[10px] uppercase tracking-widest " + (rec.state === "recording" ? "text-[#FF2B2B]" : saved ? "text-[#F2EFE8]" : "text-neutral-500")} data-voice-state={saved ? "saved" : busy || rec.state === "processing" ? "processing" : rec.state}>
+            {rec.state === "recording" && <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-[#FF2B2B] align-middle" />}{label}
+          </span>
+          {rec.state === "recording" && <span className="mono text-[10px] text-neutral-500">tap stop when you're done</span>}
+        </div>
+        <MI.Waveform levels={rec.levels} active={rec.state === "recording"} className="mt-2" />
+        {saved ? (
+          <button onClick={onAgain} className={MI.ui.ghost + " mt-3 w-full py-3.5 text-sm"}>Log another</button>
+        ) : rec.state === "recording" ? (
+          <button onClick={stop} className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#FF2B2B] bg-[#1c0808] py-4 text-[#FF2B2B]" aria-label="Stop recording">
+            <span className="h-4 w-4 rounded-sm bg-[#FF2B2B]" /><span className="dp text-lg uppercase">Stop</span>
+          </button>
+        ) : rec.state === "processing" || busy ? (
+          <div className="mt-3 flex w-full items-center justify-center rounded-lg border border-neutral-800 py-4"><span className="dp text-lg uppercase text-neutral-400">Working…</span></div>
+        ) : (
+          <button onClick={rec.start} className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-700 py-4 text-neutral-100" aria-label="Start recording">
+            <MI.Ic d={MI.PATHS.MIC} className="h-6 w-6" /><span className="dp text-lg uppercase">{rec.state === "done" ? "Record again" : "Tap and speak"}</span>
+          </button>
+        )}
+        {!saved && <textarea value={rec.transcript} onChange={(e) => rec.setTranscript(e.target.value)} rows={2} placeholder={rec.state === "error" ? "Type it here" : hint} className="mt-3 w-full rounded-lg bg-neutral-900 px-3 py-2.5 text-sm text-neutral-100 placeholder-neutral-600" aria-label="Transcript" />}
+        {!saved && rec.state !== "recording" && <button onClick={use} disabled={busy || !rec.transcript.trim()} className={MI.ui.cta + " mt-3 w-full py-3.5 text-sm disabled:opacity-50"}>{busy ? "Working…" : "Log it"}</button>}
+        {rec.error && <p className="mono mt-2 text-[10px] text-neutral-500">{rec.error}</p>}
+      </div>
+    );
+  };
+
+  /* Camera frame with a shutter. Live preview where the camera API allows it;
+     otherwise the same frame opens the device camera through a file input. */
+  MI.CameraFrame = ({ onCapture, busy }) => {
+    const vid = useRef(null);
+    const [live, setLive] = useState(false);
+    const [stream, setStream] = useState(null);
+    useEffect(() => {
+      let st = null, dead = false;
+      (async () => {
+        try {
+          st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+          if (dead) { st.getTracks().forEach((t) => t.stop()); return; }
+          setStream(st); setLive(true);
+          if (vid.current) { vid.current.srcObject = st; vid.current.play().catch(() => {}); }
+        } catch (e) { setLive(false); }
+      })();
+      return () => { dead = true; try { (st || stream) && (st || stream).getTracks().forEach((t) => t.stop()); } catch (e) {} };
+    }, []); // eslint-disable-line
+    const shutter = () => {
+      const v = vid.current; if (!v || !v.videoWidth) return;
+      const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight;
+      c.getContext("2d").drawImage(v, 0, 0);
+      c.toBlob((b) => b && onCapture(new File([b], "meal.jpg", { type: "image/jpeg" })), "image/jpeg", 0.8);
+    };
+    return (
+      <div>
+        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-neutral-800 bg-[#0d0d0d]">
+          <video ref={vid} playsInline muted className={"h-full w-full object-cover " + (live ? "" : "hidden")} />
+          {!live && <label className="absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-2 text-neutral-500">
+            <MI.Ic d={MI.PATHS.CAMERA} className="h-8 w-8" /><span className="mono text-[10px] uppercase tracking-widest">Tap to open the camera</span>
+            <input type="file" accept="image/*" capture="environment" className="hidden" disabled={busy} onChange={(e) => e.target.files && e.target.files[0] && onCapture(e.target.files[0])} />
+          </label>}
+          <div className="pointer-events-none absolute inset-3 rounded-lg border border-[#F2EFE8]/25" />
+        </div>
+        {live ? (
+          <button onClick={shutter} disabled={busy} className="mx-auto mt-4 flex h-16 w-16 items-center justify-center rounded-full border-4 border-[#F2EFE8] disabled:opacity-50" aria-label="Take photo">
+            <span className={"h-12 w-12 rounded-full " + (busy ? "bg-neutral-600" : "bg-[#FF2B2B]")} />
+          </button>
+        ) : (
+          <label className={MI.ui.cta + " mt-4 flex w-full cursor-pointer items-center justify-center py-3.5 text-sm"}>{busy ? "Reading…" : "Open camera"}<input type="file" accept="image/*" capture="environment" className="hidden" disabled={busy} onChange={(e) => e.target.files && e.target.files[0] && onCapture(e.target.files[0])} /></label>
+        )}
+        <p className="mono mt-2 text-center text-[9px] text-neutral-600">{busy ? "The coach is reading the plate…" : "Frame the whole plate. One shot."}</p>
+      </div>
+    );
+  };
+
+  /* Calorie ring: eaten / target, big number in the centre. */
+  MI.Ring = ({ value = 0, target = 1, size = 176, stroke = 12, label = "kcal", sub }) => {
+    const r = (size - stroke) / 2, C = 2 * Math.PI * r;
+    const pct = Math.max(0, Math.min(1, value / (target || 1)));
+    const over = value > target;
+    return (
+      <div className="relative shrink-0" style={{ width: size, height: size }}>
+        <svg viewBox={`0 0 ${size} ${size}`} className="-rotate-90" width={size} height={size}>
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#1f1f1f" strokeWidth={stroke} />
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={over ? "#F2EFE8" : "#FF2B2B"} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - pct)} style={{ transition: "stroke-dashoffset .6s cubic-bezier(.2,.7,.2,1)" }} />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="dp text-[44px] leading-none text-[#F2EFE8]">{Math.round(value)}</span>
+          <span className="mono mt-1 text-[10px] uppercase tracking-widest text-neutral-500">{sub || `of ${Math.round(target)} ${label}`}</span>
+        </div>
+      </div>
+    );
+  };
+
+  /* Row you swipe left to delete (touch or mouse). Tap = onTap. */
+  MI.SwipeRow = ({ onDelete, onTap, children, className, deleteLabel = "Delete" }) => {
+    const [dx, setDx] = useState(0);
+    const st = useRef(null);
+    const pt = (e) => (e.touches ? e.touches[0] : e.changedTouches ? e.changedTouches[0] : e);
+    const begin = (e) => { if (e.target && e.target.closest && e.target.closest("button, a, input, textarea")) { st.current = null; return; } const p = pt(e); st.current = { x: p.clientX, y: p.clientY, axis: null, moved: false }; };
+    const move = (e) => {
+      const s = st.current; if (!s) return; const p = pt(e);
+      const ddx = p.clientX - s.x, ddy = p.clientY - s.y;
+      if (!s.axis) { if (Math.abs(ddx) < 6 && Math.abs(ddy) < 6) return; s.axis = Math.abs(ddx) > Math.abs(ddy) ? "x" : "y"; }
+      if (s.axis !== "x") return;
+      s.moved = true;
+      setDx(Math.max(-140, Math.min(0, ddx)));
+    };
+    const end = () => {
+      const s = st.current; st.current = null; if (!s) return;
+      if (s.moved && dx < -90) { setDx(-400); setTimeout(() => onDelete && onDelete(), 160); return; }
+      if (s.moved) { setDx(dx < -50 ? -88 : 0); return; }
+      if (dx !== 0) { setDx(0); return; }
+      onTap && onTap();
+    };
+    return (
+      <div className={"relative overflow-hidden rounded-xl " + (className || "")} style={{ touchAction: "pan-y" }}>
+        <button onClick={() => { setDx(-400); setTimeout(() => onDelete && onDelete(), 160); }} className="absolute inset-y-0 right-0 flex w-[88px] items-center justify-center bg-[#FF2B2B] text-white" aria-label={deleteLabel} tabIndex={dx < 0 ? 0 : -1}>
+          <span className="mono text-[10px] uppercase tracking-widest">{deleteLabel}</span>
+        </button>
+        <div className="relative bg-[#141414]" style={{ transform: `translateX(${dx}px)`, transition: st.current ? "none" : "transform .18s ease-out" }}
+          onTouchStart={begin} onTouchMove={move} onTouchEnd={end} onTouchCancel={end}
+          onPointerDown={(e) => { if (e.pointerType === "mouse") begin(e); }} onPointerMove={(e) => { if (e.pointerType === "mouse" && st.current) move(e); }} onPointerUp={(e) => { if (e.pointerType === "mouse") end(); }}>
+          {children}
+        </div>
+      </div>
+    );
+  };
+
+  /* ---- analytics (round 4): a handful of product events, no identity. Counted
+     locally, and sent to the worker's /event endpoint as {e, p, t, s} with a
+     random per-session id only — no handle, no email, nothing persistent.
+     Honours Do Not Track / Global Privacy Control by keeping events local. ---- */
+  const SID = Math.random().toString(36).slice(2, 10);
+  MI.track = (name, props) => {
+    try {
+      const day = MI.todayKey();
+      const all = JSON.parse(localStorage.getItem("mi:mi-events") || "{}");
+      const d = all[day] || {}; d[name] = (d[name] || 0) + 1;
+      const keep = {}; Object.keys(all).sort().slice(-14).forEach((k) => (keep[k] = all[k])); keep[day] = d;
+      localStorage.setItem("mi:mi-events", JSON.stringify(keep));
+    } catch (e) {}
+    try {
+      const dnt = navigator.doNotTrack === "1" || window.doNotTrack === "1" || navigator.globalPrivacyControl === true;
+      if (dnt || !window.MI_SERVER || !window.MI_APP_TOKEN) return;
+      const body = JSON.stringify({ e: name, p: props || {}, t: Date.now(), s: SID, v: window.MI_VERSION || "" });
+      fetch(window.MI_SERVER + "/event", { method: "POST", keepalive: true, headers: { "Content-Type": "application/json", "x-mi-app": window.MI_APP_TOKEN }, body }).catch(() => {});
+    } catch (e) {}
+  };
+
+  /* iPhone install sheet: Safari only allows notifications and a full-screen
+     app from the Home Screen. Two steps, drawn, shown once on first visit. */
+  MI.InstallSheet = ({ open, onClose }) => {
+    if (!open) return null;
+    const Step = ({ n, title, sub, icon }) => (
+      <div className="flex items-center gap-4 rounded-xl border border-neutral-800 bg-[#141414] p-4">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#0d0d0d] text-[#F2EFE8]">{icon}</div>
+        <div className="min-w-0">
+          <p className="mono text-[10px] uppercase tracking-widest text-[#FF2B2B]">Step {n}</p>
+          <p className="dp mt-0.5 text-lg uppercase leading-none text-[#F2EFE8]">{title}</p>
+          <p className="mt-1 text-xs text-neutral-400">{sub}</p>
+        </div>
+      </div>
+    );
+    return (
+      <div className="fixed inset-0 z-[90] flex flex-col justify-end" data-install-sheet="1">
+        <button aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/75" />
+        <div className="relative rounded-t-2xl border-t border-neutral-800 bg-[#0d0d0d] px-5 pt-4" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}>
+          <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-neutral-800" />
+          <p className={MI.ui.eyebrow}>Add to Home Screen</p>
+          <h3 className="dp mt-1 text-[30px] uppercase leading-[0.95] text-[#F2EFE8]">Put it on your <span className="text-[#FF2B2B]">phone.</span></h3>
+          <p className="mt-2 text-sm text-neutral-400">Full screen, offline, and the only way iPhone lets us send you a nudge. Two taps.</p>
+          <div className="mt-4 space-y-2">
+            <Step n={1} title="Tap Share" sub="The square with the arrow, in Safari's bar at the bottom." icon={<svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12M8 7l4-4 4 4M5 12v8h14v-8" /></svg>} />
+            <Step n={2} title="Add to Home Screen" sub="Scroll the sheet a little, tap it, then Add." icon={<svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M12 8.5v7M8.5 12h7" /></svg>} />
+          </div>
+          <button onClick={onClose} className={MI.ui.cta + " mt-4 w-full py-3.5 text-sm"}>Got it</button>
+        </div>
+      </div>
+    );
+  };
+
   MI.fmtDate = (k) => new Date(k + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   MI.todayKey = () => new Date().toISOString().slice(0, 10);
 })(window.MI);

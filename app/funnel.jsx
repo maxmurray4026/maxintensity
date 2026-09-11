@@ -124,12 +124,14 @@ try {
 
     const next = () => { if (step >= N - 1) return; setStep(step + 1); };
     const back = () => setStep(Math.max(0, step - 1));
+    /* analytics: which screen was reached (no answers, no identity) */
+    useEffect(() => { MI.track && MI.track("funnel_step", { step: step + 1, kind: st.kind, key: st.k }); }, [step]); // eslint-disable-line
     const pick = (k, v) => { set(k, v); setTimeout(() => setStep((s) => Math.min(N - 1, s + 1)), 180); };
 
     /* reveal: flip the card a beat after it mounts */
     useEffect(() => {
       if (st.kind !== "reveal") { setFlipped(false); return; }
-      const t = setTimeout(() => { setFlipped(true); MI.sound("reveal"); }, 650);
+      const t = setTimeout(() => { setFlipped(true); MI.sound("reveal"); MI.track && MI.track("rank_revealed", { rank: ob.rank ? ob.rank.name : "" }); }, 650);
       return () => clearTimeout(t);
     }, [step]); // eslint-disable-line
     /* proof: load once */

@@ -116,6 +116,7 @@ try {
       if (!ok && body.image) {
         try { r = await wallCall("POST", { ...body, image: undefined }); ok = !(r && r.error); if (ok) setMsg("Posted — the photo stays on your phone until the wall accepts images."); } catch (e) { ok = false; }
       } else if (ok) setMsg("Posted to the feed.");
+      if (ok) MI.track && MI.track("wall_post", { type: body.type, image: !!body.image });
       if (!ok) setMsg("Saved on your phone — it posts when the wall is reachable.");
       lsSet("mi-wall-local", [{ ...body, remoteOk: ok }, ...localPosts()].slice(0, 20));
       act();

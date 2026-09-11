@@ -17,8 +17,8 @@ function serve(port) {
 }
 async function launch(opts = {}) {
   const srv = await serve(opts.port || 8765);
-  const browser = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: ['--no-sandbox'] });
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' });
+  const browser = await chromium.launch({ executablePath: process.env.CHROME || undefined, args: process.env.MI_MIN_ARGS ? ['--no-sandbox'] : ['--no-sandbox', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', '--autoplay-policy=no-user-gesture-required'] });
+  const ctx = await browser.newContext({ serviceWorkers: opts.sw ? 'allow' : 'block', permissions: ['microphone', 'camera'], viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1' });
   await ctx.route('**/*', async (route) => {
     const url = route.request().url();
     const local = (f, ct) => route.fulfill({ status: 200, contentType: ct || 'application/javascript', body: fs.readFileSync(f) });

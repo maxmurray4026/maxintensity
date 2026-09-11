@@ -17,6 +17,7 @@ function worker(route) {
     ] });
     return json({ ok: true });
   }
+  if (url.pathname === '/event') return json({ ok: true });
   if (url.pathname === '/wall') {
     if (method === 'GET') return json({ posts: [
       { id: 'p1', handle: 'jess.lifts', type: 'transformation', text: 'Six weeks. Hip thrust 80 → 120 kg, bodyweight 71 → 68. Silver to Gold.', ts: Date.now() - 86400000 * 2, rank: 'Gold', rankIndex: 2, level: 4, streak: 12, likes: 9 },
@@ -24,7 +25,8 @@ function worker(route) {
     ] });
     return json({ ok: true, post: { id: 'p' + Date.now(), ...body } });
   }
-  // relay (messages API)
+  // relay (messages API) — a member code unlocks via the x-mi-member header on any call
+  if ((req.headers()['x-mi-code'] || '') === 'MAXTEST') return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*', 'access-control-expose-headers': 'x-mi-member', 'x-mi-member': '1' }, body: JSON.stringify({ content: [{ type: 'text', text: 'ok' }] }) });
   const sys = String(body.system || '');
   const say = (o) => json({ content: [{ type: 'text', text: JSON.stringify(o) }] });
   if (sys.includes('Rebuild ONE week-1 session')) {

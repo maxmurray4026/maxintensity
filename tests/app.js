@@ -29,6 +29,10 @@ let page;
   }, rank);
   await page.goto('http://localhost:8768/index.html'); await page.waitForTimeout(3500);
   PNG = Buffer.from((await page.evaluate(() => { const c = document.createElement('canvas'); c.width = 60; c.height = 80; const g = c.getContext('2d'); g.fillStyle = '#444'; g.fillRect(0, 0, 60, 80); g.fillStyle = '#F2EFE8'; g.fillRect(20, 10, 20, 60); return c.toDataURL('image/png'); })).split(',')[1], 'base64');
+  // round 4: first visit from iPhone Safari → the two-step Add to Home Screen sheet
+  console.log('install sheet on first visit:', await page.locator('[data-install-sheet]').count(), '| steps:', (await page.locator('[data-install-sheet]').innerText()).match(/STEP \d/g)?.join(' '));
+  await shot('install-sheet');
+  await page.getByRole('button', { name: 'Got it' }).click(); await page.waitForTimeout(300);
   await shot('today');
   const today = await page.innerText('main');
   console.log('today has:', ["LET'S", 'TODAY\'S SESSION', 'WEEKLY QUESTS', 'TODAY\'S INTAKE', 'YOUR LEAGUE', 'SHIELD'].map((k) => k + '=' + today.toUpperCase().includes(k)).join(' '));
@@ -115,7 +119,8 @@ let page;
   console.log('second exercise now:', (await page.locator('ul li').nth(1).innerText()).replace(/\n+/g,' | ').slice(0,80));
   // --- session with RIR + PR + recap ---
   await page.getByRole('button', { name: 'Train', exact: true }).click(); await page.waitForTimeout(300);
-  await page.getByRole('button', { name: /^(Start session|Train anyway|Start early)$/ }).first().click(); await page.waitForTimeout(400); await shot('session');
+  if (await page.locator('[data-session="Upper 1"][data-expanded="false"]').count()) { await page.getByRole('button', { name: 'Expand Upper 1' }).click(); await page.waitForTimeout(300); }
+  await page.locator('[data-expanded="true"]').getByRole('button', { name: /^(Start session|Train anyway|Start early|Log this session)$/ }).first().click(); await page.waitForTimeout(400); await shot('session');
   const logSet = async (w, r) => { await page.fill('#sess-w', w); await page.fill('#sess-r', r); await page.getByRole('button', { name: 'Log set' }).first().click(); await page.waitForTimeout(400); };
   await logSet('20', '10');
   await page.getByRole('button', { name: 'Skip' }).click(); await page.waitForTimeout(300);
@@ -194,20 +199,70 @@ let page;
   await page.getByPlaceholder('kg').fill('100');
   await page.getByRole('button', { name: 'Submit for review' }).click(); await page.waitForTimeout(600); await shot('verify');
   const vp = mock.calls.filter((c) => c.path === '/board' && c.method === 'POST' && c.body.verify); console.log('verify POST:', vp.length, JSON.stringify(vp[0] && vp[0].body.verify));
-  // --- eat tab ---
+  // --- meals (round 4): ring + LOG above the fold, everything else behind PLAN ---
   await page.getByRole('button', { name: 'Meals', exact: true }).click(); await page.waitForTimeout(500); await shot('eat-top');
+  const foldBox = await page.locator('[data-meals-fold]').boundingBox(); const logBox = await page.getByRole('button', { name: 'Log a meal' }).boundingBox();
+  console.log('meals fold: ring card bottom', Math.round(foldBox.y + foldBox.height), '| LOG bottom', Math.round(logBox.y + logBox.height), '| fits 844:', logBox.y + logBox.height <= 844);
+  const mealsMain = (await page.innerText('main')).toUpperCase();
+  console.log('meals main clutter-free:', ['APPROVED FOODS', 'SWAP MACHINE', 'MEAL PREP', 'MICRONUTRIENT', 'RECALC'].map((k) => k + '=' + !mealsMain.includes(k)).join(' '));
+  console.log('coach tip:', await page.locator('[data-coach-tip]').innerText());
+  await page.getByRole('button', { name: 'Plan', exact: true }).click(); await page.waitForTimeout(400); await shot('plan-sheet');
+  const planTxt = (await page.locator('.rounded-t-2xl').innerText()).toUpperCase();
+  console.log('plan sheet has:', ['YOUR NUMBERS', 'TIMING', 'MEAL PREP FOR YOU', 'SWAP MACHINE', 'APPROVED FOODS', 'MICRONUTRIENT'].map((k) => k + '=' + planTxt.includes(k)).join(' '));
   await page.getByRole('button', { name: 'Set up' }).click(); await page.waitForTimeout(200);
   await page.getByPlaceholder('What you like').fill('mince, rice, eggs'); await page.getByPlaceholder('Where you shop').fill('Aldi'); await page.getByPlaceholder('Allergies').fill('none');
   await page.locator('input[type=file][accept*=".txt"]').setInputFiles({ name: 'food.txt', mimeType: 'text/plain', buffer: Buffer.from('chicken thighs\nrice\neggs\nbutter') });
   await page.waitForTimeout(200);
   await page.getByRole('button', { name: 'Recommend my meal prep' }).click(); await page.waitForTimeout(1000); await shot('mealprep');
   const mp = mock.calls.filter((c) => c.path === '/' && String(c.body.system).includes('meal prep')); console.log('mealprep call has food file:', String(mp[0] && mp[0].body.system).includes('chicken thighs'));
-  await page.locator('input[type=file][capture=environment]').setInputFiles({ name: 'meal.png', mimeType: 'image/png', buffer: PNG }); await page.waitForTimeout(900);
-  console.log('photo meal logged:', (await page.innerText('main')).includes('Eggs on sourdough'));
-  await page.getByRole('button', { name: 'Voice note' }).click(); await page.waitForTimeout(300); await shot('voice');
-  await page.locator('.rounded-t-2xl textarea').fill('three eggs, sourdough and a banana');
-  await page.getByRole('button', { name: 'Log it' }).click(); await page.waitForTimeout(900);
-  console.log('voice meal logged:', (await page.innerText('main')).includes('Eggs, sourdough, banana'));
+  await page.locator('.rounded-t-2xl').getByRole('button', { name: 'Log', exact: true }).first().click(); await page.waitForTimeout(300);
+  await page.getByRole('button', { name: 'Close', exact: true }).click({ position: { x: 10, y: 10 } }); await page.waitForTimeout(300);
+  console.log('prep meal logged as card:', (await page.locator('[data-meals-list]').innerText()).includes('Mince & rice tray'), '| star:', await page.locator('[data-meals-list] svg').count() > 0);
+  // LOG sheet — Photo · Voice · Type
+  await page.getByRole('button', { name: 'Log a meal' }).click(); await page.waitForTimeout(300);
+  console.log('log tabs:', (await page.getByRole('tab').allInnerTexts()).join(' · '));
+  await page.getByRole('tab', { name: 'Type' }).click();
+  await page.getByPlaceholder('e.g. 300g mince').fill('300g mince, potatoes, milk'); await page.locator('.rounded-t-2xl').getByRole('button', { name: 'Log', exact: true }).click(); await page.waitForTimeout(900);
+  console.log('typed meal logged + sheet closed:', (await page.innerText('main')).includes('Mince, potatoes, milk'), await page.locator('.rounded-t-2xl').count() === 0);
+  await page.getByRole('button', { name: 'Log a meal' }).click(); await page.waitForTimeout(300);
+  await page.getByRole('tab', { name: 'Photo' }).click(); await page.waitForTimeout(900); await shot('log-photo');
+  const shutter = await page.getByRole('button', { name: 'Take photo' }).count();
+  if (shutter) await page.getByRole('button', { name: 'Take photo' }).click();
+  else await page.locator('.rounded-t-2xl input[type=file][capture=environment]').first().setInputFiles({ name: 'meal.png', mimeType: 'image/png', buffer: PNG });
+  await page.waitForTimeout(1400);
+  console.log('photo meal logged:', (await page.innerText('main')).includes('Eggs on sourdough'), '| via', shutter ? 'shutter (live frame)' : 'file input');
+  // voice — twice in a row, both kept, both playable
+  await page.getByRole('button', { name: 'Log a meal' }).click(); await page.waitForTimeout(300);
+  await page.getByRole('tab', { name: 'Voice' }).click(); await page.waitForTimeout(300); await shot('log-voice');
+  const vstate = async () => await page.locator('[data-voice-state]').getAttribute('data-voice-state');
+  const take = async (text) => {
+    await page.getByRole('button', { name: 'Start recording' }).click(); await page.waitForTimeout(1500);
+    const rec = await vstate(); const bars = await page.evaluate(() => Array.from(document.querySelectorAll('.rounded-t-2xl .h-12 span')).filter((b) => parseInt(b.style.height) > 2).length);
+    await page.getByRole('button', { name: 'Stop recording' }).click(); await page.waitForTimeout(900);
+    const done = await vstate();
+    await page.getByRole('textbox', { name: 'Transcript' }).fill(text);
+    await page.getByRole('button', { name: 'Log it' }).click(); await page.waitForTimeout(1100);
+    return rec + ' (' + bars + ' live bars) → ' + done + ' → ' + (await vstate());
+  };
+  console.log('voice take 1:', await take('three eggs, sourdough and a banana')); await shot('voice-saved');
+  await page.getByRole('button', { name: 'Log another' }).click(); await page.waitForTimeout(300);
+  console.log('voice take 2:', await take('a bulking shake with oats'));
+  await page.getByRole('button', { name: 'Close', exact: true }).click({ position: { x: 10, y: 10 } }); await page.waitForTimeout(300);
+  const voiceEntries = await page.evaluate(() => { const f = JSON.parse(localStorage.getItem('mi:mi-food') || '{}'); const k = new Date().toISOString().slice(0, 10); return (f[k] || []).filter((e) => e.via === 'voice').map((e) => ({ name: e.name, audio: !!e.audio && String(e.audio).startsWith('data:audio'), bytes: (e.audio || '').length, s: e.duration })); });
+  console.log('voice entries kept:', JSON.stringify(voiceEntries), '| play buttons:', await page.getByRole('button', { name: /^Play voice note/ }).count());
+  const playable = await page.evaluate(async () => { const f = JSON.parse(localStorage.getItem('mi:mi-food') || '{}'); const k = new Date().toISOString().slice(0, 10); const out = []; for (const e of (f[k] || []).filter((e) => e.audio)) { out.push(await new Promise((res) => { const a = new Audio(e.audio); const t = setTimeout(() => res('timeout'), 4000); a.oncanplay = () => { clearTimeout(t); res('canplay'); }; a.onerror = () => { clearTimeout(t); res('error'); }; a.load(); })); } return out; });
+  console.log('voice notes playable:', playable.join(', '));
+  await page.getByRole('button', { name: /^Play voice note/ }).first().click(); await page.waitForTimeout(200);
+  await shot('eat-list');
+  // tap to edit, swipe to delete
+  await page.locator('[data-meals-list] li').first().locator('.p-3\\.5').click(); await page.waitForTimeout(300);
+  console.log('edit sheet:', await page.getByRole('textbox', { name: 'Meal name' }).count());
+  await page.getByRole('button', { name: 'Mark as the big meal' }).click(); await page.getByRole('button', { name: 'Save', exact: true }).click(); await page.waitForTimeout(300);
+  const before = await page.locator('[data-meals-list] li').count();
+  await page.locator('[data-meals-list] li').last().evaluate((el) => el.scrollIntoView({ block: 'center' })); await page.waitForTimeout(300);
+  const row = await page.locator('[data-meals-list] li').last().boundingBox();
+  await page.mouse.move(row.x + row.width - 40, row.y + row.height / 2); await page.mouse.down(); for (let i = 1; i <= 8; i++) { await page.mouse.move(row.x + row.width - 40 - i * 20, row.y + row.height / 2); await page.waitForTimeout(15); } await page.mouse.up(); await page.waitForTimeout(400);
+  console.log('swipe to delete:', before, '→', await page.locator('[data-meals-list] li').count());
   // --- coach usage line + settings ---
   await page.getByRole('button', { name: 'Coach', exact: true }).first().click(); await page.waitForTimeout(300);
   console.log('learn segment:', await page.getByRole('button', { name: 'Learn', exact: true }).count());
@@ -220,5 +275,33 @@ let page;
   console.log('expected 404s (empty form slots):', e404);
   console.log('errors:', page.errors.filter((e) => !/ERR_FAILED|404/.test(e)));
   console.log('errbox:', await page.$eval('#errbox', (e) => e.textContent));
+  // --- round 4: "Not going gym today?" nudge + the two-set mini session ---
+  await page.getByRole('button', { name: 'Done', exact: true }).first().click(); await page.waitForTimeout(400);
+  await page.getByRole('button', { name: 'Today', exact: true }).click(); await page.waitForTimeout(300);
+  const nd = await page.evaluate(() => ({ due: window.MI_nudge.due, at: window.MI_nudge.hour + ':00', plan: window.MI_nudge.plan, now: new Date().getHours() }));
+  console.log('nudge:', JSON.stringify(nd), '| banner now:', await page.locator('[data-nudge]').count());
+  await page.evaluate(() => window.MI_nudge.show()); await page.waitForTimeout(300);
+  console.log('nudge banner:', (await page.locator('[data-nudge]').innerText()).replace(/\n/g, ' | ')); await shot('nudge');
+  await page.locator('[data-nudge]').getByRole('button', { name: 'Two sets' }).click(); await page.waitForTimeout(600);
+  const miniTxt = await page.locator('[data-mini]').innerText();
+  console.log('mini session:', /TWO SETS ·/.test(miniTxt), '| timer:', await page.locator('[data-mini-timer]').innerText(), '| rows:', (miniTxt.match(/Work ×6|Back-off ×6/g) || []).length, '| lift:', await page.locator('[data-mini] p.text-\\[22px\\]').innerText());
+  await shot('mini');
+  await page.getByRole('textbox', { name: 'Work ×6 @1 RIR weight' }).fill('30'); await page.getByRole('textbox', { name: 'Work ×6 @1 RIR reps' }).fill('6'); await page.getByRole('textbox', { name: 'Back-off ×6 (−10%) reps' }).fill('6');
+  await page.getByRole('button', { name: 'Log both sets' }).click(); await page.waitForTimeout(400);
+  console.log('mini done:', (await page.locator('[data-mini]').innerText()).includes('TWO SETS IN'), '| history mini:', await page.evaluate(() => { const hh = JSON.parse(localStorage.getItem('mi:mi-history') || '{}'); const k = new Date().toISOString().slice(0, 10); return !!(hh[k] && hh[k].mini); }));
+  await page.getByRole('button', { name: 'Done', exact: true }).click(); await page.waitForTimeout(300);
+  const ev = mock.calls.filter((c) => c.path === '/event').map((c) => c.body.e); console.log('analytics events:', Array.from(new Set(ev)).join(', '), '| identity fields:', Object.keys(mock.calls.find((c) => c.path === '/event')?.body || {}).join(','));
+  // --- round 4: the ?mini=1 deep link (what the notification opens), trial without a card, member code ---
+  await page.evaluate(() => { localStorage.setItem('mi:mi-pro', 'false'); localStorage.setItem('mi:mi-trial', String(Date.now())); });
+  await page.goto('http://localhost:8768/index.html?mini=1'); await page.waitForTimeout(3000);
+  await page.waitForSelector('[data-mini]', { timeout: 8000 }).catch(() => {});
+  await shot('deeplink');
+  console.log('deep link opens mini:', await page.locator('[data-mini]').count(), '| url cleaned:', await page.evaluate(() => location.search) === '');
+  await page.getByRole('button', { name: 'Close mini session' }).click(); await page.waitForTimeout(200);
+  await page.getByRole('button', { name: 'Settings' }).click(); await page.waitForTimeout(700);
+  console.log('trial without a card:', (await page.innerText('body')).match(/Trial — \d+ days? left/)?.[0]);
+  await page.getByPlaceholder('ACCESS CODE').fill('MAXTEST'); await page.getByRole('button', { name: 'Unlock' }).click(); await page.waitForTimeout(900);
+  console.log('member code unlock:', (await page.innerText('body')).includes('Unlocked — full access'));
+  for (const f of ['404.html', 'offline.html']) { await page.goto('http://localhost:8768/' + f); await page.waitForTimeout(300); console.log(f + ':', (await page.innerText('h1')).replace(/\n/g, ' '), '| link:', await page.getAttribute('a.btn', 'href')); await shot(f.replace('.html', '')); }
   await h.close();
-})().catch(async (e) => { console.error('FAIL', e.message.split('\n')[0]); if (page) await page.screenshot({ path: S + '/shots/a99-fail.png' }); process.exit(1); });
+})().catch(async (e) => { console.error('FAIL', e.stack.split('\n').filter((l) => /app.js/.test(l)).slice(0, 2).join(' | ') || e.message.split('\n')[0]); if (page) await page.screenshot({ path: S + '/shots/a99-fail.png' }); process.exit(1); });

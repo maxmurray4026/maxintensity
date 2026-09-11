@@ -33,6 +33,7 @@ const S = process.env.S || __dirname; require('fs').mkdirSync(S + '/shots', { re
   await tap("I've only got 40 min"); await page.waitForTimeout(600); await shot('demo-thinking'); await page.waitForTimeout(1500); await shot('demo-rebuilt');
   console.log('two-set copy:', (await page.innerText('body')).includes('working set and the back-off'));
   console.log('demo calls:', mock.calls.filter((c) => c.path === '/').length, 'tier hdr:', (mock.calls.find((c) => c.path === '/') || {}).headers?.['x-mi-tier']);
+  console.log('analytics so far:', Array.from(new Set(mock.calls.filter((c) => c.path === '/event').map((c) => c.body.e + (c.body.p && c.body.p.rank ? '(' + c.body.p.rank + ')' : '')))).join(', '));
   await tap("That's my coach"); await page.waitForTimeout(600); await shot('plan');
   console.log('plan loop:', (await page.innerText('body')).includes('ADD REPS'), '| scheme numbers gone:', !(await page.innerText('body')).includes('10 / 6 / 6 / 6'));
   await tap('Continue'); console.log(await step(), await q());

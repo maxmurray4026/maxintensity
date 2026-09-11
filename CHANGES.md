@@ -1,5 +1,84 @@
 # CHANGES
 
+## Round 4 — launch readiness
+
+**1 Meals, rebuilt.** Above the fold: the eyebrow, one calorie ring
+(`MI.Ring`, eaten / target, big number in the centre), protein, carbs and fat
+as three small bars beside it, and the LOG button. Nothing else. Under it,
+today's meals as cards (time, name, kcal, protein), swipe left to delete
+(`MI.SwipeRow`, touch or mouse), tap to edit (name, macros, time, big-meal
+flag), and a red star on the big meal (the one marked, else the largest at 600
+kcal or more). One line from the coach closes the page: the knowledge base's
+food-timing rules applied to right now (training day and not trained yet →
+carbs and protein 1–2 h before; trained → protein and carbs within two hours;
+no big meal by late afternoon → the one big meal; evening → protein and fats,
+with the protein shortfall in grams; rest day → same protein, ease the carbs).
+Everything else — your numbers and Recalc, the timing guide, approved foods,
+the one-big-meal rule, meal prep with the food file, saved meals, gain/cut
+meals, micronutrient snacks, my foods and the meal builder, the swap machine —
+lives behind PLAN. LOG opens a sheet with three tabs: Photo (live camera frame
+with a shutter, `MI.CameraFrame`, falling back to the device camera through a
+file input), Voice (below), Type (describe it and the coach estimates; add
+manually for free; saved meals as one-tap chips). Logging closes the sheet and
+the card appears.
+
+**2 Voice log, fixed.** One recorder per take (`MI.useRecorder` in
+`app/ui.jsx`): start acquires the microphone, records audio with MediaRecorder
+for playback, meters it into a live waveform (`MI.Waveform`) and runs speech
+recognition alongside for the transcript; stop releases the tracks, the audio
+context and the recogniser and resolves the take, so the next start is a clean
+new recording. Visible state line: Ready → Recording · 0:04 → Processing →
+Ready to log → Saved, then "Log another". The audio is stored on the entry as a
+data URL (dropped only if it would exceed 600 KB) and every card with a note
+has a ▶ Voice note button. The workout voice sheet uses the same recorder.
+Verified: two takes in a row, both entries kept, both notes report canplay.
+
+**3 "Not going gym today?"** On a training day with no session logged, from
+15:00 (`NUDGE_HOUR`): a notification through the service worker where alerts
+are on ("Not going gym today? Get two sets in.", opening `./?mini=1`), and the
+same banner in the app on Today and Train otherwise. Both open the two-set mini
+session: a ten-minute countdown, the day's main lift with its muscle figure,
+the work set and the back-off with weight and reps (work set pre-filled from
+last week, back-off at −10%), Log both sets. It writes the two sets into the
+day's log, saves the day to history as `mini: true` (streak lit, calendar dot),
+awards 20 XP and ends on "Two sets in." Dismissing holds it for the day. The
+deep link is read at script start so nothing can eat it first.
+
+**4 Launch readiness.**
+- PWA: `manifest.webmanifest` with `icon-192.png`, `icon-512.png` and a
+  maskable 512 (the arm mark on #050505 with the red ring, generated from the
+  logo), theme #050505, `id`, portrait. The service worker now caches the
+  shell on install (page, modules, scripts, manifest, icons, offline page):
+  navigations and same-origin scripts are network-first with the cache as
+  fallback, plates/icons/CDN scripts cache-first once seen, and with no
+  network and no cached page `offline.html` is served. Old caches are cleared
+  on activate. Notification clicks navigate an open window to the carried URL.
+- iPhone: first visit from Safari (not from the Home Screen) after onboarding
+  opens the two-step install sheet (`MI.InstallSheet`: Tap Share → Add to Home
+  Screen, drawn), shown once; the Today card keeps a "Show me how" link.
+- Custom-domain safe: no github.io or absolute app URLs in the source; every
+  link, script and asset path is relative; `start_url` and `scope` are `./`.
+- Analytics: `MI.track(event, props)` — funnel_step, rank_revealed,
+  trial_started, session_logged, meal_logged, wall_post (plus mini_opened).
+  Counted per day in `mi:mi-events` and POSTed to the worker's `/event` as
+  `{e, p, t, s, v}` with a random per-session id only — no handle, no email,
+  nothing persistent; honours Do Not Track / Global Privacy Control by staying
+  local. Worker contract: `POST /event` with the app token, reply `{ok}`.
+- Trial starts from the paywall with no card; the member code unlocks through
+  the worker's `x-mi-member` header (mocked in tests, verified end to end).
+- `404.html` and `offline.html`: styled, no raw browser errors, both link
+  home.
+
+**Verify.** Meals fold: ring card and LOG both inside 844 px; main page free
+of prep/foods/swaps; PLAN sheet carries them. LOG tabs Photo · Voice · Type;
+typed meal, shutter photo (live frame), two voice takes with live bars →
+processing → saved, both kept and playable, tap-to-edit, swipe-to-delete.
+Nudge banner → mini session → history `mini: true`; analytics event names and
+fields; `?mini=1` deep link; trial without a card; member code; 404 and
+offline pages. New `tests/sw.js`: shell cached (19 files), unknown page
+offline → offline.html, index offline → from cache. Full suite green with zero
+page errors.
+
 ## Round 3b — deep-red plates, plate-per-session, Train tab layout
 
 **1 Plate colour.** Every raster plate now renders in the deep-red treatment
