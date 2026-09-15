@@ -17,6 +17,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="rank-standards.js"></script>
 <script src="mi-projection.js"></script>
+<script src="coach-knowledge.js"></script>
 <script src="mi-ai.js"></script>
 <style>html,body{background:#0a0a0a;margin:0;overscroll-behavior-x:none}</style>
 </head>
@@ -40,7 +41,7 @@ window.storage = {
 var MI_SERVER = "https://maxintensity-ai.maxmurray4026.workers.dev";
 // Web push: set to the worker's VAPID public key (base64url) once the worker can send pushes.
 // Empty = alerts fire locally from the app through the service worker.
-window.MI_PUSH_PUBLIC_KEY = "";
+window.MI_PUSH_PUBLIC_KEY = "BHw6EBJf2YEoiX7G6KHBWopmQAwDb8ZVZsKOVV_CWiWtXBe2PXM2nZJCdyi6GBLwtE9p2m03Suv36CBv6Wn30Hw"; // VAPID public key (P-256, base64url); the worker holds the private key
 var MI_APP_TOKEN = "MI-2026-fj83nD92kLp47xWq95TbZ38vRy60Hs";
 var _fetch = window.fetch.bind(window);
 window.fetch = function(url, opts){
@@ -376,27 +377,14 @@ async function saveKey(key, value) {
 }
 
 // ---------- AI: coach ----------
-const COACH_KNOWLEDGE = `You are the Max Intensity coach — the training philosophy of a professional heavyweight fighter (boxing/Muay Thai). Speak direct, plain, motivating, no fluff.
-TRAINING PHILOSOPHY: The four pillars are intensity, progressive overload, form, and adequate volume. Muscle is metabolically expensive — the body only builds it when forced, so work sets are trained hard. 100% of muscle fibres are only recruited near failure; intensity beats volume (sprinters vs marathon runners). Form decides the target muscle: feel the squeeze, flex through the movement, exhale on the lift. Low volume, full rest between sets; once growth is stimulated, stop — more is just damage. Train priority muscles first in the session. Track everything and beat it.
-PROGRAM RULES: scheme 10/6/6/6 — two warm-up sets (10 then 6), one heavy work set at ~1 RIR, one back-off set at −10%. Tempo 3-1-3-1 on every rep. Rest 2–3 min heavy work (up to 5 if needed). Add ~2.5% load only where the work set hit 6 the previous week. Dips are bodyweight until cleared, then loaded. Week 6 deload: ~60% load, 2 sets.
-NUTRITION: 90% of eating well is what you don't eat — homemade over shop-bought. Staples: meat, dairy, fruit, veg. Eat early and often; don't fight snacking. No banned foods, one free day a week. Bulking: ~70/30 clean/dirty, homemade milkshakes, red meat and dairy priority, 20% mince, rice and potatoes. Cutting: protein and wholefoods first. Calculator: calories = bodyweight(lbs) × activity (13–22); protein = lbs × 0.82 g; fat = lbs × 0.45 g; carbs fill the rest; ±300–500 kcal to gain/lose.
-SUPPLEMENTS: creatine 5–10 g, protein powder, magnesium threonate 100 mg pre-bed, zinc up to 50 mg, vitamin D3 2000–4000 IU, omega-3 fish oil, optional pre-workout.
-SLEEP: cold room, salt + sugar + water pre-bed, strict wind-down, limit bright light, warm shower an hour before, reading/slow breathing.
-BREATHING: inhale on the eccentric (the lowering), exhale on the concentric drive — like exhaling on a punch.
-FREQUENCY & RECOVERY: muscle protein synthesis stays elevated ~48h after training; each muscle is hit ~2×/week; rest days are where growth happens — the rhythm is U1, L1, REST, U2, L2, REST, REST. Never advise doubling up after a missed day — pick the plan back up.
-SHORT ON TIME: keep work sets, drop back-offs, cut the last exercise — in that order.
-DIPS: prescribe ASSISTED machine dips — assistance so the 3-1-3-1 tempo stays strict; most people can't slow-tempo bodyweight dips.
-BEGINNERS: suggest conservative starting weights (err low — you can always add 2.5% next session, you can't un-injure a shoulder). Rough starts as a fraction of bodyweight: leg press ~1.0×, hip thrust ~0.6×, rows/pulldowns ~0.3×, presses ~0.25×, curls/triceps ~0.1×, laterals/flyes ~0.06× (women ~35% less to start). Own the tempo before the load.
-NUTRITION LAYERS: macros are the frame (hit daily portions), micros are the finish (recovery/hormones — colourful snacks), ingredients are the quality. 
-TEMPO: 3-1-3-1 — three seconds up, hold one, three seconds down, hold one. Constant tension, no momentum, the holds kill the bounce.
-FULL LESSON SET the coach teaches from: why low volume, why tempo, stimulus vs fatigue, why order matters, the work set is the session (+2.5% rule), one big meal a day, small steps beat nothing, frequency & 48h protein synthesis, what to skip when life happens, macros/micros/ingredients, guilt is the enemy.
-LOWER BACK & CORE: Barbell RDLs build hamstrings and lower back; Cable Crunch covers core — same 10/6/6/6 scheme.
-CARB & FOOD TIMING: carbs + protein 1–2h before training (rice, oats, potatoes, milk); protein + carbs within ~2h after; evening = protein + fats (eggs, yoghurt, sardines); rest days keep protein, ease carbs slightly — growth days not cheat days. Approved foods greenlist: beef mince, eggs, whole milk, sardines, mackerel, chicken thighs, liver, Greek yoghurt, cottage cheese, white rice, potatoes, oats, sourdough, bananas, berries, honey, butter, olive oil, avocado, nuts, dark chocolate, gelatin.
-PERFORMANCE: sleep is the recovery drug (cold room, wind-down, salt+sweet+water pre-bed); caffeine 45–60 min pre-session, none within 9h of bed, cycle off when tolerant; hydration — 2–3% dehydration measurably drops strength, salt food; arrive fed (carbs 1–2h out), warm-up sets are the warm-up.
-MINDSET: guilt is the enemy, not a bad day — one day on track after seven bad ones is improvement. Motto: streamlining health — everything simple, everything in one place; progress made easy.
-KEY PRINCIPLE: one solid ~1,000 kcal meal a day, five days a week, does most of the nutrition heavy lifting. Small steps beat nothing; progress is built one completed session at a time. Brand voice: serious training, zero intimidation — demanding but warm, direct, real. Never shame a missed day.
-STIMULUS: the main stimulus is TWO sets — the working set (~1 RIR) and the back-off set straight after it. Never say "one set is the session".
-INTERIM COACHING RULES: (1) When you lack information you need — their bodyweight, the load, how the last set felt, what they ate, how they slept — ask ONE specific question instead of guessing. (2) Nutrition: coach the TIMING of eating — carbs and protein 1–2 h before training, protein and carbs within ~2 h after, the one big meal — rather than prescribing specific foods; the approved-foods list is broad, not a menu, so accept the foods they already eat and time them. (3) Under-PR sessions: when a lift comes in below a previous best, explain that it is normal — fatigue, sleep, stress, a deload week, accumulated volume across the block — so they do not worry, and tell them exactly what to do next (finish the back-off, hold the load next session until it is 1 RIR again). (4) Priority requests are followed LITERALLY and IN ORDER: the first muscle they name goes first in the session, the second next; give one honest line and then do exactly what they asked.`;
+// The coach's knowledge and voice: docs/coach-knowledge.md, mirrored in coach-knowledge.js.
+// Program detail and the lesson set Max teaches from sit under it.
+const COACH_KNOWLEDGE = `You are the Max Intensity coach. ${(window.MI_KNOWLEDGE || {}).full || ""}
+PROGRAM DETAIL: two warm-up sets (10 then 6), one heavy work set at ~1 RIR, one back-off set at −10%, tempo 3-1-3-1 on every rep. Rest 2–3 min on heavy work (up to 5 if needed). Add ~2.5% only where the work set hit 6 the previous week. Dips are ASSISTED machine dips so the tempo stays strict; bodyweight until cleared, then loaded. Week 6 deload: ~60% load, 2 sets. Barbell RDLs cover hamstrings and lower back; Cable Crunch covers core; same scheme. Weekly rhythm: U1, L1, REST, U2, L2, REST, REST; each muscle ~2×/week; muscle protein synthesis stays elevated ~48 h, so rest days are where growth happens. Never advise doubling up after a missed day; pick the plan back up.
+BEGINNERS: err low on starting weights (you can add 2.5% next session; you can't un-injure a shoulder). Rough starts as a fraction of bodyweight: leg press ~1.0×, hip thrust ~0.6×, rows/pulldowns ~0.3×, presses ~0.25×, curls/triceps ~0.1×, laterals/flyes ~0.06× (women ~35% less to start). Own the tempo before the load.
+WHY IT WORKS (the lesson set): intensity, progressive overload, form and adequate volume; muscle is metabolically expensive and only built when forced, so the work set is trained hard; full fibre recruitment only happens near failure, so intensity beats volume; form decides the target muscle (feel the squeeze, flex through the movement); low volume with full rest, and once growth is stimulated, stop; order matters; breathing: inhale on the lowering, exhale on the drive, like exhaling on a punch.
+CALCULATOR: calories = bodyweight(lbs) × activity (13–22); protein = lbs × 0.82 g; fat = lbs × 0.45 g; carbs fill the rest; ±300–500 kcal to gain or lose. Bulking: ~70/30 clean/dirty, homemade milkshakes, red meat and dairy, 20% mince, rice and potatoes. Cutting: protein and wholefoods first. Macros are the frame, micros are the finish (colourful snacks), ingredients are the quality.
+RECOVERY: sleep is the recovery drug (cold room, wind-down, salt + sweet + water pre-bed, warm shower an hour before, no bright light). Caffeine 45–60 min pre-session, none within 9 h of bed. Hydration: 2–3% dehydration measurably drops strength; salt food. Supplements if wanted: creatine 5–10 g, protein powder, magnesium threonate 100 mg pre-bed, zinc up to 50 mg, vitamin D3 2000–4000 IU, omega-3.`;
 
 // Every AI call goes through MI_AI.call: same relay, same worker, plus the daily
 // usage cap (member / trial / free) counted client-side and sent as headers.
@@ -556,7 +544,7 @@ async function estimateFood(description, tier) {
   return window.MI_AI.call({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 300,
-    system: 'You estimate nutrition from a plain-text food description. Respond ONLY with raw JSON, no markdown fences: {"name":"short label","kcal":0,"protein":0,"carbs":0,"fat":0}. Whole-number estimates for the full portion described.',
+    system: 'You estimate nutrition from a plain-text food description for the Max Intensity coach: track the majors, not the minors, so sensible whole-number estimates beat precision. Respond ONLY with raw JSON, no markdown fences: {"name":"short label","kcal":0,"protein":0,"carbs":0,"fat":0}. Whole-number estimates for the full portion described.',
     messages: [{ role: "user", content: description }],
   }, tier, { feature: "food" });
 }
@@ -566,7 +554,7 @@ async function askSwaps(habit, goalLabel, tier) {
   return window.MI_AI.call({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 700,
-    system: `You are the Max Intensity swap machine. Philosophy: no banned foods, only smarter swaps — 90% of eating well is what you don't eat; homemade over shop-bought; keep it enjoyable so it's doable forever. User goal: ${goalLabel}. Given a food habit, suggest 2-4 practical swaps. UK context (e.g. blue milk = full fat, green = semi-skimmed, red = skimmed). Examples: lots of fizzy drinks -> diet/zero versions or not-from-concentrate juice cut with sparkling water; loads of heavy cream and full-fat milk on a cut -> green or red top milk; crisps -> beef jerky or popcorn. Respond ONLY with raw JSON, no markdown fences: {"swaps":[{"from":"the habit food","to":"the swap","why":"one short line"}]}`,
+    system: `You are the Max Intensity swap machine. ${(window.MI_KNOWLEDGE || {}).meals || ""} No banned foods, only smarter swaps: halve the bad stuff, diet drinks are a fine swap, spray don't pour, low-calorie sauces, volume foods on the plate, keep it enjoyable so it's doable forever. User goal: ${goalLabel}. Given a food habit, suggest 2-4 practical swaps. UK context (e.g. blue milk = full fat, green = semi-skimmed, red = skimmed). Examples: lots of fizzy drinks -> diet/zero versions or not-from-concentrate juice cut with sparkling water; loads of heavy cream and full-fat milk on a cut -> green or red top milk; crisps -> beef jerky or popcorn. Respond ONLY with raw JSON, no markdown fences: {"swaps":[{"from":"the habit food","to":"the swap","why":"one short line"}]}`,
     messages: [{ role: "user", content: habit }],
   }, tier, { feature: "swaps" });
 }
@@ -576,7 +564,7 @@ async function buildMealAI(likedFoods, remaining, goalLabel, tier) {
   return window.MI_AI.call({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 500,
-    system: `You build one specific, easy meal for the Max Intensity plan (goal: ${goalLabel}) using mostly foods the user likes: ${likedFoods.join(", ") || "anything"}. Roughly fit what's left of today's targets: ${JSON.stringify(remaining)} (kcal/protein/carbs/fat). Whole foods, homemade, simple. Respond ONLY with raw JSON, no markdown fences: {"name":"meal name","how":"one-line how to make it","kcal":0,"protein":0,"carbs":0,"fat":0}`,
+    system: `You build one specific, easy meal for the Max Intensity plan (goal: ${goalLabel}). ${(window.MI_KNOWLEDGE || {}).nutrition || ""} Make it the kind of big meal they look forward to, volume foods on the plate, flavour from spices, sauces kept light. Use mostly foods the user likes: ${likedFoods.join(", ") || "anything"}. Roughly fit what's left of today's targets: ${JSON.stringify(remaining)} (kcal/protein/carbs/fat). Whole foods, homemade, simple. Respond ONLY with raw JSON, no markdown fences: {"name":"meal name","how":"one-line how to make it","kcal":0,"protein":0,"carbs":0,"fat":0}`,
     messages: [{ role: "user", content: "Build me a meal." }],
   }, tier, { feature: "meal" });
 }
@@ -856,7 +844,8 @@ function MaxIntensityApp() {
       // web push subscription, when the worker has a key
       if (window.MI_PUSH_PUBLIC_KEY && "PushManager" in window) {
         const reg = await navigator.serviceWorker.ready;
-        const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: window.MI_PUSH_PUBLIC_KEY });
+        const keyStr = String(window.MI_PUSH_PUBLIC_KEY).replace(/-/g, "+").replace(/_/g, "/"); const pad = "=".repeat((4 - (keyStr.length % 4)) % 4); const keyBytes = Uint8Array.from(atob(keyStr + pad), (c) => c.charCodeAt(0));
+        const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes });
         try { await boardCall("POST", { handle: (handle || "").replace(/^@/, ""), push: sub.toJSON() }); } catch {}
       }
       const reg = await navigator.serviceWorker.ready;
@@ -1266,20 +1255,23 @@ function MaxIntensityApp() {
   /* One line from the coach on timing — the knowledge base's food-timing rules applied to right now. */
   const coachTip = (list, tot) => {
     const h = new Date().getHours();
-    const plan = todayPlanName();
-    const restDay = /^rest$/i.test(plan || "");
+    const restDay = /^rest$/i.test(todayPlanName() || "");
     const trained = !!history[todayKey()];
     const bigIn = bigMealIndex(list) >= 0;
     const pLeft = targets ? Math.max(0, targets.protein - Math.round(tot.protein)) : 0;
-    if (!restDay && !trained && h < 20) return "Training day: carbs and protein one to two hours before you lift. Rice, oats, potatoes, milk.";
-    if (trained && !list.some((e) => e.time && e.time >= String(h - 2).padStart(2, "0") + ":00") && h < 22) return "You trained. Protein and carbs within two hours: mince and rice, a shake and a banana. Refill now.";
-    if (!bigIn && h >= 15 && h < 20) return "The one big meal does the heavy lifting and yours isn't in yet. One solid plate, about a thousand calories.";
-    if (h >= 20 && pLeft > 30) return `Evening: protein and fats, not carbs. ${pLeft} g of protein short. Eggs, yoghurt or sardines cover it.`;
-    if (h >= 19) return "Evening: protein and fats. Eggs, yoghurt, sardines. Slow fuel for the 48-hour rebuild.";
-    if (restDay) return "Rest day: same protein, ease the carbs a touch. Growth day, not a cheat day.";
-    if (h < 11) return "Eat early. A real breakfast now beats a big catch-up later.";
-    return "Eat early and often. Don't fight snacking, just make it homemade.";
+    const over = targets && tot.kcal > targets.kcal * 1.15;
+    const recent = list.some((e) => e.time && e.time >= String(Math.max(0, h - 2)).padStart(2, "0") + ":00");
+    if (over) return "Big day on the plate. One meal changes nothing. Back on routine tomorrow, no guilt, don't punish tomorrow's food.";
+    if (!restDay && !trained && h < 20) return "Training day. Sugary drink around the session, carbs in straight after, then the big meal about an hour later.";
+    if (trained && !bigIn && !recent && h < 22) return "You trained. Carbs in as quick as you can, then the big meal about an hour after. Potatoes carry you into the evening.";
+    if (!bigIn && h >= 12 && h < 20) return "Big meal time. 3pm is the default: one plate you look forward to, potatoes to keep you full through the evening.";
+    if (h >= 20 && pLeft > 30) return `${pLeft} g of protein short. Yoghurt, eggs or the tuna backup. That's what stops a takeaway.`;
+    if (restDay && h < 12) return "Rest day: same big meal, no sugar around a workout you're not doing. Fill the plate with veg and fruit.";
+    if (h < 11) return "Plan the day now. Food's a planning problem, not a willpower one.";
+    if (h >= 20) return "Done for the day. Track the majors, not the minors; log the big meals and move on.";
+    return "Halve the bad stuff, spice the plain stuff, keep sauces light. Flavour is free.";
   };
+
   const addFood = async () => {
     const q = foodInput.trim();
     if (!q || estimating) return;
@@ -3484,10 +3476,10 @@ function MaxIntensityApp() {
                 <div className={card + " mt-3 p-4"}>
                   <p className="dp text-sm uppercase text-neutral-200">Timing — when to eat what</p>
                   <div className="mono mt-2 space-y-1.5 text-[11px]">
-                    <div className="flex justify-between gap-2"><span className="text-[#FF2B2B] shrink-0">1–2h BEFORE</span><span className="text-neutral-400 text-right">carbs + protein — rice, oats, potatoes, milk. Fuel the work set.</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-[#FF2B2B] shrink-0">AFTER</span><span className="text-neutral-400 text-right">protein + carbs within ~2h — mince & rice, shake & banana. Refill and rebuild.</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-[#FF2B2B] shrink-0">EVENING</span><span className="text-neutral-400 text-right">protein + fats — eggs, yoghurt, sardines. Slow fuel for the 48h rebuild.</span></div>
-                    <div className="flex justify-between gap-2"><span className="text-[#FF2B2B] shrink-0">REST DAYS</span><span className="text-neutral-400 text-right">same protein, ease the carbs slightly. Growth days, not cheat days.</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-[#FF2B2B] shrink-0">THE BIG MEAL</span><span className="text-neutral-400 text-right">one meal a day you look forward to — about an hour after training, or midday to 3pm (3pm is the default). Potatoes keep you full into the evening.</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-[#FF2B2B] shrink-0">TRAINING DAYS</span><span className="text-neutral-400 text-right">a sugary drink around the workout, then carbs in as quickly as you can after.</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-[#FF2B2B] shrink-0">REST DAYS</span><span className="text-neutral-400 text-right">same big meal, no sugar around a workout you're not doing.</span></div>
+                    <div className="flex justify-between gap-2"><span className="text-[#FF2B2B] shrink-0">EVERY DAY</span><span className="text-neutral-400 text-right">volume foods on the plate — any veg and fruit you like. Halve the bad stuff. Spices free, sauces light. One day a week for what you've been craving.</span></div>
                   </div>
                 </div>
 
@@ -3496,7 +3488,8 @@ function MaxIntensityApp() {
                   <p className="mt-0.5 text-[10px] text-neutral-500">The core greenlist first, then the wider list. It's broad on purpose — the coach cares about WHEN you eat, not a menu. Build 90% of your week from these.</p>
                   <div className="mono mt-2 flex flex-wrap gap-1.5 text-[10px]">
                     {["Beef mince", "Eggs", "Whole milk", "Sardines", "Mackerel", "Chicken thighs", "Liver (mixed in)", "Greek yoghurt", "Cottage cheese", "White rice", "Potatoes", "Oats", "Sourdough", "Bananas", "Berries", "Honey", "Butter", "Olive oil", "Avocado", "Nuts", "Dark chocolate", "Gelatin",
-                      "Steak", "Lamb", "Pork shoulder", "Bacon", "Chicken breast", "Turkey", "Salmon", "Tuna", "Prawns", "White fish", "Cheese", "Kefir", "Skyr", "Milk (any colour top)", "Protein powder", "Basmati", "Sweet potato", "Pasta", "Couscous", "Quinoa", "Bagels", "Wraps", "Rice cakes", "Apples", "Oranges", "Mango", "Grapes", "Dates", "Dried fruit", "Jam", "Maple syrup", "Peanut butter", "Hummus", "Olives", "Coconut milk", "Beans", "Lentils", "Chickpeas", "Tofu", "Edamame", "Frozen veg", "Salad bags", "Spinach", "Broccoli", "Carrots", "Onions", "Garlic", "Tomatoes (tinned)", "Peppers", "Mushrooms", "Pickles", "Sauerkraut", "Stock cubes", "Spices", "Hot sauce", "Soy sauce", "Mustard", "Popcorn", "Beef jerky", "Zero-sugar drinks", "Coffee", "Tea", "Sparkling water"].map((f2) => (
+                      "Steak", "Lamb", "Pork shoulder", "Bacon", "Chicken breast", "Turkey", "Salmon", "Tuna", "Prawns", "White fish", "Cheese", "Kefir", "Skyr", "Milk (any colour top)", "Protein powder", "Basmati", "Sweet potato", "Pasta", "Couscous", "Quinoa", "Bagels", "Wraps", "Rice cakes", "Apples", "Oranges", "Mango", "Grapes", "Dates", "Dried fruit", "Jam", "Maple syrup", "Peanut butter", "Hummus", "Olives", "Coconut milk", "Beans", "Lentils", "Chickpeas", "Tofu", "Edamame", "Frozen veg", "Salad bags", "Spinach", "Broccoli", "Carrots", "Onions", "Garlic", "Tomatoes (tinned)", "Peppers", "Mushrooms", "Pickles", "Sauerkraut", "Stock cubes", "Spices", "Hot sauce", "Soy sauce", "Mustard", "Popcorn", "Beef jerky", "Zero-sugar drinks", "Coffee", "Tea", "Sparkling water",
+                      "Sirloin tip", "Eye of round", "Top round", "Top sirloin", "Lean mince", "Spleen (30 g/wk)", "Shellfish", "A2 milk", "Goat milk", "Kombucha", "Coconut water", "Pineapple", "Oranges", "Melon", "Cucumber", "Plums", "Kiwi", "Papaya", "Mango", "Plantain", "Pomegranate", "Peaches", "Nectarines", "Grapefruit", "Limes", "Lemons", "Tomatoes", "Fruit juice"].map((f2) => (
                       <span key={f2} className="rounded-md border border-neutral-800 px-2 py-1 text-neutral-300">{f2}</span>
                     ))}
                   </div>

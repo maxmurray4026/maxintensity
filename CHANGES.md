@@ -1,5 +1,31 @@
 # CHANGES
 
+## Round 4b — the coach knowledge doc, web push keys
+
+**Coach knowledge.** Max's full knowledge and voice document is saved as
+`docs/coach-knowledge.md` and mirrored, condensed but faithful, in
+`coach-knowledge.js` (`window.MI_KNOWLEDGE`: voice, training, nutrition,
+retention, plus `core`, `coach` and `meals` composites). It replaces the
+round-2 interim rules everywhere: the chat coach (`COACH_KNOWLEDGE` now = the
+document + program detail, beginner starts, the lesson set, the calculator and
+recovery notes), the session editor and the coach demo (`coach` block), swaps
+(`core` + "keep the pattern, change the tool"), the photo assessment (`coach`
++ nutrition), meal prep, the meal builder and the swap machine (`meals` /
+`nutrition`), and the estimators (track the majors, not the minors). The
+Meals page follows the document too: the coach line now works from the big
+meal (about an hour after training, or midday to 3pm), the sugary drink and
+carbs-straight-after rule on training days, the tuna backup, the takeaway
+script on an over-target day, and "food is a planning problem"; the PLAN
+timing card carries the same rules and the approved-foods list gains the
+lean cuts, organ meats, shellfish, A2 and goat milk, kombucha and the fruit
+from Max's list. Program, exercise list, colours, fonts, the relay and how it
+is called are untouched.
+
+**Web push keys.** A P-256 VAPID pair was generated. The public key is
+`window.MI_PUSH_PUBLIC_KEY` (converted to bytes for `pushManager.subscribe`);
+the private key was written to `VAPID-PRIVATE.txt` in the repo root for Max to
+move into the worker, and that file is git-ignored and not committed.
+
 ## Round 4 — launch readiness
 
 **1 Meals, rebuilt.** Above the fold: the eyebrow, one calorie ring
