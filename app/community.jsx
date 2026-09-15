@@ -342,8 +342,8 @@ try {
                   {p.type === "transformation" && <MI.Plate plate="skeleton" opacity={0.08} />}
                   <div className="relative flex items-center gap-2">
                     <Badge r={p} />
-                    <p className="truncate text-xs font-semibold text-neutral-200">@{p.handle}</p>
-                    <span className="mono ml-auto shrink-0 text-[9px] uppercase tracking-wider text-neutral-600">{p.type}{p.level ? " · L" + p.level : ""}{p.streak ? " · " + p.streak + "d" : ""}</span>
+                    <p className="truncate text-xs font-semibold text-neutral-200">@{/^admin$/i.test(p.handle || "") ? "maxintensity" : p.handle}</p>
+                    <span className="mono ml-auto shrink-0 text-[9px] uppercase tracking-wider text-neutral-600">{/admin/i.test(p.type || "") ? "" : p.type}{p.level ? " · L" + p.level : ""}{p.streak ? " · " + p.streak + "d" : ""}</span>
                   </div>
                   {p.image && <img src={p.image} alt="" className="relative mt-3 max-h-72 w-full rounded-lg object-cover" />}
                   <p className="relative mt-2 text-sm leading-relaxed text-neutral-200">{p.text}</p>

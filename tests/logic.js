@@ -10,7 +10,7 @@ const { launch } = require('./harness'); const mock = require('./mock');
     const names = (p, d) => p.days.find((x) => x.name === d).exercises.map((e) => e.name);
     // glutes, then abs: glute work first, then the 10-min abs block, then the rest — on the leg days
     const ga = P(['glutes', 'abs']);
-    out.glutesThenAbs = names(ga, 'Legs 1');
+    out.glutesThenAbs = names(ga, 'Lower 1');
     const l1 = out.glutesThenAbs;
     out.glutesFirst = /hip thrust|glute|rdl|abductor/i.test(l1[0]);
     const absIdx = l1.findIndex((n) => /cable crunch|knee raise|plank/i.test(n));
@@ -19,17 +19,17 @@ const { launch } = require('./harness'); const mock = require('./mock');
     out.absBlockIsThree = l1.slice(absIdx, absIdx + 3).every((n) => /cable crunch|knee raise|plank/i.test(n));
     // abs first: the block leads
     const af = P(['abs', 'glutes']);
-    out.absFirst = names(af, 'Legs 1').slice(0, 3).every((n) => /cable crunch|knee raise|plank/i.test(n));
+    out.absFirst = names(af, 'Lower 1').slice(0, 3).every((n) => /cable crunch|knee raise|plank/i.test(n));
     // chest then arms: chest lift leads Upper 1, arm work follows, no shoulder press leaking in first
     const ca = P(['chest', 'arms']);
     const u1 = names(ca, 'Upper 1'); out.chestThenArms = u1;
     out.chestLeads = /incline dumbbell press|flye|fly|dips/i.test(u1[0]);
     // scheduler
     const S = window.MI_PROJ.scheduleWeek, V = window.MI_PROJ.scheduleValid;
-    out.wk4 = S(['Upper 1', 'Legs 1', 'Upper 2', 'Legs 2'], 4); out.wk4ok = V(out.wk4);
-    out.wk5 = S(['Legs 1', 'Upper 1', 'Legs 2', 'Upper 2', 'Glute Focus'], 5); out.wk5ok = V(out.wk5);
-    out.wk3 = S(['Upper 1', 'Legs 1', 'Upper 2', 'Legs 2'], 3); out.wk3ok = V(out.wk3);
-    out.gluteNotAdjacent = out.wk5ok && out.wk5.filter((d) => /leg|glute/i.test(d)).length === 3;
+    out.wk4 = S(['Upper 1', 'Lower 1', 'Upper 2', 'Lower 2'], 4); out.wk4ok = V(out.wk4);
+    out.wk5 = S(['Lower 1', 'Upper 1', 'Lower 2', 'Upper 2', 'Glute Focus'], 5); out.wk5ok = V(out.wk5);
+    out.wk3 = S(['Upper 1', 'Lower 1', 'Upper 2', 'Lower 2'], 3); out.wk3ok = V(out.wk3);
+    out.gluteNotAdjacent = out.wk5ok && out.wk5.filter((d) => /leg|lower|glute/i.test(d)).length === 3;
     return out;
   });
   console.log(JSON.stringify(r, null, 1));

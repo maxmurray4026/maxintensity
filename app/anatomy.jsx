@@ -20,6 +20,7 @@ try {
     arm: { file: A + "arm.jpg", lum: true, pos: "right 10%", size: "auto 150%" },
     musclesFront: { file: A + "muscles-front.jpg", lum: true, pos: "right 10%", size: "auto 150%" },
     musclesBack: { file: A + "muscles-back.jpg", lum: true, pos: "right 10%", size: "auto 150%" },
+    legsBack: { file: A + "legs-back.jpg", lum: true, pos: "right 30%", size: "auto 150%", optional: true },
     classroom: { file: A + "classroom.jpg", lum: true, pos: "center 40%", size: "cover" },
     hero: { file: A + "hero.jpg", lum: true, pos: "center 20%", size: "cover", clip: "inset(7%)" },
   };
@@ -58,7 +59,7 @@ try {
   /* One ink layer: a colour-filled box shrink-wrapped to the image, the image
      multiplied into it, the box screened onto whatever is behind. `geo` is the
      box's absolute geometry (or { cover: true } to fill the parent). */
-  const InkLayer = ({ file, geo, layer, opacity, clip, objectPosition }) => {
+  const InkLayer = ({ file, geo, layer, opacity, clip, objectPosition, overlay }) => {
     const box = geo.cover
       ? { position: "absolute", inset: 0 }
       : { position: "absolute", width: "max-content", display: "flex", justifyContent: geo.justify || "flex-end", height: geo.height, top: geo.top, bottom: geo.bottom, left: geo.left, right: geo.right, transform: geo.transform };
@@ -68,6 +69,12 @@ try {
     return (
       <div aria-hidden style={{ ...box, background: layer.fill, mixBlendMode: "screen", opacity: Math.min(1, opacity * layer.op), overflow: "hidden", clipPath: clip, WebkitClipPath: clip }}>
         <img src={file} alt="" aria-hidden draggable={false} style={{ ...img, filter: layer.filter, mixBlendMode: "multiply" }} />
+        {overlay && MI.REGIONS && MI.REGIONS[overlay.plate] && (
+          <svg viewBox={`0 0 ${MI.REGIONS[overlay.plate].W} ${MI.REGIONS[overlay.plate].H}`} preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} aria-hidden>
+            <defs><linearGradient id="mi-hero-red" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#FF2B2B" /><stop offset="1" stopColor="#A11B1B" /></linearGradient></defs>
+            {(overlay.regions || []).flatMap((n) => (MI.REGIONS[overlay.plate][n] || []).map((pts, i) => <polygon key={n + i} points={pts} fill="url(#mi-hero-red)" fillOpacity="0.62" stroke="#FF2B2B" strokeOpacity="0.9" strokeWidth="1.2" strokeLinejoin="round" />))}
+          </svg>
+        )}
       </div>
     );
   };
@@ -106,17 +113,17 @@ try {
      and Glute Focus → the lower half of the back view (glutes, hamstrings,
      calves). Upper 1 → the back-and-arm torso. Upper 2 → chest and shoulders. */
   MI.SESSION_PLATES = {
-    "legs 1": { plate: "legs", h: 165, x: -14, y: -28 },
-    "legs 2": { plate: "musclesBack", h: 270, x: -10, y: -140 },
-    "glute focus": { plate: "musclesBack", h: 270, x: -10, y: -112 },
+    "lower 1": { plate: "legs", h: 165, x: -14, y: -28, highlight: { plate: "legs", regions: ["quads"] } },
+    "lower 2": { plate: "musclesBack", h: 270, x: -10, y: -140, highlight: { plate: "back", regions: ["glutes", "hamstrings"] } },
+    "glute focus": { plate: "musclesBack", h: 270, x: -10, y: -112, highlight: { plate: "back", regions: ["glutes", "hamstrings"] } },
     "upper 1": { plate: "hero", h: 175, x: -6, y: -34 },
-    "upper 2": { plate: "musclesFront", h: 255, x: -12, y: -4 },
+    "upper 2": { plate: "musclesFront", h: 255, x: -12, y: -4, highlight: { plate: "front", regions: ["chest", "shoulders"] } },
   };
   MI.sessionPlate = (dayName) => {
     const d = (dayName || "").toLowerCase().trim();
     if (MI.SESSION_PLATES[d]) return MI.SESSION_PLATES[d];
     if (/glute/.test(d)) return MI.SESSION_PLATES["glute focus"];
-    if (/leg/.test(d)) return MI.SESSION_PLATES[/2/.test(d) ? "legs 2" : "legs 1"];
+    if (/leg|lower/.test(d)) return MI.SESSION_PLATES[/2/.test(d) ? "lower 2" : "lower 1"];
     if (/arm|back|pull/.test(d)) return MI.SESSION_PLATES["upper 1"];
     if (/chest|push|shoulder/.test(d)) return MI.SESSION_PLATES["upper 2"];
     return MI.SESSION_PLATES[/2/.test(d) ? "upper 2" : "upper 1"];
@@ -154,7 +161,7 @@ try {
   /* The plate is an <img> so its paper frame can be clipped away (inset 3.5%),
      sized as a % of the container height (h), bled off the right (x, negative =
      past the edge) or the bottom (side="bottom", y negative = past the edge). */
-  MI.Hero = ({ plate, opacity = 0.85, side = "right", h = 110, x = -30, y = 4, flip, className, tone, grad: gradOn = true }) => {
+  MI.Hero = ({ plate, opacity = 0.85, side = "right", h = 110, x = -30, y = 4, flip, className, tone, grad: gradOn = true, highlight }) => {
     const p = typeof plate === "object" && plate ? plate : (MI.PLATES[plate] || MI.PLATES.hero);
     const geo = side === "bottom"
       ? { height: h + "%", left: "50%", bottom: y + "%", transform: "translateX(-50%)" + (flip ? " scaleX(-1)" : ""), justify: "center" }
@@ -165,7 +172,7 @@ try {
       : "linear-gradient(90deg, rgba(5,5,5,.96) 0%, rgba(5,5,5,.78) 36%, rgba(5,5,5,0) 66%)";
     return (
       <div aria-hidden className={"pointer-events-none absolute inset-0 overflow-hidden " + (className || "")}>
-        {layers.map((L, i) => <InkLayer key={i} file={p.file} geo={geo} layer={L} opacity={opacity} clip={p.clip || "inset(3.5%)"} />)}
+        {layers.map((L, i) => <InkLayer key={i} file={p.file} geo={geo} layer={L} opacity={opacity} clip={p.clip || "inset(3.5%)"} overlay={i === layers.length - 1 && highlight && MI.REGIONS && MI.REGIONS[highlight.plate] && MI.REGIONS[highlight.plate].file === p.file ? highlight : null} />)}
         {gradOn && <div className="absolute inset-0" style={{ background: grad }} />}
       </div>
     );

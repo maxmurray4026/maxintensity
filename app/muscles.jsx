@@ -17,45 +17,47 @@ try {
   const mirror = (poly, W) => poly.split(" ").map((pt) => { const [x, y] = pt.split(",").map(Number); return (W - x) + "," + y; }).join(" ");
   const both = (poly, W) => [poly, mirror(poly, W)];
   const F = 295, B = 223, L = 295;
+  /* Traced on a 25px grid over each plate (see docs: tests/scratch grids). The
+     polygons follow the drawn muscle bellies, not the limb outlines. */
   MI.REGIONS = {
     front: {
       file: A + "muscles-front.jpg", W: 295, H: 500,
-      chest: both("104,104 150,100 150,152 122,158 100,140", F),
-      shoulders: both("74,96 104,102 100,140 78,146 62,122", F),
-      biceps: both("64,146 96,142 92,200 66,206 56,176", F),
-      forearms: both("52,208 92,202 86,262 46,268 40,236", F),
-      abs: ["126,152 172,152 176,246 148,262 122,246"],
-      obliques: both("100,150 122,158 122,246 106,240 96,200", F),
-      quads: both("100,254 146,258 146,352 118,362 96,318", F),
-      adductors: both("146,258 160,262 152,320 146,352", F),
-      calves: both("104,390 140,392 138,466 108,466 100,430", F),
-      tibialis: both("112,392 134,392 130,462 112,460", F),
+      chest: both("147,106 120,104 102,116 98,138 108,152 128,158 147,152", F),
+      shoulders: both("82,98 104,102 108,116 104,134 90,142 78,132 76,112", F),
+      biceps: both("84,140 104,136 100,190 86,204 72,196 70,160", F),
+      forearms: both("72,198 100,192 92,250 70,268 50,266 46,236", F),
+      abs: ["128,152 166,152 170,200 168,246 148,262 128,246 124,200"],
+      obliques: both("100,150 126,158 124,246 108,242 96,200", F),
+      quads: both("100,250 146,252 150,300 146,352 118,364 96,320", F),
+      adductors: both("146,256 166,262 160,300 150,340 146,300", F),
+      calves: both("104,388 140,386 142,430 134,468 108,468 98,430", F),
+      tibialis: both("112,392 134,394 130,462 112,460", F),
     },
     back: {
       file: A + "muscles-back.jpg", W: 223, H: 372,
-      traps: ["82,56 141,56 156,108 112,134 66,108"],
-      rearDelts: both("58,76 80,72 84,104 64,110 52,92", B),
-      lats: both("70,110 112,134 112,196 84,192 66,150", B),
-      lowerBack: ["96,150 128,150 132,198 92,198"],
-      triceps: both("50,108 74,110 70,160 50,164 44,136", B),
-      forearms: both("44,166 70,162 66,214 42,218 36,190", B),
-      glutes: both("80,190 112,196 112,236 84,238 70,214", B),
-      hamstrings: both("84,240 110,240 108,306 84,306 78,270", B),
-      calves: both("84,310 108,308 106,352 86,352 80,330", B),
+      traps: ["90,74 132,74 150,104 126,136 111,146 96,136 72,104"],
+      rearDelts: both("56,78 84,76 88,102 76,116 58,110 50,94", B),
+      lats: both("68,112 104,128 106,160 100,196 84,196 66,160 62,132", B),
+      lowerBack: ["98,150 124,150 128,196 94,196"],
+      triceps: both("50,108 74,110 70,160 50,166 44,138", B),
+      forearms: both("44,166 70,162 68,214 42,220 34,192", B),
+      glutes: both("80,190 111,196 111,238 86,240 70,216", B),
+      hamstrings: both("82,240 110,240 108,306 84,308 76,272", B),
+      calves: both("82,312 110,310 108,352 86,354 78,332", B),
     },
     legs: {
       file: A + "legs.jpg", W: 295, H: 500,
-      abductors: both("58,44 96,52 92,116 66,120 52,84", L),
-      quads: both("70,70 132,74 138,214 100,222 62,180", L),
-      adductors: both("120,74 146,72 148,160 132,160 118,120", L),
-      hamstrings: both("62,150 76,200 74,230 60,220", L),
-      calves: both("70,262 128,258 128,400 84,404 64,340", L),
-      tibialis: both("96,258 130,258 128,400 104,400", L),
+      abductors: both("56,40 96,48 90,100 62,110 50,80", L),
+      quads: both("70,44 132,48 140,120 136,210 100,222 64,190 58,110", L),
+      adductors: both("128,60 148,64 148,150 134,160 122,120", L),
+      hamstrings: both("60,150 74,200 72,230 58,220", L),
+      calves: both("64,268 84,262 88,330 82,392 66,384 58,330", L),
+      tibialis: both("96,262 130,260 126,400 104,400", L),
       glutes: both("58,0 120,0 116,44 62,46", L),
     },
     arm: {
       file: A + "arm.jpg", W: 295, H: 500,
-      shoulders: ["112,34 200,30 240,96 198,150 128,134 108,84"],
+      shoulders: ["118,34 200,30 236,96 200,150 130,134 106,86"],
       chest: ["20,30 112,34 108,84 60,150 24,120"],
       biceps: ["150,150 214,146 236,236 204,300 166,286 148,220"],
       triceps: ["206,116 246,112 262,190 250,270 224,296 236,236"],
@@ -98,7 +100,7 @@ try {
     { m: /leg curl/i, plate: "back", primary: ["hamstrings"], secondary: ["calves"], cues: ["Hips pinned to the pad.", "Curl to a full squeeze and hold for one.", "Three seconds back to nearly straight — control the stretch."] },
     { m: /leg press/i, plate: "legs", primary: ["quads", "glutes"], secondary: ["adductors", "calves"], cues: ["Feet mid-platform, shoulder width, heels planted.", "Lower for three until the thighs are near the chest — hips stay on the seat.", "Press through the whole foot; never lock the knees hard."] },
     { m: /extension/i, plate: "legs", primary: ["quads"], secondary: [], cues: ["Pad on the shins just above the ankle.", "Extend to a full squeeze and hold for one — flex the quad.", "Three seconds down, don't let the stack touch."] },
-    { m: /calf/i, plate: "legs", primary: ["calves"], secondary: ["tibialis"], cues: ["Balls of the feet on the edge, heels dropped to a full stretch.", "Rise as high as possible and hold for one.", "Three seconds down — the stretch is half the rep."] },
+    { m: /calf/i, plate: "back", primary: ["calves"], secondary: [], cues: ["Balls of the feet on the edge, heels dropped to a full stretch.", "Rise as high as possible and hold for one.", "Three seconds down — the stretch is half the rep."] },
     { m: /adductor/i, plate: "legs", primary: ["adductors"], secondary: [], cues: ["Sit tall, pads inside the knees.", "Squeeze the legs together and hold for one.", "Three seconds back out to a comfortable stretch."] },
     { m: /abductor/i, plate: "legs", primary: ["abductors", "glutes"], secondary: [], cues: ["Lean forward slightly to load the glutes.", "Push the knees out wide and hold for one.", "Three seconds back in — don't let the stack drop."] },
     { m: /squat|lunge|split squat/i, plate: "legs", primary: ["quads", "glutes"], secondary: ["hamstrings", "adductors"], cues: ["Brace, chest up, knees track over the toes.", "Three seconds down to parallel or below.", "Drive up through the whole foot."] },
@@ -119,9 +121,9 @@ try {
   };
 
   /* ---- the figure: plate texture (deep red, see MI.TONES) + red-filled regions ---- */
-  MI.MuscleFigure = ({ plate = "front", primary = [], secondary = [], className, style, labels, plateOpacity = 0.55 }) => {
+  MI.MuscleFigure = ({ plate = "front", primary = [], secondary = [], className, style, labels, plateOpacity = 0.32 }) => {
     const R = MI.REGIONS[plate] || MI.REGIONS.front;
-    const poly = (name, fill, op, k) => (R[name] || []).map((pts, i) => <polygon key={name + i + k} points={pts} fill={fill} fillOpacity={op} stroke="#FF2B2B" strokeOpacity={op + 0.1} strokeWidth="1.2" strokeLinejoin="round" />);
+    const poly = (name, fill, op, k) => (R[name] || []).map((pts, i) => <polygon key={name + i + k} points={pts} fill={fill} fillOpacity={op} stroke="#A11B1B" strokeOpacity={Math.min(1, op + 0.15)} strokeWidth="1" strokeLinejoin="round" />);
     return (
       <div className={"relative overflow-hidden bg-[#0d0d0d] " + (className || "")} style={{ aspectRatio: `${R.W} / ${R.H}`, ...(style || {}) }}>
         {MI.TONES.red.map((L, i) => (
@@ -130,8 +132,9 @@ try {
           </div>
         ))}
         <svg viewBox={`0 0 ${R.W} ${R.H}`} className="absolute inset-0 h-full w-full" preserveAspectRatio="none" aria-hidden>
-          {secondary.map((n) => poly(n, "#FF2B2B", 0.38, "s"))}
-          {primary.map((n) => poly(n, "#FF2B2B", 0.78, "p"))}
+          <defs><linearGradient id="mi-muscle-red" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#A11B1B" /><stop offset="1" stopColor="#7A1414" /></linearGradient></defs>
+          {secondary.map((n) => poly(n, "url(#mi-muscle-red)", 0.45, "s"))}
+          {primary.map((n) => poly(n, "url(#mi-muscle-red)", 0.92, "p"))}
           {labels && [...primary, ...secondary].map((n) => (R[n] || []).slice(0, 1).map((pts) => {
             const c = pts.split(" ").map((p) => p.split(",").map(Number));
             const cx = c.reduce((t, p) => t + p[0], 0) / c.length, cy = c.reduce((t, p) => t + p[1], 0) / c.length;

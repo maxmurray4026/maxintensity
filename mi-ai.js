@@ -146,6 +146,16 @@
     }, o.tier, { feature: "mealprep" });
   }
 
+  /* ---- Plan my week: one big meal a day around Max's rules, a quick breakfast, snacks. ---- */
+  function weekPlan(o) {
+    var p = o.prefs || {};
+    return call({
+      model: MODEL_FAST, max_tokens: 3500,
+      system: "You build a weekly meal plan for the Max Intensity coach. " + MEALS + " Build SEVEN days (Mon..Sun). Each day: ONE BIG MEAL (the star of the day, about 800-1100 kcal per serve, cooked on the member's cook days and eaten as leftovers on the days between), a quick breakfast (Max's default: 200-300 g 0% Greek yogurt with 100-200 g fruit) and 1-2 snacks from the approved foods. UK supermarket: " + (p.shop || "any") + ". Cooking for " + (p.people || 1) + ". Cook days: " + ((p.cookDays || []).join(", ") || "Sun, Wed") + ". Budget £" + (p.budget || 60) + " for the week. Moods: " + ((p.moods || []).join(", ") || "none") + ". Appliances: " + ((p.appliances || []).join(", ") || "any") + ". Diet: " + (p.diet || "none") + ". Allergies: " + (p.allergies || "none") + ". Targets: " + JSON.stringify(o.targets || {}) + ". Goal: " + (o.goal || "") + ". Spices are free, sauces low-calorie, halve the bad stuff, volume veg on the plate. Respond ONLY with raw JSON, no fences: {\"days\":[{\"key\":\"Mon\",\"cook\":true,\"big\":{\"name\":\"\",\"tag\":\"one of the moods\",\"kcal\":0,\"protein\":0,\"carbs\":0,\"fat\":0,\"time\":0,\"serves\":0,\"cost\":0.0,\"ingredients\":[{\"name\":\"\",\"qty\":0,\"unit\":\"g\",\"aisle\":\"Fruit & veg|Meat & fish|Dairy & eggs|Bakery|Rice, pasta & grains|Tins & jars|Frozen|Spices & sauces|Drinks\"}],\"steps\":[\"\"],\"leftover\":false},\"breakfast\":{same shape},\"snacks\":[{same shape, no steps}]}]}",
+      messages: [{ role: "user", content: "Plan my week." }],
+    }, o.tier, { feature: "weekplan" });
+  }
+
   /* ---- Meal from a photo (vision). ---- */
   function mealPhoto(o) {
     var content = [{ type: "image", source: { type: "base64", media_type: o.mediaType || "image/jpeg", data: o.image.replace(/^data:[^,]+,/, "") } }];
@@ -193,6 +203,7 @@
     photoAssess: photoAssess,
     mealPrep: mealPrep,
     mealPhoto: mealPhoto,
+    weekPlan: weekPlan,
     mealVoice: mealVoice,
     workoutVoice: workoutVoice,
   };

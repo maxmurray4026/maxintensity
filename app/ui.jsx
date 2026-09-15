@@ -89,6 +89,11 @@ window.MI = window.MI || {};
         g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t0 + dur);
         o.start(ctx.currentTime + t0); o.stop(ctx.currentTime + t0 + dur + 0.05);
       };
+      if (kind === "unlock") {
+        if (ctx.state !== "running") { try { ctx.close(); } catch (e) {} return; }
+        note(1900, 0, 0.035, 0.1, "square"); note(650, 0.1, 0.06, 0.16, "square"); note(1300, 0.15, 0.05, 0.07, "square");
+        return;
+      }
       if (kind === "pr") { note(523.25, 0, 0.18, 0.16); note(659.25, 0.12, 0.18, 0.16); note(783.99, 0.24, 0.22, 0.18); note(1046.5, 0.36, 0.55, 0.2); note(1568, 0.4, 0.35, 0.05, "sine"); }
       else if (kind === "rankup") { note(392, 0, 0.25, 0.14); note(523.25, 0.2, 0.25, 0.16); note(659.25, 0.4, 0.3, 0.18); note(783.99, 0.6, 0.9, 0.2); note(1567.98, 0.7, 0.6, 0.05, "sine"); }
       else if (kind === "ignite") { note(110, 0, 0.6, 0.18, "sawtooth"); note(220, 0.05, 0.5, 0.1, "square"); note(880, 0.1, 0.25, 0.04, "sine"); }

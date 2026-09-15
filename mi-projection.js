@@ -13,7 +13,8 @@
 
   /* ---- plan naming by outcome. Never "General". ---- */
   var PLAN_NAMES = {
-    "Lose fat + build muscle": { name: "RECOMP", line: "Built to swap fat for muscle — the scale barely moves, the mirror does.", short: "Recomp" },
+    "lean_defined": { name: "LEAN & DEFINED", line: "Built to lose fat, build muscle and look toned — the scale barely moves, the mirror does.", short: "Lean" },
+    "Lose fat + build muscle": { name: "LEAN & DEFINED", line: "Built to lose fat, build muscle and look toned — the scale barely moves, the mirror does.", short: "Lean" },
     "Build muscle": { name: "MASS GAINER", line: "Built to add size where you want it.", short: "Mass" },
     "Lose fat": { name: "SHREDDER", line: "Built to drop the weight and keep the strength.", short: "Shred" },
     "More athletic": { name: "ATHLETE", line: "Built to make you faster, fitter and harder to tire out.", short: "Athlete" },
@@ -98,7 +99,7 @@
   function round2p5(v, on) { return on ? Math.round(v / 1.25) * 1.25 : Math.round(v * 10) / 10; }
 
   /* ---- Bodyweight curve. Rates are per week, as a share of bodyweight. ---- */
-  var BW_RATE = { "Lose fat": -0.006, "Build muscle": 0.0025, "More athletic": -0.002, "Lose fat + build muscle": -0.0015 };
+  var BW_RATE = { "Lose fat": -0.006, "Build muscle": 0.0025, "More athletic": -0.002, "Lose fat + build muscle": -0.0015, "lean_defined": -0.0015 };
   function bodyweightCurve(startKg, goal, weeks) {
     var s = Number(startKg) || 0, r = BW_RATE[goal] != null ? BW_RATE[goal] : 0;
     var n = weeks || 6, pts = [];
@@ -146,7 +147,7 @@
     return {
       metric: "lift", key: "bench", label: "Bench press", unit: "kg", points: lc,
       start: lc[0].v, at3: lc[3].v, at6: lc[6].v,
-      caption: goal === "Lose fat + build muscle"
+      caption: (goal === "Lose fat + build muscle" || goal === "lean_defined")
         ? "Recomp: the bar goes up while the scale barely moves. +2.5% every session the working set clears 6. Realistic, not a fantasy."
         : "+2.5% every session the working set clears 6. Two weeks to set the loads, three to move them, one to deload. Realistic, not a fantasy.",
     };

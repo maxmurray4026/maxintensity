@@ -22,12 +22,40 @@
 <style>html,body{background:#0a0a0a;margin:0;overscroll-behavior-x:none}</style>
 </head>
 <body>
-<div id="root">
-  <div style="color:#777;font-family:monospace;padding:2.5rem 1.5rem;font-size:14px">Loading Max Intensity&hellip;<br/><br/>If this stays more than 10 seconds, check your connection and pull down to refresh.</div>
+<div id="root"></div>
+<!-- splash: the red padlock. Closed while the app loads, springs open when it's ready. -->
+<div id="splash" aria-hidden="true">
+  <svg viewBox="0 0 120 150" width="168" height="210">
+    <path id="shackle" d="M35 70 V46 a25 25 0 0 1 50 0 V70" fill="none" stroke="#FF2B2B" stroke-width="13" stroke-linecap="round"/>
+    <rect x="18" y="68" width="84" height="70" rx="12" fill="#FF2B2B"/>
+    <circle cx="60" cy="98" r="8" fill="#050505"/><rect x="56.5" y="98" width="7" height="18" rx="3.5" fill="#050505"/>
+  </svg>
 </div>
+<style>
+#splash{position:fixed;inset:0;z-index:10000;background:#050505;display:flex;align-items:center;justify-content:center;transition:opacity .5s ease .5s}
+#splash.open{opacity:0;pointer-events:none}
+#splash svg{transform-origin:50% 62%;animation:mi-idle 1.8s ease-in-out infinite}
+#splash.open svg{animation:mi-pop .7s cubic-bezier(.2,1.5,.35,1) both}
+#shackle{transform-origin:85px 70px;transition:transform .38s cubic-bezier(.2,1.7,.4,1) .05s}
+#splash.open #shackle{transform:translateY(-16px) rotate(-22deg)}
+#splash.open::after{content:"";position:absolute;inset:0;background:#FF2B2B;animation:mi-flash .4s ease-out both}
+@keyframes mi-idle{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+@keyframes mi-pop{0%{transform:scale(1)}45%{transform:scale(1.16)}100%{transform:scale(1.03)}}
+@keyframes mi-flash{0%{opacity:.5}100%{opacity:0}}
+@media (prefers-reduced-motion: reduce){#splash svg,#splash.open svg{animation:none}#shackle{transition:none}}
+</style>
+<script>
+window.MI_unlock = function () {
+  var s = document.getElementById("splash"); if (!s || s.classList.contains("open")) return;
+  s.classList.add("open");
+  try { window.MI && window.MI.sound && window.MI.sound("unlock"); } catch (e) {}
+  setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 1400);
+};
+setTimeout(function () { window.MI_unlock(); }, 20000); // never leave anyone locked out if something upstream stalls
+</script>
 <div id="errbox" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#7f1d1d;color:#fff;font-family:monospace;font-size:12px;padding:12px;z-index:9999;word-break:break-word"></div>
 <script>
-function showErr(msg){ var b=document.getElementById("errbox"); b.style.display="block"; b.textContent="Error: "+msg; }
+function showErr(msg){ var b=document.getElementById("errbox"); b.style.display="block"; b.textContent="Error: "+msg; try { window.MI_unlock(); } catch (e) {} }
 window.onerror = function(msg, s, line){ if (String(msg).indexOf("Script error") !== -1) return; showErr(msg + " (line " + line + ")"); };
 window.addEventListener("unhandledrejection", function(e){ showErr(e.reason && e.reason.message ? e.reason.message : String(e.reason)); });
 
@@ -41,6 +69,9 @@ window.storage = {
 var MI_SERVER = "https://maxintensity-ai.maxmurray4026.workers.dev";
 // Web push: set to the worker's VAPID public key (base64url) once the worker can send pushes.
 // Empty = alerts fire locally from the app through the service worker.
+// Pricing, trial length and the pre-selected plan live in pricing.json (Max sets the experiment there).
+window.MI_PRICING = { symbol: "£", monthly: 30, yearly: 240, human: 200, trialDays: 7, preselected: "yearly" };
+try { var px = new XMLHttpRequest(); px.open("GET", "pricing.json", false); px.send(null); if (px.status === 200) Object.assign(window.MI_PRICING, JSON.parse(px.responseText)); } catch (e) {}
 window.MI_PUSH_PUBLIC_KEY = "BHw6EBJf2YEoiX7G6KHBWopmQAwDb8ZVZsKOVV_CWiWtXBe2PXM2nZJCdyi6GBLwtE9p2m03Suv36CBv6Wn30Hw"; // VAPID public key (P-256, base64url); the worker holds the private key
 var MI_APP_TOKEN = "MI-2026-fj83nD92kLp47xWq95TbZ38vRy60Hs";
 var _fetch = window.fetch.bind(window);
@@ -68,6 +99,7 @@ window.fetch = function(url, opts){
 <script type="text/babel" data-presets="env,react" src="app/progress.jsx"></script>
 <script type="text/babel" data-presets="env,react" src="app/muscles.jsx"></script>
 <script type="text/babel" data-presets="env,react" src="app/calendar.jsx"></script>
+<script type="text/babel" data-presets="env,react" src="app/mealplan.jsx"></script>
 <script type="text/babel" data-presets="env,react">
 try {
 const { useState, useEffect, useRef } = React;
@@ -106,7 +138,7 @@ const DEFAULT_PROGRAM = {
         ex("Assisted Dips (machine)", "use assistance — a strict 3-1-3-1 beats bodyweight bounce"),
       ],
     },
-    { name: "Legs 1", exercises: LEG_DAY.map((e) => ({ ...e })) },
+    { name: "Lower 1", exercises: LEG_DAY.map((e) => ({ ...e })) },
     {
       name: "Upper 2",
       exercises: [
@@ -118,7 +150,7 @@ const DEFAULT_PROGRAM = {
         ex("Tricep Cable Crossovers", "on the stand"),
       ],
     },
-    { name: "Legs 2", exercises: LEG_DAY.map((e) => ({ ...e })) },
+    { name: "Lower 2", exercises: LEG_DAY.map((e) => ({ ...e })) },
   ],
 };
 DEFAULT_PROGRAM.days[1].exercises.push(ex("Barbell RDL", "hinge, flat back — hamstrings & lower back"));
@@ -185,6 +217,7 @@ function remapLogs(oldProg, newProg, logs) {
 function migrateProgram(p) {
   try {
     if (!p || !p.days) return p;
+    p.days.forEach((d) => { d.name = lowerName(d.name); });
     p.days.forEach((d) => {
       d.exercises = (d.exercises || []).filter((e) => !/sissy/i.test(e.name || ""));
       const hasCross = d.exercises.some((e) => /cable crossover/i.test(e.name || ""));
@@ -205,7 +238,7 @@ function migrateProgram(p) {
       }
     });
     const allEx = p.days.flatMap((d) => d.exercises.map((e) => (e.name || "").toLowerCase()));
-    const legDays = p.days.filter((d) => /leg/i.test(d.name || ""));
+    const legDays = p.days.filter((d) => /leg|lower/i.test(d.name || ""));
     if (legDays[0] && !allEx.some((n) => n.includes("rdl") || n.includes("romanian"))) {
       legDays[0].exercises.push({ name: "Barbell RDL", scheme: [10, 6, 6, 6], note: "hinge, flat back — hamstrings & lower back", tempo: "3-1-3-1", rest: "2–3 min" });
     }
@@ -245,11 +278,38 @@ const PERF_LESSONS = [
 const MOTTO = "Streamlining health — everything simple, everything in one place. Progress made easy.";
 
 const BREATH = "Exhale on the press — like throwing a punch. Breathe in on the way down.";
-const WEEK_RHYTHM = ["Upper 1", "Legs 1", "REST", "Upper 2", "Legs 2", "REST", "REST"];
+const WEEK_RHYTHM = ["Upper 1", "Lower 1", "REST", "Upper 2", "Lower 2", "REST", "REST"];
 const rhythmFor = (split) => (split === "legglute"
-  ? ["Legs 1", "Upper 1", "REST", "Legs 2", "Upper 2", "Glute Focus", "REST"]
+  ? ["Lower 1", "Upper 1", "REST", "Lower 2", "Upper 2", "Glute Focus", "REST"]
   : WEEK_RHYTHM);
-const TRIAL_DAYS = 7;
+// Round 5: the at-home version of every exercise — same structure, same rules,
+// dumbbells, a chair, a band and bodyweight. Used for "No gym today" and the home block.
+const HOME_MAP = [
+  [/incline dumbbell press|dumbbell press|bench|chest press/i, "Floor Press or Push-up (feet raised)", "dumbbells on the floor, or push-ups with feet on a chair — 3-1-3-1"],
+  [/dip/i, "Bench Dips (feet raised)", "hands on a chair, feet on another; add a rucksack once cleared"],
+  [/flye|fly|clavicular/i, "Dumbbell Floor Flye", "slight elbow bend, three seconds out"],
+  [/straight-arm|straight arm/i, "Band Straight-Arm Pulldown", "band over a door, arms straight, sweep to the hips"],
+  [/row/i, "Single-Arm Dumbbell Row", "hand on a chair, elbow to the hip"],
+  [/pulldown|pull-up|pullup|chin/i, "Doorway Pull-up or Band Pulldown", "any bar, or a band anchored high"],
+  [/press behind|shoulder press|overhead|ohp|smith press/i, "Seated Dumbbell Shoulder Press", "sit on a chair, back straight"],
+  [/lateral/i, "Dumbbell Lateral Raise", "or water bottles — slow, no swing"],
+  [/preacher|curl(?!.*leg)/i, "Dumbbell Curl", "elbows pinned, three seconds down"],
+  [/tricep|crossover|pushdown|skull/i, "Overhead Dumbbell Extension", "both hands on one dumbbell"],
+  [/hip thrust|glute raise|glute bridge/i, "Single-Leg Hip Thrust", "shoulders on the sofa, one leg, squeeze for one"],
+  [/rdl|romanian/i, "Dumbbell RDL", "hinge, flat back, bar close"],
+  [/leg curl/i, "Sliding Leg Curl", "heels on a towel on a hard floor, hips up"],
+  [/leg press|squat/i, "Goblet Squat or Bulgarian Split Squat", "rear foot on a chair once the goblet is easy"],
+  [/extension/i, "Sissy Squat or Wall Sit", "lean-back squats holding a door frame, or 45 seconds on the wall"],
+  [/calf/i, "Single-Leg Calf Raise on a Step", "full stretch at the bottom, hold at the top"],
+  [/adductor/i, "Copenhagen Plank", "top foot on a chair"],
+  [/abductor/i, "Side-Lying Leg Raise", "toes forward, three seconds down"],
+  [/crunch|knee raise|leg raise|plank|abs/i, "Lying Leg Raise", "lower back pressed down, three seconds down"],
+];
+const homeVersion = (d) => ({ ...d, exercises: (d.exercises || []).map((e) => { if (e.home) return e; const h = HOME_MAP.find(([re]) => re.test(e.name)); return h ? { ...e, name: h[1], note: h[2], home: true, gym: e.name, gymNote: e.note || "" } : { ...e, home: true, gym: e.name }; }) });
+const gymVersion = (d) => ({ ...d, exercises: (d.exercises || []).map((e) => (e.home ? { ...e, name: e.gym || e.name, note: e.gymNote || "", home: undefined, gym: undefined, gymNote: undefined } : e)) });
+// Round 5: LEGS 1/2 became LOWER 1/2 everywhere. Stored names follow.
+const lowerName = (n) => (typeof n === "string" ? n.replace(/^Legs (\d)$/i, "Lower $1") : n);
+const TRIAL_DAYS = Number(window.MI_PRICING.trialDays) || 7;
 
 // ---------- Education lessons (Max's voice, <60s reads) ----------
 const LESSONS = [
@@ -413,7 +473,7 @@ function applySplit(prog, split) {
   const pr = structuredClone(prog);
   // reset any previous bias: drop Glute Focus, restore canonical order (Upper first)
   pr.days = pr.days.filter((d) => d.name !== "Glute Focus");
-  const canon = ["upper 1", "legs 1", "upper 2", "legs 2"];
+  const canon = ["upper 1", "lower 1", "upper 2", "lower 2", "legs 1", "legs 2"];
   pr.days.sort((a, b) => {
     const ia = canon.indexOf((a.name || "").toLowerCase()), ib = canon.indexOf((b.name || "").toLowerCase());
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
@@ -426,7 +486,7 @@ function applySplit(prog, split) {
   };
   const mk = (name, note) => ({ name, scheme: [10, 6, 6, 6], note: note || "", tempo: "3-1-3-1", rest: "2\u20133 min" });
   const isUpper = (d) => d.name.toLowerCase().includes("upper");
-  const isLegs = (d) => d.name.toLowerCase().includes("leg");
+  const isLegs = (d) => /leg|lower/i.test(d.name);
 
   if (split === "legglute") {
     pr.days.forEach((d) => {
@@ -516,7 +576,7 @@ function applyPriorities(prog, priorities) {
   const matchIdx = (e, keys) => { const n = (e.name || "").toLowerCase(); return keys.findIndex((k) => n.includes(k)); };
   const isAbsBlock = (e) => /abs block/.test(e.note || "");
   pr.days.forEach((d) => {
-    const lower = /leg|glute/i.test(d.name || "");
+    const lower = /leg|lower|glute/i.test(d.name || "");
     let pool = d.exercises.filter((e) => !isAbsBlock(e));
     if (pri.includes("abs") && lower) pool = pool.filter((e) => !/cable crunch/i.test(e.name || ""));
     const ordered = [];
@@ -726,6 +786,9 @@ function MaxIntensityApp() {
   const [mini, setMini] = useState(null);             // two-set mini session { di, name, w, r, w2, r2, t0, done }
   const [miniLeft, setMiniLeft] = useState(600);
   const [installOpen, setInstallOpen] = useState(false); // iPhone two-step Add to Home Screen sheet
+  const [weekOpen, setWeekOpen] = useState(false);     // Meals: Plan my week
+  const [weekPrefs, setWeekPrefs] = useState(null);
+  const [weekPlan, setWeekPlan] = useState(null);
 
 
   useEffect(() => {
@@ -737,6 +800,7 @@ function MaxIntensityApp() {
       setTargets(await loadKey("mi-targets", null));
       setFoodLog(await loadKey("mi-food", {}));
       const hist0 = await loadKey("mi-history", {});
+      Object.keys(hist0).forEach((k) => { if (hist0[k] && hist0[k].day) hist0[k].day = lowerName(hist0[k].day); });
       setHistory(hist0);
       // auto-advance the block week from your first logged session
       const histDates = Object.keys(hist0).sort();
@@ -764,7 +828,7 @@ function MaxIntensityApp() {
       if (st0?.done && !pr0 && !tr0 && !pwseen) { setShowPaywall(true); saveKey("mi-pwseen", true); }
       const bp = await loadKey("mi-beforephoto", null);
       if (bp) setOb((o) => ({ ...o, beforePhoto: bp }));
-      setDayPlan(await loadKey("mi-dayplan", {}));
+      const dp0 = await loadKey("mi-dayplan", {}); Object.keys(dp0).forEach((k) => { dp0[k] = lowerName(dp0[k]); }); setDayPlan(dp0);
       setHandle(await loadKey("mi-handle", ""));
       const tut = await loadKey("mi-tut", false);
       if (st0?.done && !tut) setTutStep(0);
@@ -803,6 +867,8 @@ function MaxIntensityApp() {
       setQuests(await loadKey("mi-quests", {}));
       setWallAct(await loadKey("mi-wallact", ""));
       setNotif(await loadKey("mi-notif", { enabled: false, overtake: true, streak: true }));
+      setWeekPrefs(await loadKey("mi-weekprefs", null));
+      setWeekPlan(await loadKey("mi-weekplan", null));
       const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
       const standalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
       if (isIOS && !standalone && !(await loadKey("mi-a2hs", false))) setA2hs(true);
@@ -821,6 +887,14 @@ function MaxIntensityApp() {
   useEffect(() => { if (loaded) saveKey("mi-quests", quests); }, [quests, loaded]);
   useEffect(() => { if (loaded) saveKey("mi-wallact", wallAct); }, [wallAct, loaded]);
   useEffect(() => { if (loaded) saveKey("mi-notif", notif); }, [notif, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-weekprefs", weekPrefs); }, [weekPrefs, loaded]);
+  useEffect(() => { if (loaded) saveKey("mi-weekplan", weekPlan); }, [weekPlan, loaded]);
+  /* Plan my week: the coach builds it when Max AI is on, Max's library otherwise (and fills any gaps). */
+  const generateWeek = async (prefs) => {
+    if (!hasAI || !window.MI_AI || !window.MI_AI.weekPlan) return null;
+    const raw = await window.MI_AI.weekPlan({ prefs, targets, goal: goalLabel(), tier: aiTier });
+    return MI.normaliseWeek({ ...raw, source: "coach" }, prefs);
+  };
   // PWA: service worker for notifications. Push needs the worker to hold a VAPID key
   // (MI_PUSH_PUBLIC_KEY) — until it does, alerts fire locally from the app via the SW.
   useEffect(() => {
@@ -861,6 +935,9 @@ function MaxIntensityApp() {
     const t = setTimeout(() => { if (!loggedToday()) notify("Streak at risk", `${game.streak}-day streak. Log anything before midnight — a set, a meal, a weigh-in.`, "mi-streak"); }, ms);
     return () => clearTimeout(t);
   }, [loaded, notif.enabled, notif.streak, history, foodLog, weights]); // eslint-disable-line
+  // splash: the padlock springs open once everything is loaded
+  useEffect(() => { if (loaded) { try { window.MI_unlock && window.MI_unlock(); } catch (e) {} } }, [loaded]);
+
   // ---- "Not going gym today?" (round 4): a training day, nothing logged by mid-afternoon ----
   const NUDGE_HOUR = 15;
   const nudgeDue = () => {
@@ -1859,6 +1936,18 @@ function MaxIntensityApp() {
           2. Rename, ↑↓ to reorder, Remove, or <span className="text-neutral-200">+ Add exercise</span>.<br />
           3. Tap <span className="text-neutral-200">Done</span> — it saves itself.
         </div>
+        <p className={eyebrow + " mt-6"}>Where you train</p>
+        <div className={card + " mt-2 p-4"}>
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-neutral-200">Train at home — the whole block</p>
+              <p className="mono mt-0.5 text-[10px] text-neutral-500">Every exercise swapped for its dumbbell, band or bodyweight version. Same structure, same rules. Switch back any time.</p>
+            </div>
+            <button onClick={() => { const on = !(settings && settings.homeBlock); setSettings((s2) => ({ ...(s2 || {}), homeBlock: on, done: true })); setProgram((p2) => ({ ...p2, days: p2.days.map(on ? homeVersion : gymVersion) })); setOverride(null); }} role="switch" aria-checked={!!(settings && settings.homeBlock)} aria-label="Train at home" className={"relative h-7 w-12 shrink-0 rounded-full transition-colors " + (settings && settings.homeBlock ? "bg-[#FF2B2B]" : "bg-neutral-700")}>
+              <span className={"absolute top-1 h-5 w-5 rounded-full bg-white transition-all " + (settings && settings.homeBlock ? "left-6" : "left-1")} />
+            </button>
+          </div>
+        </div>
         <p className={eyebrow + " mt-6"}>Max AI</p>
         <div className={card + " mt-2 p-4"}>
           {pro ? <p className="mono text-xs text-[#FF2B2B]">Unlocked — full access ✓</p>
@@ -2197,10 +2286,9 @@ function MaxIntensityApp() {
           const restD = !doneD && /^rest$/i.test(plan || "");
           return (
             <button key={k} onClick={() => setDayOffset(off)} aria-label={DOW3[i] + " " + d.getDate()} aria-pressed={isSel}
-              className={"flex min-w-0 flex-1 flex-col items-center rounded-lg border py-1.5 transition-colors " + (isSel ? "border-[#FF2B2B] bg-[#FF2B2B] text-white" : isTd ? "border-neutral-500 bg-[#141414] text-neutral-200" : "border-neutral-800 bg-[#141414] text-neutral-400")}>
+              className={"flex min-w-0 flex-1 flex-col items-center rounded-lg border py-2 transition-colors " + (isSel ? "border-[#FF2B2B] bg-[#FF2B2B] text-white" : doneD ? "border-[#F2EFE8] bg-[#F2EFE8] text-neutral-950" : !restD ? "border-[#7f1d1d] bg-[#1c0808] text-[#FF6B6B]" : "border-neutral-800 bg-[#141414] text-neutral-600") + (isTd && !isSel ? " ring-1 ring-[#FF2B2B]" : "")} data-day-status={doneD ? "done" : restD ? "rest" : "scheduled"}>
               <span className="mono text-[9px] uppercase tracking-wider">{DOW3[i]}</span>
               <span className="dp text-[15px] leading-none">{d.getDate()}</span>
-              <span className={"mt-1 h-1 w-1 rounded-full " + (doneD ? (isSel ? "bg-white" : "bg-[#F2EFE8]") : restD ? "bg-transparent" : isSel ? "bg-white/70" : "bg-[#FF2B2B]")} />
             </button>
           );
         })}
@@ -2538,7 +2626,7 @@ function MaxIntensityApp() {
           {ovActive && (
             <div className={card + " mt-4 border-[#7f1d1d] p-3"}>
               <div className="flex items-center gap-3">
-                <p className="min-w-0 flex-1 text-xs text-neutral-300"><span className="mono text-[#FF2B2B]">{override.short ? "Short on time · " : "Adjusted · "}</span>{override.reply}</p>
+                <p className="min-w-0 flex-1 text-xs text-neutral-300"><span className="mono text-[#FF2B2B]">{override.home ? "Home · " : override.short ? "Short on time · " : "Adjusted · "}</span>{override.reply}</p>
                 <button onClick={() => setOverride(null)} className="mono shrink-0 rounded-md border border-neutral-700 px-2.5 py-1 text-[10px] text-neutral-300">Undo — full session</button>
               </div>
               {((override.added || []).length > 0 || (override.removed || []).length > 0) && (
@@ -2695,6 +2783,7 @@ function MaxIntensityApp() {
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <button onClick={() => { setShortPri(""); setShortSheet(true); }} className="mono rounded-md border border-neutral-800 bg-[#141414] px-3 py-2 text-[10px] uppercase tracking-widest text-neutral-300">Short on time</button>
+                <button onClick={() => setOverride({ date: todayKey(), dayIdx: activeDay, exercises: homeVersion(baseDay).exercises, reply: "Home version. Same order, same two sets that matter, same tempo — dumbbells, a chair and a band do the job.", home: true })} className="mono rounded-md border border-neutral-800 bg-[#141414] px-3 py-2 text-[10px] uppercase tracking-widest text-neutral-300">No gym today</button>
                 <button onClick={() => (hasAI ? runEditSession("Add bench press") : setShowPaywall(true))} className="mono rounded-md border border-neutral-800 bg-[#141414] px-3 py-2 text-[10px] uppercase tracking-widest text-neutral-400">Add bench</button>
                 <button onClick={() => { setEditing(true); }} className="mono rounded-md border border-neutral-800 bg-[#141414] px-3 py-2 text-[10px] uppercase tracking-widest text-neutral-400">Swap an exercise</button>
               </div>
@@ -2737,7 +2826,7 @@ function MaxIntensityApp() {
                 <p className={eyebrow}>Eat · {targets ? goalLabel() : "set your numbers"}</p>
                 <h2 className="dp mt-1 text-[40px] uppercase leading-[0.9]">Fuel</h2>
               </div>
-              {!needSetup && <button onClick={() => setPlanOpen(true)} className="mono mb-1 shrink-0 rounded-md border border-neutral-600 px-3.5 py-2 text-[10px] uppercase tracking-widest text-neutral-100" aria-label="Plan">Plan</button>}
+              {!needSetup && <button onClick={() => setWeekOpen(true)} className="mono mb-1 shrink-0 rounded-md border border-neutral-600 px-3.5 py-2 text-[10px] uppercase tracking-widest text-neutral-100" aria-label="Plan">Plan</button>}
             </div>
             {needSetup ? (
               <div className="mt-3">
@@ -2765,7 +2854,7 @@ function MaxIntensityApp() {
             ) : (
               <>
                 {/* the day: one ring, three bars — nothing else above the fold but LOG */}
-                <div className={card + " mt-3 p-4"} data-meals-fold="1">
+                <div className={card + " mt-3 p-4"} data-meals-fold="1" onClick={() => setPlanOpen(true)} role="button" aria-label="Your numbers">
                   <div className="flex items-center gap-4">
                     <MI.Ring value={totals.kcal} target={targets.kcal} size={150} stroke={11} />
                     <div className="min-w-0 flex-1 space-y-3">
@@ -3380,8 +3469,7 @@ function MaxIntensityApp() {
       <MI.Sheet open={!!voiceTarget} onClose={() => setVoiceTarget(null)} title="Say the set" z={78}>
         <p className="mt-1 text-xs text-neutral-500">"Leg press, work set, 180 for 6." The coach files it to the right exercise and set.</p>
         <div className="mt-3">
-          {hasAI ? <MI.VoiceTake key={"w" + voiceKey} hint='e.g. "leg press work set 180 for 6"' busy={voiceBusy} saved={false} onResult={(t) => applyVoiceWorkout(t.transcript)} />
-            : <button onClick={() => { setVoiceTarget(null); setShowPaywall(true); }} className={cta + " w-full py-3.5 text-sm"}>Max AI — start the trial</button>}
+          <MI.VoiceTake key={"w" + voiceKey} hint='e.g. "leg press work set 180 for 6"' busy={voiceBusy} saved={false} onResult={(t) => applyVoiceWorkout(t.transcript)} />
         </div>
         {voiceMsg && <p className="mono mt-2 text-[10px] text-neutral-400">{voiceMsg}</p>}
       </MI.Sheet>
@@ -3396,15 +3484,13 @@ function MaxIntensityApp() {
           ))}
         </div>
         <div className="mt-4">
-          {logOpen === "photo" && (hasAI ? <MI.CameraFrame onCapture={logMealPhoto} busy={photoBusy} /> : <LockCard title="Photo logging is Max AI" lines={["Point the camera at the plate. The coach estimates the macros and files it."]} />)}
-          {logOpen === "voice" && (hasAI
-            ? <MI.VoiceTake key={"m" + voiceKey} busy={voiceBusy} saved={voiceSaved} onAgain={() => { setVoiceSaved(false); setVoiceMsg(""); setVoiceKey((k) => k + 1); }} onResult={applyVoiceMeal} />
-            : <LockCard title="Voice logging is Max AI" lines={["Say what you ate. The coach estimates the macros and files it."]} />)}
+          {logOpen === "photo" && <MI.CameraFrame onCapture={logMealPhoto} busy={photoBusy} />}
+          {logOpen === "voice" && <MI.VoiceTake key={"m" + voiceKey} busy={voiceBusy} saved={voiceSaved} onAgain={() => { setVoiceSaved(false); setVoiceMsg(""); setVoiceKey((k) => k + 1); }} onResult={applyVoiceMeal} />}
           {logOpen === "type" && (
             <div>
                 <div className="flex gap-2">
                   <input value={foodInput} onChange={(e) => setFoodInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addFood()} placeholder="e.g. 300g mince, potatoes, milk" className="min-w-0 flex-1 rounded-lg border border-neutral-800 bg-[#141414] px-3.5 py-2.5 text-sm placeholder-neutral-600" />
-                  <button onClick={addFood} disabled={estimating || !hasAI} className={cta + " px-4 text-xs disabled:opacity-50"}>{estimating ? "…" : hasAI ? "Log" : <Ic d={P_LOCK} className="h-3.5 w-3.5" />}</button>
+                  <button onClick={addFood} disabled={estimating} className={cta + " px-4 text-xs disabled:opacity-50"}>{estimating ? "…" : "Log"}</button>
                 </div>
                 {voiceMsg && <p className="mono mt-1.5 text-[10px] text-neutral-400">{voiceMsg}</p>}
                 <button onClick={() => setShowManual(!showManual)} className="mono mt-2 text-[10px] uppercase tracking-widest text-neutral-500 underline underline-offset-2">{showManual ? "Hide manual entry" : "Add manually (free)"}</button>
@@ -3438,7 +3524,7 @@ function MaxIntensityApp() {
             </div>
           )}
           {voiceMsg && <p className="mono mt-3 text-[10px] text-neutral-400" data-log-msg="1">{voiceMsg}</p>}
-          {hasAI && <p className="mono mt-2 text-[9px] text-neutral-600">AI estimates the macros. Weigh the big stuff. {aiLeft()} calls left today.</p>}
+          <p className="mono mt-2 text-[9px] text-neutral-600">The coach estimates the macros. Weigh the big stuff. {aiLeft()} estimate{aiLeft() === 1 ? "" : "s"} left today{hasAI ? "" : " on the free plan — manual entry is always free"}.</p>
         </div>
       </MI.Sheet>
 
@@ -3725,6 +3811,8 @@ function MaxIntensityApp() {
         );
       })()}
       <MI.InstallSheet open={installOpen} onClose={() => setInstallOpen(false)} />
+      <MI.PlanWeek open={weekOpen} onClose={() => setWeekOpen(false)} prefs={weekPrefs} setPrefs={setWeekPrefs} plan={weekPlan} setPlan={setWeekPlan} generate={generateWeek}
+        onLog={(m) => { logMeal({ ...m, via: "plan" }); setWeekOpen(false); }} onMore={() => { setWeekOpen(false); setPlanOpen(true); }} />
 
       <MI.CalendarView open={calOpen} onClose={() => setCalOpen(false)} program={program} weekPlan={WEEK_PLAN} week={week} setWeek={setWeek}
         blockStart={blockStart()} history={history} dayPlan={dayPlan} rhythm={weekRhythm()} logs={logs}

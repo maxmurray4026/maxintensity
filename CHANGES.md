@@ -1,5 +1,85 @@
 # CHANGES
 
+## Round 5 — final consolidated pass
+
+**A Bugs.** The account screen's inputs were re-created on every keystroke
+(inline components rendered as elements), which threw focus back to the
+auto-focused name field; they now render as plain calls, so typing an email
+stays in the email field. Continue on "Who's training?" always responds: with
+a name it moves on, without one it shows "Add your name to continue" and
+focuses the field. Meal logging (photo, voice, typed) and workout voice
+logging work for everyone, trial or not, on the free daily estimate cap with
+manual entry always available; only the coach, session edits, meal prep, the
+builder and the swap machine gate on Max AI.
+
+**B Splash.** The loading copy is gone. A red padlock (#FF2B2B) sits closed
+on black while the app loads; when it is ready the shackle springs up, the
+lock bounces with a quick red flash and the splash dissolves into the app. A
+short click-clack plays only where the browser already allows audio; otherwise
+silent. A 20-second safety and any boot error also open the lock.
+
+**C Naming.** LEGS 1/2 are LOWER 1/2 everywhere: the program, the weekly
+rhythm, stored programs, history and day plans (migrated on load), the plate
+map, tests. GLUTE FOCUS stays. The goal step leads with LEAN & DEFINED ("lose
+fat, build muscle, look toned"), stored as `goal=lean_defined`, replacing the
+recomp option; the old stored value still maps to the same plan.
+
+**D Calendar.** Day cells are solid: red for scheduled-not-started, bone for
+completed, dim for rest; no dots (the legend uses squares). The week strip is a
+six-column grid with truncation so "WEEK 1 / ESTABLISH" sits inside its box at
+phone width.
+
+**E Plates.** Muscle regions were re-traced on a 25 px grid over each plate
+(front, back, legs, arm) so the fills follow the drawn bellies — lats no longer
+reach the spine, deltoids cap the shoulder. Fills are a dark red gradient
+(#A11B1B → #7A1414) with the texture under them dimmed, so only the worked
+muscle is lit. Session heroes carry a highlight overlay aligned to the image:
+glutes and hamstrings on Glute Focus and Lower 2 (the lower half of the back
+plate; a `legs-back.jpg` will be used automatically once it exists in
+`assets/anatomy`), quads and calves on Lower 1, chest and shoulders on Upper 2.
+Onboarding shows a different plate on every screen from the full a-/b-
+library, none repeated back to back; the final screen is the flexed arm
+(option B), large, bleeding off the right edge.
+
+**F Onboarding.** New method screen after the plan: "Muscle growth from a
+session lasts up to two days…" with the BRO SPLIT (1 signal a week) vs MAX
+INTENSITY (3 signals a week) comparison and one line on why it wins. Prices,
+trial length and the pre-selected plan come from `pricing.json` (read once at
+boot); the paywall, the trial timeline and the Settings copy render from it.
+Live values unchanged: £30/mo, £240/yr, £200 human coach, 7-day trial, yearly
+pre-selected.
+
+**G Plan my week.** PLAN on Meals opens the seven-step setup (shop, people,
+cook days, budget slider, up to three moods, appliances, diet + allergies), a
+"Building your week…" screen with three animated checklist lines, then the
+week: ONE BIG MEAL a day (the star), a quick breakfast and one or two snacks.
+Max's items seed the library (0% Greek yogurt + fruit first); the rest are
+built from the approved foods with spices free, sauces light and the halve-
+the-bad-stuff rule. The coach generates the week when Max AI is on
+(`MI_AI.weekPlan`), Max's library otherwise and as the fallback. Day cards show
+the plate tile, name, mood tag, time, serves, cost; a meal opens to kcal, time,
+serves, macros, scaled ingredients, numbered instructions, your notes, Log
+this meal and Swap this meal; the Grocery list tab aggregates the week by
+aisle with tick-offs. Numbers, timing and foods stay one link away, and behind
+the ring.
+
+**H Home workouts.** Every exercise has a dumbbell, band, chair or bodyweight
+equivalent; "No gym today" on Train swaps the day to its home version (undo
+restores it) and Settings has "Train at home — the whole block" which converts
+the block and switches back. The coach knows to build a home workout on the
+spot when someone has no gym.
+
+**I Pending.** Wall posts never show an admin label (an "admin" handle reads
+as maxintensity, admin post types are hidden). The "method line" waits on
+which screen Max means.
+
+**Verify.** Funnel: goal options, frequency screen, email typing keeps focus,
+Continue on the account screen, 26 screens. App: padlock on load and gone
+after; Lower 1/2 on Train and the calendar; solid cells and no dots; week
+strip inside its boxes; muscle sheet; No gym today swap; Plan my week end to
+end (setup → building → 7 days → detail → swap → grocery) and the numbers
+sheet behind it; the rest of the earlier suites unchanged. Zero page errors.
+
 ## Round 4b — the coach knowledge doc, web push keys
 
 **Coach knowledge.** Max's full knowledge and voice document is saved as

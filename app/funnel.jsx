@@ -24,9 +24,9 @@ try {
     ["alone", "Nobody noticed", "A rank, a leaderboard and a wall where people post real results. Here, progress is status."],
   ];
 
-  const PRICES = { monthly: 30, yearly: 240, human: 200 };
+  const PRICES = Object.assign({ symbol: "£", monthly: 30, yearly: 240, human: 200, trialDays: 7, preselected: "yearly" }, window.MI_PRICING || {});
 
-  MI.Funnel = ({ initial, buildDay, onPhoto, loadProof, onFinish, trialDays = 7 }) => {
+  MI.Funnel = ({ initial, buildDay, onPhoto, loadProof, onFinish, trialDays = PRICES.trialDays || 7 }) => {
     const [ob, setOb] = useState(() => ({
       name: "", email: "", handle: "", sex: "", goal: "", exp: "", daysPerWeek: 4, unit: "kg", bw: "80",
       hardWorkNoChange: "", quitBefore: "", trainingStatus: "", sessionUnplanned: "", mainBlocker: "",
@@ -34,12 +34,13 @@ try {
       priorities: [], obstacles: [], ...(initial || {}),
     }));
     const [step, setStep] = useState(0);
+    const [nameHint, setNameHint] = useState(false);
     const [flipped, setFlipped] = useState(false);
     const [demo, setDemo] = useState({ phase: "proposed" });
     const [demoLine, setDemoLine] = useState(0);
     const [flame, setFlame] = useState(false);
     const [proof, setProof] = useState(undefined);
-    const [plan, setPlan] = useState("yearly");
+    const [plan, setPlan] = useState(PRICES.preselected || "yearly");
     const [downsell, setDownsell] = useState(false);
 
     const set = (k, v) => setOb((o) => ({ ...o, [k]: v }));
@@ -53,7 +54,7 @@ try {
       { k: "trainingStatus", kind: "choice", q: "Where is your training right now?", sub: "It only changes where you start.",
         opts: [["none", "Not training", "Starting from zero"], ["intermittent", "On and off", "Some weeks yes, some no"], ["consistent", "In every week", "Already showing up"]], out: "Wherever you start, the first two weeks set your loads. Nothing is assumed." },
       { k: "goal", kind: "choice", q: "What do you want out of the next six weeks?", sub: "Say it plainly. The block gets built around this.",
-        opts: [["Lose fat + build muscle", "Lose fat + build muscle", "Recomposition — the scale barely moves, the mirror does"], ["Lose fat", "Lose fat", "Keep your strength, drop the weight"], ["Build muscle", "Build muscle", "Add size where you want it"], ["More athletic", "More athletic", "Fitter, faster, harder to tire out"]], out: "This names your plan. Never 'general' — yours." },
+        opts: [["lean_defined", "Lean & defined", "lose fat, build muscle, look toned"], ["Lose fat", "Lose fat", "Keep your strength, drop the weight"], ["Build muscle", "Build muscle", "Add size where you want it"], ["More athletic", "More athletic", "Fitter, faster, harder to tire out"]], out: "This names your plan. Never 'general' — yours." },
       { k: "bodyOutcome", kind: "choice", q: "What do you want to see in the mirror?", sub: "Six weeks from now, same light, same photo.",
         opts: [["lean", "Lean and defined", "Less around the middle, shape you can see"], ["big", "Bigger and heavier", "More size on your arms, chest and back"], ["capable", "Strong and capable", "Lift heavy, move well, stay hard to break"]], out: "Your before photo and your rank measure this. Not a feeling — a number and a picture." },
       { k: "sex", kind: "choice", q: "Strength standards are set by sex.", sub: "It sets your rank thresholds and your food targets. Nothing else.",
@@ -71,6 +72,7 @@ try {
       { k: "priorities", kind: "priorities", q: "What do you want to build first?", sub: "Priority muscles go first in every session — they get your best energy. Pick up to three.", out: "The order of the session is the program. What you pick leads." },
       { k: "demo", kind: "demo", q: "" },
       { k: "plan", kind: "plan", q: "" },
+      { k: "frequency", kind: "frequency", q: "" },
       { k: "obstacles", kind: "multi", q: "What beat you before?", sub: "Pick everything that applies. The next screen shows how the system handles each one.", out: "Nothing here is new. It's all been solved for someone before you." },
       { k: "induction", kind: "induction", q: "How the system handles it", sub: "One answer for each thing you picked." },
       { k: "daysPerWeek", kind: "choice", q: "Days per week", sub: "The block is built on 4. Pick what you'll actually hit.",
@@ -439,6 +441,26 @@ try {
       );
     };
 
+    const Frequency = () => (
+      <div className="relative flex h-full flex-col justify-center">
+        <p className={eyebrow}>Why every two days</p>
+        <p className="dp mt-2 text-[30px] uppercase leading-[0.95] text-[#F2EFE8]">Muscle growth from a session lasts up to <span className="text-[#FF2B2B]">two days.</span></p>
+        <p className="mt-3 text-sm leading-relaxed text-neutral-300">So we train upper and lower every two days — each muscle gets a growth signal three times a week.</p>
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          {[["Bro split", "1", "signal a week", "Chest Monday, then nothing till next Monday. Five days of the week the signal is gone.", false], ["Max Intensity", "3", "signals a week", "Upper, lower, upper, lower. The signal never runs out before the next one lands.", true]].map(([t, n, u, b, on]) => (
+            <div key={t} className={"rounded-xl border p-4 " + (on ? "border-[#FF2B2B] bg-[#1c0808]" : "border-neutral-800 bg-[#111]")}>
+              <p className={"mono text-[10px] uppercase tracking-widest " + (on ? "text-[#FF2B2B]" : "text-neutral-500")}>{t}</p>
+              <p className={"dp mt-2 text-[56px] leading-none " + (on ? "text-[#F2EFE8]" : "text-neutral-500")}>{n}</p>
+              <p className={"mono text-[10px] uppercase tracking-wider " + (on ? "text-neutral-300" : "text-neutral-600")}>{u}</p>
+              <div className="mt-3 flex gap-1">{Array.from({ length: 7 }, (_, i) => <span key={i} className={"h-1.5 flex-1 rounded-full " + ((on ? [0, 2, 4] : [0]).includes(i) ? (on ? "bg-[#FF2B2B]" : "bg-neutral-500") : "bg-neutral-800")} />)}</div>
+              <p className={"mt-3 text-[11px] leading-relaxed " + (on ? "text-neutral-300" : "text-neutral-500")}>{b}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mono mt-4 text-[11px] text-neutral-400">Three signals beat one. That's the whole reason this split wins.</p>
+      </div>
+    );
+
     const Plan = () => {
       const p = planInfo();
       const pri = (ob.priorities || []).map((k) => (MI.MUSCLES.find((m) => m[0] === k) || [])[1]).filter(Boolean);
@@ -450,7 +472,7 @@ try {
             <p className="mt-3 text-base text-neutral-300">{p.line}</p>
             <div className={card + " mt-6 space-y-2 bg-[#0f0f0f]/90 p-4"}>
               <p className="mono text-[11px] text-neutral-400"><span className="text-[#F2EFE8]">6-week block</span> · W1 Establish → W6 Deload</p>
-              <p className="mono text-[11px] text-neutral-400"><span className="text-[#F2EFE8]">4-day split</span> · Upper / Legs{pri.includes("Glutes") ? " + Glute Focus" : ""}</p>
+              <p className="mono text-[11px] text-neutral-400"><span className="text-[#F2EFE8]">4-day split</span> · Upper / Lower{pri.includes("Glutes") ? " + Glute Focus" : ""}</p>
               <div className="py-1">
                 <p className="mono text-[9px] uppercase tracking-widest text-neutral-500">The progression loop</p>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -527,7 +549,7 @@ try {
       <div className="space-y-5">
         <div>
           <p className={MI.ui.label}>Name</p>
-          <input autoFocus value={ob.name || ""} onChange={(e) => set("name", e.target.value)} placeholder="Your name" className="mt-1 w-full border-b-2 border-neutral-800 bg-transparent pb-3 text-2xl text-[#F2EFE8] placeholder-neutral-700 focus:border-[#FF2B2B] focus:outline-none" />
+          <input id="ob-name" autoFocus value={ob.name || ""} onChange={(e) => set("name", e.target.value)} placeholder="Your name" className="mt-1 w-full border-b-2 border-neutral-800 bg-transparent pb-3 text-2xl text-[#F2EFE8] placeholder-neutral-700 focus:border-[#FF2B2B] focus:outline-none" />
         </div>
         <div>
           <p className={MI.ui.label}>Email <span className="text-neutral-700">optional</span></p>
@@ -656,8 +678,8 @@ try {
     const Continue = () => {
       const k = st.kind;
       const btn = (label, fn, extra) => <button onClick={fn} className={cta + " mt-5 w-full shrink-0 py-4 text-base " + (extra || "")}>{label}</button>;
-      if (k === "weight" || k === "numbers" || k === "induction" || k === "projection" || k === "plan") return btn("Continue", next);
-      if (k === "account") return btn("Continue", () => { if ((ob.name || "").trim()) next(); });
+      if (k === "weight" || k === "numbers" || k === "induction" || k === "projection" || k === "plan" || k === "frequency") return btn("Continue", next);
+      if (k === "account") return (<div className="mt-5 shrink-0">{nameHint && <p className="mono mb-2 text-[10px] uppercase tracking-widest text-[#FF2B2B]">Add your name to continue</p>}<button onClick={() => { if ((ob.name || "").trim()) { setNameHint(false); next(); } else { setNameHint(true); const el = document.getElementById("ob-name"); el && el.focus(); } }} className={cta + " w-full py-4 text-base"}>Continue</button></div>);
       if (k === "priorities") return btn((ob.priorities || []).length ? "Build around " + (ob.priorities || []).map((x) => (MI.MUSCLES.find((m) => m[0] === x) || [])[1]).join(", ") : "Keep it balanced", next);
       if (k === "multi") return btn((ob.obstacles || []).length ? "Show me how you handle " + (ob.obstacles.length === 1 ? "it" : "them") : "Nothing beat me — continue", next);
       if (k === "photo") return <div className="mt-5 shrink-0"><button onClick={next} className={ob.beforePhoto ? cta + " w-full py-4 text-base" : "mono w-full py-4 text-sm text-neutral-500"}>{ob.beforePhoto ? "Continue" : "Skip for now"}</button></div>;
@@ -680,23 +702,30 @@ try {
       return null;
     };
 
-    const noHeader = ["reveal", "projection", "demo", "plan", "proof", "timeline", "paywall"].includes(st.kind);
+    const noHeader = ["reveal", "projection", "demo", "plan", "frequency", "proof", "timeline", "paywall"].includes(st.kind);
     /* Background plate progression: muscles while we talk about the body, the
        skeleton through rank and projection, the classroom once the plan exists.
        Crossfades with a slight pan between screens — never a hard jump. The
        HERO tier goes large on the openers, the rank reveal and the projection. */
-    const phase = step < 11 ? "muscles" : step < 16 ? "skeleton" : "classroom";
-    const phaseIndex = step < 11 ? step : step < 16 ? step - 11 : step - 16;
-    const heroPlate = step <= 2 ? "hero" : st.kind === "reveal" ? "skeleton" : st.kind === "projection" ? "musclesFront" : null;
-    const bgPlate = MI.libraryPlate(phase, phaseIndex);
+    /* One plate per screen, none repeated back to back, the whole a-/b- library
+       in play: muscles while we talk about the body, skeletons through the rank,
+       the study sheets once the plan exists, the flexed arm to close. */
+    const A = "assets/anatomy/";
+    const SEQ = ["hero", "a-muscles-front", "b-muscles-back", "a-shoulder-arm", "b-legs-front", "a-arm-back", "b-head-neck", "a-knee", "b-hand", "a-legs", "b-foot", "a-muscles-front-2", "a-skeleton-2", "b-muscles-front", "a-skeleton", "b-torso-heart", "a-torso-heart", "a-heart", "a-hands-organs", "b-study-sheet", "classroom", "a-muscles-back", "b-skeleton", "a-muscles-front", "b-study-sheet", "b-arm-flexed", "a-legs", "b-hand"];
+    const last = step === N - 1;
+    const plateName = last ? "b-arm-flexed" : SEQ[step % SEQ.length];
+    const wide = plateName === "classroom" || plateName === "hero" || plateName === "b-study-sheet";
+    const bgPlate = { file: A + plateName + ".jpg", lum: true, pos: wide ? "center 30%" : "right 15%", size: wide ? "cover" : "auto 120%" };
+    const heroPlate = step === 0 || st.kind === "reveal" || st.kind === "projection" || last;
 
     return (
       <div className="fixed inset-0 z-[90] flex flex-col overflow-y-auto bg-[#050505] px-6 pb-8" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 20px)" }}>
         {heroPlate
-          ? (step <= 2 ? <MI.Hero plate="hero" h={112} x={-34} y={4} className="!fixed" />
-            : st.kind === "reveal" ? <MI.Hero plate="skeleton" h={108} x={-40} y={-2} className="!fixed" />
-            : <MI.Hero plate="musclesFront" side="bottom" h={80} y={-30} className="!fixed" />)
-          : <MI.Crossfade plate={bgPlate} opacity={phase === "classroom" ? 0.16 : 0.2} position={phase === "classroom" ? "center 30%" : "right -12%"} size={phase === "classroom" ? "cover" : "auto 80%"} red={0.6} className="!fixed" />}
+          ? (step === 0 ? <MI.Hero plate="hero" h={112} x={-34} y={4} className="!fixed" />
+            : last ? <MI.Hero plate={{ file: A + "b-arm-flexed.jpg" }} h={118} x={-46} y={-6} className="!fixed" />
+            : st.kind === "reveal" ? <MI.Hero plate={{ file: A + "a-skeleton-2.jpg" }} h={108} x={-40} y={-2} className="!fixed" />
+            : <MI.Hero plate={{ file: A + "b-muscles-front.jpg" }} side="bottom" h={80} y={-30} className="!fixed" />)
+          : <MI.Crossfade plate={bgPlate} opacity={wide ? 0.16 : 0.2} position={bgPlate.pos} size={bgPlate.size} red={0.6} className="!fixed" />}
         <div aria-hidden className="pointer-events-none fixed inset-0 z-[1] opacity-[0.05]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E\")" }} />
         <style>{`
           .mi-card3d { perspective: 1100px; }
@@ -733,8 +762,8 @@ try {
 
         <div className={"relative z-[2] flex-1 " + (noHeader ? "mt-6" : "mt-7")}>
           {st.kind === "choice" && <Choice />}
-          {st.kind === "weight" && <Weight />}
-          {st.kind === "numbers" && <Numbers />}
+          {st.kind === "weight" && Weight()}
+          {st.kind === "numbers" && Numbers()}
           {st.kind === "photo" && <Photo />}
           {st.kind === "armed" && <Armed />}
           {st.kind === "reveal" && <Reveal />}
@@ -742,10 +771,11 @@ try {
           {st.kind === "priorities" && <Priorities />}
           {st.kind === "demo" && <Demo />}
           {st.kind === "plan" && <Plan />}
+          {st.kind === "frequency" && <Frequency />}
           {st.kind === "multi" && <Multi />}
           {st.kind === "induction" && <Induction />}
           {st.kind === "hold" && <Hold />}
-          {st.kind === "account" && <Account />}
+          {st.kind === "account" && Account()}
           {st.kind === "proof" && <Proof />}
           {st.kind === "timeline" && <Timeline />}
           {st.kind === "paywall" && <Paywall />}
@@ -757,8 +787,8 @@ try {
   };
 
   /* ---- In-app paywall (trial ended / locked feature). Same framing. ---- */
-  MI.Paywall = ({ open, onClose, onTrial, trialStart, trialDays = 7, codeIn, setCodeIn, redeemCode, pro }) => {
-    const [plan, setPlan] = useState("yearly");
+  MI.Paywall = ({ open, onClose, onTrial, trialStart, trialDays = PRICES.trialDays || 7, codeIn, setCodeIn, redeemCode, pro }) => {
+    const [plan, setPlan] = useState(PRICES.preselected || "yearly");
     if (!open) return null;
     return (
       <div className="fixed inset-0 z-[85] flex flex-col overflow-y-auto bg-[#050505] px-6 pb-8" style={{ paddingTop: "calc(env(safe-area-inset-top, 34px) + 20px)" }}>

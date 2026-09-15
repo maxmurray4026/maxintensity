@@ -10,6 +10,7 @@ python3 -m http.server 8765   # then open http://localhost:8765
 - `index.html` — the app (React + Babel in the browser)
 - `app/*.jsx` — funnel, community, progress, recap, anatomy layer, UI kit
 - `coach-knowledge.js` — the coach's knowledge and voice (mirrors `docs/coach-knowledge.md`); every AI prompt is built from it
+- `pricing.json` — prices, trial length and the pre-selected plan; the paywall and trial copy render from it
 - `mi-projection.js`, `mi-ai.js`, `rank-standards.js` — pure logic
 - `assets/anatomy/` — engraving plates and credits
 - `tests/` — offline Playwright walkthroughs at phone width

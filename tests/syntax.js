@@ -1,6 +1,6 @@
 const Babel = require('@babel/standalone');
 const fs = require('fs'); process.chdir(require('path').join(__dirname, '..'));
-const files = ['app/ui.jsx','app/anatomy.jsx','app/funnel.jsx','app/recap.jsx','app/community.jsx','app/progress.jsx'];
+const files = ['app/ui.jsx','app/anatomy.jsx','app/funnel.jsx','app/recap.jsx','app/community.jsx','app/progress.jsx','app/muscles.jsx','app/calendar.jsx','app/mealplan.jsx'];
 let ok = true;
 for (const f of files) {
   try { Babel.transform(fs.readFileSync(f,'utf8'), { presets: ['env','react'], filename: f }); console.log('OK  ', f); }

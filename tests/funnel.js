@@ -13,7 +13,7 @@ const S = process.env.S || __dirname; require('fs').mkdirSync(S + '/shots', { re
   await tap('Yes'); console.log(await step(), await q());
   await tap('More than once'); console.log(await step(), await q());
   await tap('On and off'); console.log(await step(), await q());
-  console.log('recomp option present:', await root().getByRole('button', { name: 'Lose fat + build muscle' }).count());
+  console.log('goal options:', (await root().getByRole('button').allInnerTexts()).filter((t) => /Lean|Lose fat|Build muscle|More athletic/.test(t)).map((t) => t.split('\n')[0]).join(' · '), '| lean & defined first:', /LEAN & DEFINED/i.test((await root().innerText()).split('LOSE FAT')[0]));
   await tap('Build muscle'); console.log(await step(), await q());
   await tap('Bigger and heavier'); console.log(await step(), await q());
   await tap('Male'); console.log(await step(), await q()); await shot('weight');
@@ -36,6 +36,8 @@ const S = process.env.S || __dirname; require('fs').mkdirSync(S + '/shots', { re
   console.log('analytics so far:', Array.from(new Set(mock.calls.filter((c) => c.path === '/event').map((c) => c.body.e + (c.body.p && c.body.p.rank ? '(' + c.body.p.rank + ')' : '')))).join(', '));
   await tap("That's my coach"); await page.waitForTimeout(600); await shot('plan');
   console.log('plan loop:', (await page.innerText('body')).includes('ADD REPS'), '| scheme numbers gone:', !(await page.innerText('body')).includes('10 / 6 / 6 / 6'));
+  await tap('Continue'); console.log(await step(), await q()); await shot('frequency');
+  const freq = await page.innerText('body'); console.log('frequency screen:', ['TWO DAYS', 'BRO SPLIT', 'MAX INTENSITY', 'SIGNAL'].map((k) => k + '=' + freq.toUpperCase().includes(k)).join(' '));
   await tap('Continue'); console.log(await step(), await q());
   await tap('Lost motivation'); await tap('No time'); await shot('obstacles');
   await tap('Show me how'); console.log(await step(), await q()); await shot('induction');
@@ -47,6 +49,9 @@ const S = process.env.S || __dirname; require('fs').mkdirSync(S + '/shots', { re
   await page.waitForTimeout(400); await shot('hold-c'); await page.waitForTimeout(1200);
   console.log(await step(), await q());
   await root().getByPlaceholder('Your name').fill('Max'); await root().getByPlaceholder('@yourhandle').fill('maxtest');
+  // round 5: typing an email keeps focus in the email field, and Continue responds
+  const email = root().getByPlaceholder('you@example.com'); await email.click(); await email.pressSequentially('max@example.com', { delay: 40 });
+  console.log('email typed:', await email.inputValue(), '| focus stayed:', await page.evaluate(() => document.activeElement && document.activeElement.placeholder));
   await tap('Continue'); await page.waitForTimeout(800); console.log(await step()); await shot('proof');
   await tap('Continue'); console.log(await step()); await shot('timeline');
   await tap('Start my 7-day'); console.log(await step()); await shot('paywall');

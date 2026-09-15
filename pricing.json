@@ -1,0 +1,10 @@
+{
+  "currency": "GBP",
+  "symbol": "£",
+  "monthly": 30,
+  "yearly": 240,
+  "human": 200,
+  "trialDays": 7,
+  "preselected": "yearly",
+  "founderNote": "founder rates for the first 50"
+}

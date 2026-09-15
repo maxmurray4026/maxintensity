@@ -50,11 +50,11 @@ try {
         </div>
 
         {/* week strip with the block's real names */}
-        <div className="relative mt-4 -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1">
+        <div className="relative mt-4 grid grid-cols-6 gap-1">
           {weekPlan.map((w, i) => (
-            <button key={w.label} onClick={() => jumpWeek(i)} className={"shrink-0 rounded-md border px-3 py-2 text-left " + (i === week ? "border-[#FF2B2B] bg-[#FF2B2B] text-white" : i < week ? "border-neutral-800 bg-neutral-900 text-neutral-400" : "border-neutral-800 bg-[#141414] text-neutral-500")}>
-              <p className="dp text-[12px] uppercase leading-none">Week {i + 1}</p>
-              <p className="mono mt-0.5 text-[9px] uppercase tracking-wider">{w.tag}</p>
+            <button key={w.label} onClick={() => jumpWeek(i)} className={"min-w-0 overflow-hidden rounded-md border px-1 py-2 text-center " + (i === week ? "border-[#FF2B2B] bg-[#FF2B2B] text-white" : i < week ? "border-neutral-800 bg-neutral-900 text-neutral-500" : "border-neutral-800 bg-[#111] text-neutral-400")} aria-label={"Week " + (i + 1)}>
+              <p className="dp text-[11px] uppercase leading-none">Week {i + 1}</p>
+              <p className="mono mt-1 truncate text-[7.5px] uppercase tracking-[0.08em]">{w.tag}</p>
             </button>
           ))}
         </div>
@@ -76,15 +76,17 @@ try {
             const inBlock = wk >= 0 && wk < weekPlan.length;
             const isSel = sel === k, isToday = k === today;
             return (
-              <button key={k} onClick={() => setSel(k)} data-status={st}
-                className={"flex aspect-square flex-col items-center justify-center rounded-lg text-xs " + (isSel ? "bg-[#F2EFE8] text-neutral-950" : isToday ? "border border-[#FF2B2B] text-neutral-100" : inBlock && wk === week ? "bg-[#1a0a0a] text-neutral-200" : "bg-[#141414] text-neutral-400")}>
-                <span className="mono">{i + 1}</span>
-                <span className={"mt-0.5 h-1.5 w-1.5 rounded-full " + (st === "done" ? (isSel ? "bg-neutral-950" : "bg-[#F2EFE8]") : st === "scheduled" ? "bg-[#FF2B2B]" : (isSel ? "bg-neutral-400" : "bg-neutral-800"))} />
+              <button key={k} onClick={() => setSel(k)} data-status={st} aria-label={k + (st === "done" ? " completed" : st === "scheduled" ? " scheduled" : " rest")}
+                className={"flex aspect-square items-center justify-center rounded-lg text-xs transition-colors " +
+                  (st === "done" ? "bg-[#F2EFE8] text-neutral-950" : st === "scheduled" ? "bg-[#FF2B2B] text-white" : "bg-[#141414] text-neutral-600") +
+                  (isSel ? " ring-2 ring-[#F2EFE8] ring-offset-2 ring-offset-[#050505]" : isToday ? " ring-1 ring-[#FF2B2B] ring-offset-1 ring-offset-[#050505]" : "") +
+                  (inBlock && wk === week && st === "rest" ? " bg-[#1a1010]" : "")}>
+                <span className={"mono " + (st === "done" ? "font-semibold" : st === "scheduled" ? "font-semibold" : "")}>{i + 1}</span>
               </button>
             );
           })}
         </div>
-        <p className="mono relative mt-1.5 text-[9px] text-neutral-600"><span className="text-[#FF2B2B]">●</span> scheduled · <span className="text-[#F2EFE8]">●</span> completed · <span className="text-neutral-700">●</span> rest</p>
+        <p className="mono relative mt-1.5 text-[9px] text-neutral-600"><span className="inline-block h-3 w-3 rounded-[2px] bg-[#FF2B2B] align-middle" /> scheduled · <span className="inline-block h-3 w-3 rounded-[2px] bg-[#F2EFE8] align-middle" /> completed · <span className="inline-block h-3 w-3 rounded-[2px] border border-neutral-800 bg-[#141414] align-middle" /> rest</p>
 
         {/* the day */}
         <div className={card + " relative mt-4 overflow-hidden"}>
