@@ -18,6 +18,15 @@ python3 -m http.server 8765   # then open http://localhost:8765
 - `offline.html`, `404.html` — the styled fallbacks (GitHub Pages and most hosts serve `404.html` automatically)
 - `CHANGES.md` — what was built, decisions and assumptions
 
+## iOS app
+
+The same web app ships as a native iOS app through Capacitor: `npm install`,
+`npm run build:web` (offline bundle into `www/`), `npx cap sync ios`, then
+`npx cap open ios`. The native pieces (push, haptics, Sign in with Apple, the
+share sheet, StoreKit 2 subscriptions, the padlock launch screen) live in
+`native.js`, `ios/App/App/*.swift` and `ios/App/`. Step-by-step shipping guide,
+product ids and worker routes: `docs/ios-ship.md`, `worker/README-ios.md`.
+
 ## Hosting
 
 Every path is relative, so the folder works at a root domain, a sub-path or a

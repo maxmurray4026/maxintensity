@@ -17,9 +17,12 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="rank-standards.js"></script>
 <script src="mi-projection.js"></script>
+<script src="native.js"></script>
 <script src="coach-knowledge.js"></script>
 <script src="mi-ai.js"></script>
-<style>html,body{background:#0a0a0a;margin:0;overscroll-behavior-x:none}</style>
+<style>html,body{background:#0a0a0a;margin:0;overscroll-behavior-x:none}
+html.native, html.native body{overscroll-behavior:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+html.native input,html.native textarea,html.native select{font-size:16px}</style>
 </head>
 <body>
 <div id="root"></div>
@@ -899,10 +902,12 @@ function MaxIntensityApp() {
   // (MI_PUSH_PUBLIC_KEY) — until it does, alerts fire locally from the app via the SW.
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
+    if (window.MI_NATIVE) return; // the iOS app bundles the shell itself
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }, []);
   const notify = async (title, body, tag, url) => {
     try {
+      if (window.MI_NATIVE) return notif.enabled ? await window.MI_NATIVE.notifyNow({ title, body, tag, url }) : false;
       if (!notif.enabled || typeof Notification === "undefined" || Notification.permission !== "granted") return false;
       const reg = await navigator.serviceWorker.ready;
       await reg.showNotification(title, { body, tag, icon: "icon-192.png", badge: "icon-192.png", data: { url: url || "./" } });
@@ -911,6 +916,12 @@ function MaxIntensityApp() {
   };
   const enableNotifications = async () => {
     try {
+      if (window.MI_NATIVE) {
+        const ok = await window.MI_NATIVE.push.enable((handle || "").replace(/^@/, ""));
+        setNotif((n) => ({ ...n, enabled: ok }));
+        setVoiceMsg(ok ? "Alerts on. Streak at risk, gym-day nudges, the league and your weekly photo." : "Notifications stay off until you allow them in Settings.");
+        return;
+      }
       if (typeof Notification === "undefined") { setVoiceMsg("Notifications aren't available in this browser. On iPhone, add the app to your Home Screen first."); return; }
       const perm = await Notification.requestPermission();
       if (perm !== "granted") { setNotif((n) => ({ ...n, enabled: false })); setVoiceMsg("Notifications stay off until you allow them."); return; }
@@ -964,6 +975,36 @@ function MaxIntensityApp() {
   }, [loaded, history, notif.enabled, dayPlan]); // eslint-disable-line
   useEffect(() => { if (loaded && (history[todayKey()])) setNudge(false); }, [loaded, history]); // eslint-disable-line
   const dismissNudge = () => { setNudge(false); saveKey("mi-nudge", todayKey()); };
+  useEffect(() => {
+    const N = window.MI_NATIVE; if (!loaded || !N || !N.reminders) return;
+    if (!notif.enabled) { N.reminders([]); return; }
+    const list = []; const rhythm = weekRhythm(); const dismissed = loadKey("mi-nudge", "");
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + i);
+      const k = dateKey(d); const plan = dayPlan[k] || rhythm[dowIdx(d)];
+      const trained = !!history[k]; const anything = i === 0 ? loggedToday() : false;
+      if (plan && !/^rest$/i.test(plan) && !trained && !(i === 0 && dismissed === k)) { const at = new Date(d); at.setHours(NUDGE_HOUR, 0, 0, 0); list.push({ id: 1500 + i, title: "Not going gym today?", body: "Get two sets in. The work set and the back-off, ten minutes.", at, url: "./?mini=1" }); }
+      if (notif.streak && !anything) { const at = new Date(d); at.setHours(19, 0, 0, 0); list.push({ id: 1900 + i, title: "Streak at risk", body: "Log anything before midnight. A set, a meal, a weigh-in.", at }); }
+    }
+    N.reminders(list);
+  }, [loaded, notif.enabled, notif.streak, history, foodLog, weights, dayPlan]); // eslint-disable-line
+  // membership from the App Store, when running as the iOS app
+  useEffect(() => {
+    const N = window.MI_NATIVE; if (!loaded || !N || !N.store || !N.store.available) return;
+    N.store.current().then((r) => { if (r && r.ok && (!r.expires || r.expires > Date.now())) setPro(true); }).catch(() => {});
+  }, [loaded]); // eslint-disable-line
+  const nativePurchase = async (plan) => {
+    const N = window.MI_NATIVE; if (!N || !N.store || !N.store.available) return false;
+    const r = await N.store.purchase(plan);
+    if (r && r.ok) { setPro(true); if (!trialStart) setTrialStart(Date.now()); MI.track("iap_purchase", { plan, trial: !!r.trial }); return true; }
+    return false;
+  };
+  const nativeRestore = async () => {
+    const N = window.MI_NATIVE; if (!N || !N.store || !N.store.available) return false;
+    const r = await N.store.restore();
+    if (r && r.ok && (!r.expires || r.expires > Date.now())) { setPro(true); setVoiceMsg("Membership restored."); return true; }
+    setVoiceMsg("No active membership found for this Apple ID."); return false;
+  };
   useEffect(() => { window.MI_nudge = { due: nudgeDue(), hour: NUDGE_HOUR, plan: todayPlanName(), show: () => setNudge(true), fire: fireNudge, openMini }; }); // dev/test hook
   /* Two-set mini session: the work set and the back-off of the main lift, ten minutes. */
   const openMini = () => {
@@ -1224,6 +1265,7 @@ function MaxIntensityApp() {
     return { done: true };
   };
   const logSetAndContinue = () => {
+    if (window.MI_NATIVE) window.MI_NATIVE.haptic("set");
     if (!session || session.done) return;
     const exr = day.exercises[session.ex];
     const n = setsFor(exr);
@@ -1804,7 +1846,8 @@ function MaxIntensityApp() {
   const renderPaywall = () => (
     <MI.Paywall open={showPaywall} onClose={() => setShowPaywall(false)}
       onTrial={(plan) => { startTrial(); setSettings((s) => ({ ...(s || {}), subPlan: plan, done: true })); }}
-      trialStart={trialStart} trialDays={TRIAL_DAYS} codeIn={codeIn} setCodeIn={setCodeIn} redeemCode={redeemCode} pro={pro} />
+      trialStart={trialStart} trialDays={TRIAL_DAYS} codeIn={codeIn} setCodeIn={setCodeIn} redeemCode={redeemCode} pro={pro}
+      onNativeBuy={nativePurchase} onNativeRestore={nativeRestore} />
   );
 
   // ---- tutorial (first open after setup) ----
@@ -1948,6 +1991,17 @@ function MaxIntensityApp() {
             </button>
           </div>
         </div>
+        {window.MI_NATIVE && (
+          <div className={card + " mt-6 p-4"}>
+            <p className="dp text-sm uppercase text-neutral-200">Apple</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {window.MI_NATIVE.store && window.MI_NATIVE.store.available && <button onClick={nativeRestore} className="mono rounded-md border border-neutral-700 px-3 py-2 text-[10px] uppercase tracking-widest text-neutral-200">Restore purchases</button>}
+              {window.MI_NATIVE.apple && window.MI_NATIVE.apple.available && !(settings && settings.appleUser) && <button onClick={async () => { try { const u = await window.MI_NATIVE.apple.signIn(); setSettings((s2) => ({ ...(s2 || {}), appleUser: u.user, email: (s2 && s2.email) || u.email, name: (s2 && s2.name) || u.name, done: true })); setVoiceMsg("Signed in with Apple."); } catch (e) { setVoiceMsg("Sign in with Apple didn't complete."); } }} className="mono rounded-md bg-white px-3 py-2 text-[10px] uppercase tracking-widest text-black">Sign in with Apple</button>}
+              {settings && settings.appleUser && <span className="mono px-1 py-2 text-[10px] uppercase tracking-widest text-neutral-500">Signed in with Apple ✓</span>}
+            </div>
+            {voiceMsg && /Apple|restored|membership/i.test(voiceMsg) && <p className="mono mt-2 text-[10px] text-neutral-400">{voiceMsg}</p>}
+          </div>
+        )}
         <p className={eyebrow + " mt-6"}>Max AI</p>
         <div className={card + " mt-2 p-4"}>
           {pro ? <p className="mono text-xs text-[#FF2B2B]">Unlocked — full access ✓</p>

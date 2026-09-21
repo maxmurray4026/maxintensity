@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CAPACITOR_DEBUG</key>
+	<string>$(CAPACITOR_DEBUG)</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+        <string>Max Intensity</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleLightContent</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Max Intensity uses the camera to log a meal from a photo and to take your weekly progress photo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Max Intensity uses your photo library when you pick a meal photo or a progress photo to log.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Max Intensity saves your before-and-after picture and your session card to your photos when you share them.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Max Intensity uses the microphone so you can log a meal or a set by voice.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Max Intensity turns what you say into text so it can log the meal or the set you described.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Max Intensity can read your step count and workouts from Health so your calendar and coach see your day. Off unless you turn it on.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Max Intensity does not write to Health.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Max Intensity does not track you across other apps or websites.</string>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
+</dict>
+</plist>

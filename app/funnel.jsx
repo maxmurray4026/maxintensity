@@ -25,6 +25,16 @@ try {
   ];
 
   const PRICES = Object.assign({ symbol: "£", monthly: 30, yearly: 240, human: 200, trialDays: 7, preselected: "yearly" }, window.MI_PRICING || {});
+  /* Inside the iOS app the paywall shows App Store prices in the member's currency
+     and buys through StoreKit; the web prices never appear there. */
+  const useStore = () => {
+    const [sk, setSk] = useState(null);
+    useEffect(() => { const N = window.MI_NATIVE; if (N && N.store && N.store.available) N.store.products().then(setSk).catch(() => setSk([])); }, []);
+    return sk;
+  };
+  const skFor = (sk, plan) => (sk || []).find((p) => p.plan === plan);
+  const priceLine = (sk, plan) => { const p = skFor(sk, plan); if (p) return p.price + (plan === "yearly" ? "/yr" : plan === "weekly" ? "/wk" : "/mo"); return plan === "yearly" ? PRICES.symbol + PRICES.yearly + "/yr" : PRICES.symbol + PRICES.monthly + "/mo"; };
+  const isNativeStore = () => !!(window.MI_NATIVE && window.MI_NATIVE.store && window.MI_NATIVE.store.available);
 
   MI.Funnel = ({ initial, buildDay, onPhoto, loadProof, onFinish, trialDays = PRICES.trialDays || 7 }) => {
     const [ob, setOb] = useState(() => ({
@@ -35,6 +45,8 @@ try {
     }));
     const [step, setStep] = useState(0);
     const [nameHint, setNameHint] = useState(false);
+    const sk = useStore();
+    const [buying, setBuying] = useState(false);
     const [flipped, setFlipped] = useState(false);
     const [demo, setDemo] = useState({ phase: "proposed" });
     const [demoLine, setDemoLine] = useState(0);
@@ -559,6 +571,12 @@ try {
           <p className={MI.ui.label}>Instagram handle <span className="text-neutral-700">for the leaderboard, optional</span></p>
           <input value={ob.handle || ""} onChange={(e) => set("handle", e.target.value.replace(/^@/, ""))} placeholder="@yourhandle" autoCapitalize="off" className="mono mt-1 w-full border-b-2 border-neutral-800 bg-transparent pb-3 text-lg text-[#F2EFE8] placeholder-neutral-700 focus:border-[#FF2B2B] focus:outline-none" />
         </div>
+        {window.MI_NATIVE && window.MI_NATIVE.apple && window.MI_NATIVE.apple.available && (
+          <button onClick={async () => { try { const u = await window.MI_NATIVE.apple.signIn(); set("appleUser", u.user); if (u.name && !(ob.name || "").trim()) set("name", u.name); if (u.email && !(ob.email || "").trim()) set("email", u.email); } catch (e) {} }} className="flex w-full items-center justify-center gap-2 rounded-lg bg-white py-3.5 text-black" aria-label="Sign in with Apple">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor" aria-hidden><path d="M16.4 12.6c0-2.5 2-3.7 2.1-3.8-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.9-1.7 0-3.3 1-4.2 2.5-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.5 0 2 .8 3.3.8 1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9-.1 0-2.8-1.1-2.8-4.1zM14 5.2c.7-.8 1.2-2 1-3.2-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.3z"/></svg>
+            <span className="dp text-sm uppercase tracking-wide">{ob.appleUser ? "Signed in with Apple" : "Sign in with Apple"}</span>
+          </button>
+        )}
         <p className="mono text-[10px] leading-relaxed text-neutral-600">Everything stays on this phone. Export a backup any time from Settings.</p>
       </div>
     );
@@ -607,7 +625,7 @@ try {
       const nodes = [
         ["Today", "Full access", "Coach, session rebuilds, meal builder, photo assessment. Everything unlocked, no card."],
         ["Day 5", "A reminder", "We tell you two days before the trial ends. No surprises."],
-        ["Day " + trialDays, "Trial ends", "Keep climbing for £" + PRICES.monthly + "/mo, or £" + PRICES.yearly + "/yr. Cancel any time before and pay nothing."],
+        ["Day " + trialDays, "Trial ends", "Keep climbing for " + priceLine(sk, "monthly") + ", or " + priceLine(sk, "yearly") + ". Cancel any time before and pay nothing."],
       ];
       return (
         <div className="flex h-full flex-col">
@@ -632,18 +650,18 @@ try {
       return (
         <div className="flex h-full flex-col">
           <p className={eyebrow}>The bridge</p>
-          <p className="dp mt-2 text-[32px] uppercase leading-[0.95] text-[#F2EFE8]">A coach in your corner for <span className="text-[#FF2B2B]">£{PRICES.monthly} a month</span>, not £{PRICES.human}.</p>
+          <p className="dp mt-2 text-[32px] uppercase leading-[0.95] text-[#F2EFE8]">A coach in your corner for <span className="text-[#FF2B2B]">{isNativeStore() ? (skFor(sk, "monthly") ? skFor(sk, "monthly").price : "less") + " a month" : "£" + PRICES.monthly + " a month"}</span>, {isNativeStore() ? "not the price of a human coach." : "not £" + PRICES.human + "."}</p>
           <div className={card + " mt-4 p-3.5"}>
             <div className="mono flex items-center justify-between text-[11px]">
-              <span className="text-neutral-400">Human coach, weekly check-in</span><span className="text-neutral-500">£{PRICES.human}/mo</span>
+              <span className="text-neutral-400">Human coach, weekly check-in</span><span className="text-neutral-500">{isNativeStore() ? "a lot more" : "£" + PRICES.human + "/mo"}</span>
             </div>
             <div className="mono mt-1.5 flex items-center justify-between text-[11px]">
-              <span className="text-[#F2EFE8]">Max Intensity — on call, every set</span><span className="text-[#FF2B2B]">£{PRICES.monthly}/mo</span>
+              <span className="text-[#F2EFE8]">Max Intensity — on call, every set</span><span className="text-[#FF2B2B]">{priceLine(sk, "monthly")}</span>
             </div>
             <div className="mt-2 h-1 rounded-full bg-neutral-900"><div className="h-1 w-[15%] rounded-full bg-[#FF2B2B]" /></div>
           </div>
           <div className="mt-4 space-y-2.5">
-            {[["yearly", "Yearly", "£" + PRICES.yearly + "/yr", "£" + Math.round(PRICES.yearly / 12) + "/mo · 4 months free", "Best value"], ["monthly", "Monthly", "£" + PRICES.monthly + "/mo", "Cancel any time", null]].map(([k, l, price, subl, tag]) => {
+            {[["yearly", "Yearly", priceLine(sk, "yearly"), isNativeStore() ? (skFor(sk, "yearly") && skFor(sk, "yearly").trial ? "Free trial first · cancel any time" : "Cancel any time") : "£" + Math.round(PRICES.yearly / 12) + "/mo · 4 months free", "Best value"], ["monthly", "Monthly", priceLine(sk, "monthly"), "Cancel any time", null]].map(([k, l, price, subl, tag]) => {
               const on = plan === k;
               return (
                 <button key={k} onClick={() => setPlan(k)} className={"relative flex w-full items-center gap-3 rounded-lg border px-4 py-4 text-left " + (on ? "border-[#FF2B2B] bg-[#1c0808]" : "border-neutral-800 bg-[#111]")}>
@@ -668,7 +686,7 @@ try {
         <p className="dp mt-2 text-[34px] uppercase leading-[0.95] text-[#F2EFE8]">Keep the tracker. <span className="text-[#FF2B2B]">Come for the coach when you're ready.</span></p>
         <p className="mt-3 text-sm leading-relaxed text-neutral-400">The program, the rank, the calendar and the projection stay free. The coach, the rebuilds and the photo assessment are the paid part, and the trial is still {trialDays} days, no card.</p>
         <div className="mt-auto space-y-3">
-          <button onClick={() => finish({ trial: true, subPlan: "monthly" })} className={cta + " w-full py-4 text-base"}>Try it monthly — free {trialDays} days, then £{PRICES.monthly}</button>
+          <button onClick={async () => { if (!isNativeStore()) return finish({ trial: true, subPlan: "monthly" }); try { const r = await window.MI_NATIVE.store.purchase("monthly"); if (r && r.ok) finish({ trial: true, subPlan: "monthly", ios: true }); } catch (e) {} }} className={cta + " w-full py-4 text-base"}>Try it monthly — free {trialDays} days, then {priceLine(sk, "monthly")}</button>
           <button onClick={() => finish({ trial: false, subPlan: null })} className={ghost + " w-full py-4 text-sm"}>Continue with the free tracker</button>
         </div>
       </div>
@@ -695,7 +713,8 @@ try {
       if (k === "timeline") return btn("Start my " + trialDays + "-day free trial", next);
       if (k === "paywall") return (
         <div className="mt-4 shrink-0">
-          <button onClick={() => finish({ trial: true, subPlan: plan })} className={cta + " w-full py-4 text-base"}>Start free trial → then {plan === "yearly" ? "£" + PRICES.yearly + "/yr" : "£" + PRICES.monthly + "/mo"}</button>
+          <button disabled={buying} onClick={async () => { if (!isNativeStore()) return finish({ trial: true, subPlan: plan }); setBuying(true); try { const r = await window.MI_NATIVE.store.purchase(plan); if (r && r.ok) finish({ trial: true, subPlan: plan, ios: true }); } catch (e) {} setBuying(false); }} className={cta + " w-full py-4 text-base disabled:opacity-60"}>{buying ? "Opening the App Store…" : "Start free trial → then " + priceLine(sk, plan)}</button>
+          {isNativeStore() && <button onClick={async () => { try { const r = await window.MI_NATIVE.store.restore(); if (r && r.ok) finish({ trial: true, subPlan: plan, ios: true, restored: true }); } catch (e) {} }} className="mono mt-2 w-full py-2 text-[10px] uppercase tracking-widest text-neutral-500">Restore purchases</button>}
           <button onClick={() => setDownsell(true)} className="mono mt-3 w-full py-2 text-xs text-neutral-500">Not now</button>
         </div>
       );
@@ -787,18 +806,21 @@ try {
   };
 
   /* ---- In-app paywall (trial ended / locked feature). Same framing. ---- */
-  MI.Paywall = ({ open, onClose, onTrial, trialStart, trialDays = PRICES.trialDays || 7, codeIn, setCodeIn, redeemCode, pro }) => {
+  MI.Paywall = ({ open, onClose, onTrial, trialStart, trialDays = PRICES.trialDays || 7, codeIn, setCodeIn, redeemCode, pro, onNativeBuy, onNativeRestore }) => {
     const [plan, setPlan] = useState(PRICES.preselected || "yearly");
+    const sk = useStore();
+    const [busy, setBusy] = useState(false);
     if (!open) return null;
+    const native = isNativeStore();
     return (
       <div className="fixed inset-0 z-[85] flex flex-col overflow-y-auto bg-[#050505] px-6 pb-8" style={{ paddingTop: "calc(env(safe-area-inset-top, 34px) + 20px)" }}>
         <div className="flex items-center justify-between">
           <p className={eyebrow}>Max AI</p>
           <button onClick={onClose} className="mono py-2 text-xs text-neutral-500">Close</button>
         </div>
-        <p className="dp mt-2 text-[34px] uppercase leading-[0.95] text-[#F2EFE8]">A coach in your corner for <span className="text-[#FF2B2B]">£{PRICES.monthly} a month</span>, not £{PRICES.human}.</p>
+        <p className="dp mt-2 text-[34px] uppercase leading-[0.95] text-[#F2EFE8]">A coach in your corner for <span className="text-[#FF2B2B]">{native ? (skFor(sk, "monthly") ? skFor(sk, "monthly").price : "less") + " a month" : "£" + PRICES.monthly + " a month"}</span>, {native ? "not the price of a human coach." : "not £" + PRICES.human + "."}</p>
         <div className="mt-5 space-y-2.5">
-          {[["yearly", "Yearly", "£" + PRICES.yearly + "/yr", "£" + Math.round(PRICES.yearly / 12) + "/mo · 4 months free"], ["monthly", "Monthly", "£" + PRICES.monthly + "/mo", "Cancel any time"]].map(([k, l, price, subl]) => (
+          {[["yearly", "Yearly", priceLine(sk, "yearly"), native ? "Cancel any time" : "£" + Math.round(PRICES.yearly / 12) + "/mo · 4 months free"], ["monthly", "Monthly", priceLine(sk, "monthly"), "Cancel any time"]].map(([k, l, price, subl]) => (
             <button key={k} onClick={() => setPlan(k)} className={"flex w-full items-center gap-3 rounded-lg border px-4 py-4 text-left " + (plan === k ? "border-[#FF2B2B] bg-[#1c0808]" : "border-neutral-800 bg-[#111]")}>
               <span className={"flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 " + (plan === k ? "border-[#FF2B2B]" : "border-neutral-700")}>{plan === k && <span className="h-3 w-3 rounded-full bg-[#FF2B2B]" />}</span>
               <span><span className="dp block text-lg uppercase text-[#F2EFE8]">{l} <span className="text-[#FF2B2B]">{price}</span></span><span className="mono block text-[10px] text-neutral-500">{subl}</span></span>
@@ -806,8 +828,8 @@ try {
           ))}
         </div>
         <div className={card + " mt-4 p-3.5"}>
-          <div className="mono flex items-center justify-between text-[11px]"><span className="text-neutral-400">Human coach, weekly check-in</span><span className="text-neutral-500">£{PRICES.human}/mo</span></div>
-          <div className="mono mt-1.5 flex items-center justify-between text-[11px]"><span className="text-[#F2EFE8]">Max Intensity — on call, every set</span><span className="text-[#FF2B2B]">£{PRICES.monthly}/mo</span></div>
+          <div className="mono flex items-center justify-between text-[11px]"><span className="text-neutral-400">Human coach, weekly check-in</span><span className="text-neutral-500">{native ? "a lot more" : "£" + PRICES.human + "/mo"}</span></div>
+          <div className="mono mt-1.5 flex items-center justify-between text-[11px]"><span className="text-[#F2EFE8]">Max Intensity — on call, every set</span><span className="text-[#FF2B2B]">{priceLine(sk, "monthly")}</span></div>
           <div className="mt-2 h-1 rounded-full bg-neutral-900"><div className="h-1 w-[15%] rounded-full bg-[#FF2B2B]" /></div>
         </div>
         <div className="mt-4 space-y-2">
@@ -816,7 +838,12 @@ try {
           ))}
         </div>
         <div className="mt-auto pt-5">
-          {!trialStart ? (
+          {native ? (
+            <div>
+              <button disabled={busy} onClick={async () => { setBusy(true); try { if (await onNativeBuy(plan)) onClose(); } catch (e) {} setBusy(false); }} className={cta + " w-full py-4 text-base disabled:opacity-60"}>{busy ? "Opening the App Store…" : trialStart ? "Join for " + priceLine(sk, plan) : "Begin my " + trialDays + "-day free trial"}</button>
+              <button onClick={async () => { try { if (await onNativeRestore()) onClose(); } catch (e) {} }} className="mono mt-2 w-full py-2 text-[10px] uppercase tracking-widest text-neutral-500">Restore purchases</button>
+            </div>
+          ) : !trialStart ? (
             <button onClick={() => { onTrial(plan); onClose(); }} className={cta + " w-full py-4 text-base"}>Begin my {trialDays}-day free trial</button>
           ) : (
             <div>
@@ -827,7 +854,7 @@ try {
               </div>
             </div>
           )}
-          <p className="mono mt-2 text-center text-[10px] text-neutral-500">Then £{PRICES.monthly}/mo or £{PRICES.yearly}/yr — cancel any time. No card needed today.</p>
+          <p className="mono mt-2 text-center text-[10px] text-neutral-500">{native ? "Then " + priceLine(sk, "monthly") + " or " + priceLine(sk, "yearly") + " through the App Store. Cancel any time in Settings." : "Then £" + PRICES.monthly + "/mo or £" + PRICES.yearly + "/yr — cancel any time. No card needed today."}</p>
         </div>
       </div>
     );

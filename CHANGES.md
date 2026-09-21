@@ -1,5 +1,32 @@
 # CHANGES
 
+## iOS wrap — Capacitor shell, native features, StoreKit, TestFlight lanes
+
+The web app is unchanged on the site. It now also builds into an offline iOS
+bundle (`scripts/build-web.js` → `www/`: React, ReactDOM and Tailwind vendored,
+JSX precompiled, fonts bundled, API calls to the worker as before) inside a
+Capacitor 7 project (`ios/`, Swift Package Manager, appId
+`com.maxintensity.app`). A native bridge (`native.js`, a no-op on the web)
+adds: APNs registration to the worker's `/push/register`, local notifications
+for streak-at-risk and "Not going gym today?" planned a week ahead (tapping
+opens the two-set session), haptics on unlock / PR / rank-up / set logged, Sign
+in with Apple on the account screen and in Settings, the iOS share sheet for
+the before/after and the recap card, and StoreKit 2 subscriptions through an
+in-repo Swift plugin (`MIStorePlugin.swift`: products, purchase, restore,
+current entitlement, signed transactions synced to `/iap/verify`). On iOS the
+paywall shows App Store prices only, with Restore purchases on the paywall and
+in Settings. HealthKit is a flagged-off code path. Shell: dark status bar on
+black, no rubber-band or pinch (`MIViewController.swift`), portrait only,
+plain-English usage strings, push + Sign in with Apple entitlements, app icon
+from the red mark and a padlock launch screen matching the splash. Fastlane
+`beta` / `record` / `web` lanes and placeholder metadata; worker snippets for
+APNs (`worker/apns.js`) and purchase verification (`worker/iap.js`);
+`docs/ios-ship.md` lists exactly what to click. `pricing.json` gains the iOS
+product ids (`com.maxintensity.app.weekly|monthly|yearly`, trial on yearly) and
+a weekly price used only for the App Store product. Verified here: the bundle
+runs with every external request blocked (`tests/bundle.js`), the web suite is
+green; the Xcode build, signing and upload need a Mac.
+
 ## Round 5 — final consolidated pass
 
 **A Bugs.** The account screen's inputs were re-created on every keystroke

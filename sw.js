@@ -7,11 +7,11 @@
    2. Notifications: web push (when the worker sends one), local alerts the page
       asks for via postMessage, and notification clicks that open the app at the
       URL the notification carries (e.g. ./?mini=1 for the two-set session). */
-const VERSION = "mi-shell-v6";
+const VERSION = "mi-shell-v7";
 const SHELL = [
   "./", "index.html", "offline.html", "manifest.webmanifest",
   "app/ui.jsx", "app/anatomy.jsx", "app/funnel.jsx", "app/recap.jsx", "app/community.jsx", "app/progress.jsx", "app/muscles.jsx", "app/calendar.jsx", "app/mealplan.jsx", "pricing.json",
-  "coach-knowledge.js", "mi-projection.js", "mi-ai.js", "rank-standards.js",
+  "native.js", "coach-knowledge.js", "mi-projection.js", "mi-ai.js", "rank-standards.js",
   "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png",
 ];
 const CDN = /^https:\/\/(cdnjs\.cloudflare\.com|cdn\.tailwindcss\.com|fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net)\//;

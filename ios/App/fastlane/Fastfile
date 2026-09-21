@@ -1,0 +1,35 @@
+# Max Intensity — iOS lanes. Run from ios/App:  bundle exec fastlane beta
+default_platform(:ios)
+
+platform :ios do
+  desc "Rebuild the web bundle and sync it into the Xcode project"
+  lane :web do
+    sh("cd ../.. && npm run build:web && npx cap sync ios")
+  end
+
+  desc "Bump the build number, archive with automatic signing, upload to TestFlight"
+  lane :beta do
+    web
+    increment_build_number(xcodeproj: "App.xcodeproj")
+    build_app(
+      project: "App.xcodeproj",
+      scheme: "App",
+      configuration: "Release",
+      export_method: "app-store",
+      xcargs: "-allowProvisioningUpdates",
+      output_directory: "output",
+      export_options: { method: "app-store", signingStyle: "automatic" }
+    )
+    upload_to_testflight(
+      skip_waiting_for_build_processing: true,
+      distribute_external: false,
+      changelog: "Max Intensity — TestFlight build #{get_build_number(xcodeproj: 'App.xcodeproj')}"
+    )
+  end
+
+  desc "Create the App Store Connect record (once) and push the placeholder metadata"
+  lane :record do
+    produce(app_name: "Max Intensity", language: "en-GB", sku: "maxintensity-ios", skip_itc: false)
+    deliver(skip_binary_upload: true, skip_screenshots: true, force: true, metadata_path: "./fastlane/metadata")
+  end
+end

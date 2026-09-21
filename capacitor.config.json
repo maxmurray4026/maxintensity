@@ -1,0 +1,19 @@
+{
+  "appId": "com.maxintensity.app",
+  "appName": "Max Intensity",
+  "webDir": "www",
+  "backgroundColor": "#050505",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#050505",
+    "preferredContentMode": "mobile",
+    "allowsLinkPreview": false,
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "SplashScreen": { "launchAutoHide": false, "backgroundColor": "#050505", "showSpinner": false },
+    "StatusBar": { "style": "DARK", "backgroundColor": "#050505", "overlaysWebView": false },
+    "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] },
+    "LocalNotifications": { "smallIcon": "ic_stat_icon", "iconColor": "#FF2B2B" }
+  }
+}

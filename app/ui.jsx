@@ -196,6 +196,7 @@ window.MI = window.MI || {};
   MI.shareCanvas = async (canvas, filename, text) => {
     try {
       const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
+      if (window.MI_NATIVE && window.MI_NATIVE.share) { await window.MI_NATIVE.share(blob, filename, text); return "shared"; }
       const file = new File([blob], filename, { type: "image/png" });
       if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text }); return "shared"; }
       const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename; a.click();

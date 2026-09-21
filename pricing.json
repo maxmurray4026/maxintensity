@@ -1,10 +1,21 @@
 {
   "currency": "GBP",
-  "symbol": "£",
+  "symbol": "\u00a3",
   "monthly": 30,
   "yearly": 240,
   "human": 200,
   "trialDays": 7,
   "preselected": "yearly",
-  "founderNote": "founder rates for the first 50"
+  "founderNote": "founder rates for the first 50",
+  "weekly": 9,
+  "ios": {
+    "group": "Max Intensity Membership",
+    "products": {
+      "weekly": "com.maxintensity.app.weekly",
+      "monthly": "com.maxintensity.app.monthly",
+      "yearly": "com.maxintensity.app.yearly"
+    },
+    "trialOn": "yearly",
+    "note": "On iOS the paywall shows StoreKit prices in the member's currency; these web prices never appear there."
+  }
 }
