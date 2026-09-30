@@ -3885,7 +3885,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(<MaxIntensityApp />)
 } catch (e) { showErr(e.message); }
 </script>
 <script>
-setTimeout(function(){ if (typeof Babel === "undefined") showErr("Babel failed to load - check connection"); }, 8000);
+setTimeout(function(){ if (typeof Babel === "undefined" && !window.MI_PRECOMPILED && !document.querySelector('script[src^="vendor/"]')) showErr("Babel failed to load - check connection"); }, 8000);
 </script>
 </body>
 </html>
