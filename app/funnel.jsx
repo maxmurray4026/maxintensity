@@ -855,6 +855,7 @@ try {
             </div>
           )}
           <p className="mono mt-2 text-center text-[10px] text-neutral-500">{native ? "Then " + priceLine(sk, "monthly") + " or " + priceLine(sk, "yearly") + " through the App Store. Cancel any time in Settings." : "Then £" + PRICES.monthly + "/mo or £" + PRICES.yearly + "/yr — cancel any time. No card needed today."}</p>
+          {native && <p className="mono mt-1 text-center text-[10px] text-neutral-600">Auto-renews until cancelled. <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/" target="_blank" rel="noreferrer" className="underline">Terms of Use</a> · <a href="https://maxintensity.app/privacy" target="_blank" rel="noreferrer" className="underline">Privacy Policy</a></p>}
         </div>
       </div>
     );
