@@ -1,13 +1,13 @@
 {
   "currency": "GBP",
-  "symbol": "\u00a3",
-  "monthly": 30,
-  "yearly": 240,
+  "symbol": "£",
+  "monthly": 20,
+  "yearly": 65,
   "human": 200,
   "trialDays": 7,
   "preselected": "yearly",
-  "founderNote": "founder rates for the first 50",
-  "weekly": 9,
+  "founderNote": "same price as the App Store",
+  "weekly": 5,
   "ios": {
     "group": "Max Intensity Membership",
     "products": {

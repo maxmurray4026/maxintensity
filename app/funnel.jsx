@@ -24,7 +24,7 @@ try {
     ["alone", "Nobody noticed", "A rank, a leaderboard and a wall where people post real results. Here, progress is status."],
   ];
 
-  const PRICES = Object.assign({ symbol: "£", monthly: 30, yearly: 240, human: 200, trialDays: 7, preselected: "yearly" }, window.MI_PRICING || {});
+  const PRICES = Object.assign({ symbol: "£", monthly: 20, yearly: 65, weekly: 5, human: 200, trialDays: 7, preselected: "yearly" }, window.MI_PRICING || {});
   /* Inside the iOS app the paywall shows App Store prices in the member's currency
      and buys through StoreKit; the web prices never appear there. */
   const useStore = () => {
@@ -33,7 +33,7 @@ try {
     return sk;
   };
   const skFor = (sk, plan) => (sk || []).find((p) => p.plan === plan);
-  const priceLine = (sk, plan) => { const p = skFor(sk, plan); if (p) return p.price + (plan === "yearly" ? "/yr" : plan === "weekly" ? "/wk" : "/mo"); return plan === "yearly" ? PRICES.symbol + PRICES.yearly + "/yr" : PRICES.symbol + PRICES.monthly + "/mo"; };
+  const priceLine = (sk, plan) => { const p = skFor(sk, plan); if (p) return p.price + (plan === "yearly" ? "/yr" : plan === "weekly" ? "/wk" : "/mo"); return plan === "yearly" ? PRICES.symbol + PRICES.yearly + "/yr" : plan === "weekly" ? PRICES.symbol + PRICES.weekly + "/wk" : PRICES.symbol + PRICES.monthly + "/mo"; };
   const isNativeStore = () => !!(window.MI_NATIVE && window.MI_NATIVE.store && window.MI_NATIVE.store.available);
 
   MI.Funnel = ({ initial, buildDay, onPhoto, loadProof, onFinish, trialDays = PRICES.trialDays || 7 }) => {
@@ -820,7 +820,7 @@ try {
         </div>
         <p className="dp mt-2 text-[34px] uppercase leading-[0.95] text-[#F2EFE8]">A coach in your corner for <span className="text-[#FF2B2B]">{native ? (skFor(sk, "monthly") ? skFor(sk, "monthly").price : "less") + " a month" : "£" + PRICES.monthly + " a month"}</span>, {native ? "not the price of a human coach." : "not £" + PRICES.human + "."}</p>
         <div className="mt-5 space-y-2.5">
-          {[["yearly", "Yearly", priceLine(sk, "yearly"), native ? "Cancel any time" : "£" + Math.round(PRICES.yearly / 12) + "/mo · 4 months free"], ["monthly", "Monthly", priceLine(sk, "monthly"), "Cancel any time"]].map(([k, l, price, subl]) => (
+          {[["yearly", "Yearly", priceLine(sk, "yearly"), native ? "Cancel any time" : "£" + (PRICES.yearly / 12).toFixed(2) + "/mo · save £" + (PRICES.monthly * 12 - PRICES.yearly) + " a year"], ["monthly", "Monthly", priceLine(sk, "monthly"), "Cancel any time"], ["weekly", "Weekly", priceLine(sk, "weekly"), "Cancel any time"]].map(([k, l, price, subl]) => (
             <button key={k} onClick={() => setPlan(k)} className={"flex w-full items-center gap-3 rounded-lg border px-4 py-4 text-left " + (plan === k ? "border-[#FF2B2B] bg-[#1c0808]" : "border-neutral-800 bg-[#111]")}>
               <span className={"flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 " + (plan === k ? "border-[#FF2B2B]" : "border-neutral-700")}>{plan === k && <span className="h-3 w-3 rounded-full bg-[#FF2B2B]" />}</span>
               <span><span className="dp block text-lg uppercase text-[#F2EFE8]">{l} <span className="text-[#FF2B2B]">{price}</span></span><span className="mono block text-[10px] text-neutral-500">{subl}</span></span>

@@ -73,7 +73,7 @@ var MI_SERVER = "https://maxintensity-ai.maxmurray4026.workers.dev";
 // Web push: set to the worker's VAPID public key (base64url) once the worker can send pushes.
 // Empty = alerts fire locally from the app through the service worker.
 // Pricing, trial length and the pre-selected plan live in pricing.json (Max sets the experiment there).
-window.MI_PRICING = { symbol: "£", monthly: 30, yearly: 240, human: 200, trialDays: 7, preselected: "yearly" };
+window.MI_PRICING = { symbol: "£", monthly: 20, yearly: 65, weekly: 5, human: 200, trialDays: 7, preselected: "yearly" };
 try { var px = new XMLHttpRequest(); px.open("GET", "pricing.json", false); px.send(null); if (px.status === 200) Object.assign(window.MI_PRICING, JSON.parse(px.responseText)); } catch (e) {}
 window.MI_PUSH_PUBLIC_KEY = "BHw6EBJf2YEoiX7G6KHBWopmQAwDb8ZVZsKOVV_CWiWtXBe2PXM2nZJCdyi6GBLwtE9p2m03Suv36CBv6Wn30Hw"; // VAPID public key (P-256, base64url); the worker holds the private key
 var MI_APP_TOKEN = "MI-2026-fj83nD92kLp47xWq95TbZ38vRy60Hs";
@@ -1896,7 +1896,7 @@ function MaxIntensityApp() {
           <p className="mono mt-4 text-xs text-[#FF2B2B]">Trial active — {trialLeft} day{trialLeft === 1 ? "" : "s"} left</p>
         ) : (
           <div className="mt-4">
-            <p className="mono text-xs text-neutral-500">Trial ended — MAX AI is £30/mo or £240/yr. DM Max for your code (founder rates for the first 50).</p>
+            <p className="mono text-xs text-neutral-500">Trial ended — MAX AI is £5/wk, £20/mo or £65/yr. DM Max for your code (founder rates for the first 50).</p>
             <div className="mt-2 flex gap-2">
               <input value={codeIn} onChange={(e) => setCodeIn(e.target.value)} placeholder="ACCESS CODE" className="mono flex-1 rounded-lg bg-neutral-900 px-3 py-2.5 text-sm uppercase placeholder-neutral-700" />
               <button onClick={redeemCode} className={cta + " px-4 text-xs"}>Unlock</button>
@@ -2017,7 +2017,7 @@ function MaxIntensityApp() {
             )
             : trialStart ? (
               <div>
-                <p className="mono text-xs text-neutral-500">Trial ended. £30/mo or £240/yr — DM Max for your code.</p>
+                <p className="mono text-xs text-neutral-500">Trial ended. £5/wk, £20/mo or £65/yr — DM Max for your code.</p>
                 <div className="mt-2 flex gap-2">
                   <input value={codeIn} onChange={(e) => setCodeIn(e.target.value)} placeholder="ACCESS CODE" className="mono flex-1 rounded-lg bg-neutral-900 px-3 py-2 text-sm uppercase placeholder-neutral-700" />
                   <button onClick={redeemCode} className={cta + " px-4 text-xs"}>Unlock</button>
