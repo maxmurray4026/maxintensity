@@ -58,12 +58,6 @@
 	<string>Max Intensity uses the microphone so you can log a meal or a set by voice.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Max Intensity turns what you say into text so it can log the meal or the set you described.</string>
-	<key>NSHealthShareUsageDescription</key>
-	<string>Max Intensity can read your step count and workouts from Health so your calendar and coach see your day. Off unless you turn it on.</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>Max Intensity does not write to Health.</string>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>Max Intensity does not track you across other apps or websites.</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 </dict>
