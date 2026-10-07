@@ -71,6 +71,21 @@ try {
     const [msg, setMsg] = useState("");
     const [sort, setSort] = useState("top"); // 'top' | 'recent'
     const [openComments, setOpenComments] = useState({});
+    /* Moderation: blocked handles are hidden on this phone; reports go to Max by email and hide the post. Apple needs both for user content. */
+    const [blocked, setBlocked] = useState(() => lsGet("mi-blocked", []));
+    const [hiddenPosts, setHiddenPosts] = useState(() => lsGet("mi-hidden-posts", []));
+    const [postMenu, setPostMenu] = useState(null);
+    const isBlocked = (h) => blocked.map((x) => String(x).toLowerCase()).includes(String(h || "").toLowerCase());
+    const blockHandle = (h) => { if (!h) return; if (!window.confirm("Block @" + h + "? You won't see their posts or comments again on this phone.")) return; const next = [...new Set([...blocked, h])]; setBlocked(next); lsSet("mi-blocked", next); setPostMenu(null); };
+    const unblockAll = () => { setBlocked([]); lsSet("mi-blocked", []); };
+    const reportPost = (p) => {
+      const reason = window.prompt("Report @" + p.handle + " — what's wrong with this post? (abuse, nudity, spam, something else)", "");
+      if (reason === null) return;
+      const next = [...new Set([...hiddenPosts, p.id])]; setHiddenPosts(next); lsSet("mi-hidden-posts", next); setPostMenu(null);
+      const body = "Reported post on the Max Intensity wall%0A%0APost id: " + encodeURIComponent(p.id || "") + "%0AFrom: @" + encodeURIComponent(p.handle || "") + "%0AReported by: @" + encodeURIComponent(handle || "") + "%0AReason: " + encodeURIComponent(reason || "") + "%0A%0AText: " + encodeURIComponent((p.text || "").slice(0, 500));
+      try { window.open("mailto:maxmurray4026@gmail.com?subject=" + encodeURIComponent("Wall report: @" + (p.handle || "")) + "&body=" + body, "_blank"); } catch (e) {}
+      alert("Reported. It's hidden for you now and Max reviews every report within 24 hours. Repeat offenders are removed.");
+    };
     const [commentIn, setCommentIn] = useState({});
     const [ba, setBa] = useState(null); // before/after composer { before, after, beforeDate, afterDate, out }
     const [allRanks, setAllRanks] = useState(false);
@@ -104,7 +119,7 @@ try {
     const loadBoard = async () => { try { const r = await boardCall("GET"); const rows = rowsOf(r); setBoard(rows); onBoard && onBoard(rows); } catch (e) { setBoard([]); } };
     useEffect(() => { if (view === "feed" && posts === null) loadWall(); if (view === "league" && board === null) loadBoard(); }, [view]); // eslint-disable-line
 
-    const sorted = (list) => [...list].sort((a, b) => sort === "top" ? ((b.likes || 0) - (a.likes || 0)) || ((b.ts || 0) - (a.ts || 0)) : (b.ts || 0) - (a.ts || 0));
+    const sorted = (list) => [...list].filter((p) => !isBlocked(p.handle) && !hiddenPosts.includes(p.id)).map((p) => ({ ...p, comments: (p.comments || []).filter((c) => !isBlocked(c.handle)) })).sort((a, b) => sort === "top" ? ((b.likes || 0) - (a.likes || 0)) || ((b.ts || 0) - (a.ts || 0)) : (b.ts || 0) - (a.ts || 0));
 
     /* ---- posting: try with the image; if the worker refuses, post the text and keep the image locally ---- */
     const post = async () => {
@@ -196,7 +211,7 @@ try {
 
     /* ---- league: same rank tier as the member, promotion zone = top 3 ---- */
     const allRows = [...(board || [])].sort((a, b) => ((b.rankIndex || 0) - (a.rankIndex || 0)) || ((b.points || 0) - (a.points || 0)));
-    const leagueRows = allRanks ? allRows : allRows.filter((r) => (r.rankIndex || 0) === rankIndex);
+    const leagueRows = (allRanks ? allRows : allRows.filter((r) => (r.rankIndex || 0) === rankIndex)).filter((r) => !isBlocked(r.handle));
     const leagueName = rank || "Bronze";
     const nextLeague = window.MI_RANK ? window.MI_RANK.TIERS[Math.min(6, rankIndex + 1)] : "Silver";
     const myPos = leagueRows.findIndex((r) => (r.handle || "").toLowerCase() === me);
@@ -330,6 +345,7 @@ try {
             )}
             <div className="mt-3 flex items-center justify-between">
               <p className={eyebrow}>{sort === "top" ? "Most respected" : "Most recent"}</p>
+              {blocked.length > 0 && <button onClick={unblockAll} className="mono ml-2 text-[9px] uppercase tracking-wider text-neutral-600 underline">Unblock {blocked.length}</button>}
               <div className="flex rounded-md border border-neutral-800 p-0.5">
                 {[["top", "Top"], ["recent", "Recent"]].map(([v, l]) => <button key={v} onClick={() => setSort(v)} className={"mono rounded px-2.5 py-1 text-[10px] uppercase tracking-wider " + (sort === v ? "bg-[#FF2B2B] text-white" : "text-neutral-500")}>{l}</button>)}
               </div>
@@ -344,7 +360,14 @@ try {
                     <Badge r={p} />
                     <p className="truncate text-xs font-semibold text-neutral-200">@{/^admin$/i.test(p.handle || "") ? "maxintensity" : p.handle}</p>
                     <span className="mono ml-auto shrink-0 text-[9px] uppercase tracking-wider text-neutral-600">{/admin/i.test(p.type || "") ? "" : p.type}{p.level ? " · L" + p.level : ""}{p.streak ? " · " + p.streak + "d" : ""}</span>
+                    {!p.pending && <button onClick={() => setPostMenu(postMenu === p.id ? null : p.id)} aria-label="More options" className="mono shrink-0 rounded border border-neutral-800 px-1.5 py-0.5 text-[10px] leading-none text-neutral-500">···</button>}
                   </div>
+                  {postMenu === p.id && (
+                    <div className="relative mt-2 flex gap-2">
+                      <button onClick={() => reportPost(p)} className="mono flex-1 rounded-md border border-neutral-700 py-2 text-[10px] uppercase tracking-widest text-neutral-200">Report post</button>
+                      <button onClick={() => blockHandle(p.handle)} className="mono flex-1 rounded-md border border-[#FF2B2B]/60 py-2 text-[10px] uppercase tracking-widest text-[#FF2B2B]">Block @{p.handle}</button>
+                    </div>
+                  )}
                   {p.image && <img src={p.image} alt="" className="relative mt-3 max-h-72 w-full rounded-lg object-cover" />}
                   <p className="relative mt-2 text-sm leading-relaxed text-neutral-200">{p.text}</p>
                   <div className="relative mt-2 flex items-center gap-3">

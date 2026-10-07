@@ -1448,6 +1448,18 @@ function MaxIntensityApp() {
       window.location.reload();
     } catch { alert("That doesn't look like a Max Intensity backup — paste the exact exported text."); }
   };
+  // Delete account: removes the member from the leaderboard and wall (best effort), signs out of Apple on this device, wipes every byte stored on the phone.
+  const deleteAccount = async () => {
+    if (!window.confirm("Delete your account and all your data? This removes you from the leaderboard and the wall and wipes everything on this phone. It cannot be undone.")) return;
+    const hd = (handle || "").replace(/^@/, "").trim();
+    try { if (hd) await boardCall("DELETE", { handle: hd, deleteAccount: true }); } catch {}
+    try { if (hd) await wallCall("DELETE", { handle: hd, deleteAccount: true }); } catch {}
+    try { if (window.MI_NATIVE && window.MI_NATIVE.apple && window.MI_NATIVE.apple.signOut) await window.MI_NATIVE.apple.signOut(); } catch {}
+    try { const keys = []; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.indexOf("mi") === 0) keys.push(k); } keys.forEach((k) => localStorage.removeItem(k)); } catch {}
+    try { if (window.caches) { const names = await caches.keys(); await Promise.all(names.map((n) => caches.delete(n))); } } catch {}
+    alert("Your account and data have been deleted.");
+    window.location.reload();
+  };
 
   const bestLift = () => {
     let best = { name: "", kg: 0 };
@@ -2043,6 +2055,12 @@ function MaxIntensityApp() {
               <p className="mono mt-1.5 text-[9px] text-neutral-600">Export → Copy → keep it in Notes. Paste it back here to restore everything.</p>
             </div>
           )}
+        </div>
+        <p className={eyebrow + " mt-6"}>Account</p>
+        <div className={card + " mt-2 p-3.5"}>
+          <p className="mono text-[10px] leading-relaxed text-neutral-500">Your training data lives on this phone. Your handle, points and posts are the only things on our server. Deleting removes all of it, everywhere, and signs you out of Apple on this device.</p>
+          <button onClick={deleteAccount} className="mono mt-3 w-full rounded-lg border border-[#FF2B2B]/60 py-2.5 text-xs uppercase tracking-widest text-[#FF2B2B]">Delete my account and data</button>
+          <p className="mono mt-2 text-[9px] text-neutral-600">Subscriptions are managed by Apple: Settings → Apple Account → Subscriptions.</p>
         </div>
         <p className={eyebrow + " mt-6"}>Notifications</p>
         <div className={card + " mt-2 p-4"}>
